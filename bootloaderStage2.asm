@@ -1,8 +1,12 @@
     BITS  32
     ORG 0xA000 ; This is where we loaded when we read from disk
+    KERNEL_ADDRESS equ entry + 0x200 ; It's in the next sector
+
+entry:
 
     mov esi, welcomeMsg32
     call printVgaStringLastLine32
+    jmp KERNEL_ADDRESS
     hlt
     jmp $
 

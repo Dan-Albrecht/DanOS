@@ -1,0 +1,4 @@
+{
+    // Don't want the test target running because that thinks it gets to define the panic handler
+    "rust-analyzer.check.allTargets": false
+}

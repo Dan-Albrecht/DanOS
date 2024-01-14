@@ -1,7 +1,7 @@
     BITS  16
     ORG   0x7C00
 
-    STAGE2_LENGTH_SECTORS           equ 0x1
+    STAGE2_LENGTH_SECTORS           equ 0x2
     STAGE2_TARGET_MEMORY_SEGMENT    equ 0xA00
 
 ; Segment | Name  | Offset Register | Purpose
