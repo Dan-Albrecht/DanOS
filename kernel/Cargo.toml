@@ -10,7 +10,7 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-#opt-level = "z"
+#opt-level = 0
 #lto = true
 #codegen-units = 1
 #strip = "debuginfo"
