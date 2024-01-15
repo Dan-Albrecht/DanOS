@@ -3,7 +3,7 @@ Push-Location ${PSScriptRoot}
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUserDeclaredVarsMoreThanAssignments', 'This is a global PS state variable')]
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
-    cargo build --release --target .\i686-unknown-none.json -Zbuild-std
+    cargo build --release
 
     # For now, always handy to have the assembly around
     rust-objdump.exe -M intel --disassemble-all .\target\i686-unknown-none\release\kernel > .\target\i686-unknown-none\release\kernel.asm
