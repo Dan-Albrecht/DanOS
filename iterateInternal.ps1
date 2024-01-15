@@ -18,7 +18,7 @@ try {
     # This doesn't currenty pad, we're relying on the VHD to be 0'd
     $kernelBytes = Get-Content .\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
     # Do this in sector count so obvious what we have to update the loader to
-    if ($kernelBytes.Length -gt (0x11 * 0x200) ) { Write-Error 'Kernel has grown again, update the loader' }
+    if ($kernelBytes.Length -gt (0x13 * 0x200) ) { Write-Error 'Kernel has grown again, update the loader' }
 
     $osBytes = Get-Content .\DanOS.vhd -Raw -AsByteStream
     for ($x = 0; $x -lt $stage1Bytes.Length; $x++ ) { $osBytes[$x] = $stage1Bytes[$x] }
