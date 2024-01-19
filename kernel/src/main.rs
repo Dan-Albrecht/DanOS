@@ -36,8 +36,8 @@ pub extern "C" fn _start() -> ! {
                 Setup64BitGDT();
                 writeStringOnNewline(b"The new GDT is in place");
                 asm!(
-                    "jmp 0x8, 0xC800"
-                ); // BUGBUG: This instruction is currently at 0xB7CB. We know the code segment is rigth after the null segment so just hardcode +0x40 while we try to figure out how to do this right.
+                    "jmp 0x8, 0xC800" // BUGUBG: Fix this offset hardcoding
+                );
             } else {
                 writeStringOnNewline(b"No 64-bit mode. :(");
             }

@@ -2,8 +2,12 @@
 #![no_main]
 #![allow(non_snake_case)]
 
-use core::arch::asm;
+mod assemblyHelpers;
+mod vga;
+
 use core::panic::PanicInfo;
+
+use vga::textMode::writeStringOnNewline;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -12,17 +16,9 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    unsafe {
-        asm!(
-            // Some obvious instructions we should be able to easily see in the debugger
-            "xor rax, rax",
-            "xor rbx, rbx",
-            "xor rcx, rcx",
-            "xor rdx, rdx",
-            "xor r8, r8",
-            "xor r9, r9",
-            "hlt",
-        );
+
+    unsafe{
+        writeStringOnNewline(b"Welcome to 64-bit Rust!");
     }
 
     loop {}

@@ -30,7 +30,10 @@ try {
     # Do this in sector count so obvious what we have to update the loader to.
     $neededSectors = $kernelSectors + $kernel64Sectors
     Write-Host "Kernel32 is $($kernelBytes.Length) bytes and $kernelSectors sectors. Kernel64 is $($kernel64Bytes.Length) bytes and $kernel64Sectors sectors. So we need a total of $neededSectors sectors loaded from disk for kernels."
-    if ($neededSectors -gt 0x15 ) { Write-Error "Kernel has grown again, update the loader. Need $neededSectors sector for kernel." }
+    if ($neededSectors -gt 0x1C ) { 
+        $sectorsInHex = ([int]$neededSectors).ToString("X")
+        Write-Error "Kernel has grown again, update the loader. Need $neededSectors (0x$sectorsInHex) sector for kernel." 
+    }
 
     $osBytes = Get-Content .\DanOS.vhd -Raw -AsByteStream
     for ($x = 0; $x -lt $stage1Bytes.Length; $x++ ) { $osBytes[$x] = $stage1Bytes[$x] }
