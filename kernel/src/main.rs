@@ -3,15 +3,19 @@
 #![allow(non_snake_case)]
 #![feature(asm_const)]
 
-mod cursorStuff;
-mod assemblyStuff;
 mod a20Stuff;
+mod assemblyStuff;
+mod cursorStuff;
+mod gdtStuff;
+mod pagingStuff;
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, arch::asm};
 
 use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
 use cursorStuff::writeStringOnNewline;
+use gdtStuff::Setup64BitGDT;
+use pagingStuff::enablePaging;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -26,6 +30,14 @@ pub extern "C" fn _start() -> ! {
         if IsTheA20LineEnabled() {
             if Is64BitModeSupported() {
                 writeStringOnNewline(b"64-bit mode is available");
+                enablePaging();
+                writeStringOnNewline(b"64-bit paging mode enabled...");
+                writeStringOnNewline(b"...though we're in compatability (32-bit) mode currently.");
+                Setup64BitGDT();
+                writeStringOnNewline(b"The new GDT is in place");
+                asm!(
+                    "jmp 0x8, 0xC800"
+                ); // BUGBUG: This instruction is currently at 0xB7CB. We know the code segment is rigth after the null segment so just hardcode +0x40 while we try to figure out how to do this right.
             } else {
                 writeStringOnNewline(b"No 64-bit mode. :(");
             }

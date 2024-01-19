@@ -12,3 +12,10 @@ https://os.phil-opp.com/freestanding-rust-binary/
 https://docs.rust-embedded.org/embedonomicon/custom-target.html
 https://stackoverflow.com/a/67902310
 https://old.reddit.com/r/rust/comments/15yph7l/producing_a_completely_flat_binary_in_rust/
+https://os.phil-opp.com/minimal-rust-kernel/
+
+First edition has more low level details and jsut doesn't use a magic crate to dump you in 64bit mode
+https://os.phil-opp.com/edition-1/
+
+Custom linker setup might help with our unexpected layout (and giant size)
+https://www.rustyelectrons.com/posts/1-bare-metal-rust-bootstrapped-by-c/

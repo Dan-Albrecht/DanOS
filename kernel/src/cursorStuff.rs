@@ -24,6 +24,10 @@ pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
         cursorPosition = getCursorPosition();
         cursorPosition.x = 0;
         cursorPosition.y += 1;
+
+        // BUGBUG: Implment scrolling
+        cursorPosition.y = 24;
+
         bufferOffset = cursorPosition.y as u16;
         bufferOffset *= VGA_WIDTH;
         bufferOffset += cursorPosition.x as u16;
