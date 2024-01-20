@@ -36,7 +36,7 @@ pub extern "C" fn _start() -> ! {
                 Setup64BitGDT();
                 writeStringOnNewline(b"The new GDT is in place");
                 asm!(
-                    "jmp 0x8, 0xC800" // BUGUBG: Fix this offset hardcoding
+                    "jmp 0x8, 0xD800" // BUGUBG: Fix this offset hardcoding
                 );
             } else {
                 writeStringOnNewline(b"No 64-bit mode. :(");
