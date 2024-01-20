@@ -9,7 +9,7 @@ mod cursorStuff;
 mod gdtStuff;
 mod pagingStuff;
 
-use core::{panic::PanicInfo, arch::asm};
+use core::{arch::asm, panic::PanicInfo};
 
 use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
@@ -22,9 +22,37 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
+const fn getKernel64Address() -> u16 {
+    let bytes = core::env!("KERNEL64_LOAD_TARGET").as_bytes();
+    let len = bytes.len();
+
+    if len <3 || bytes[0] != b'0' || bytes[1] != b'x' {
+        assert!(false, "Load address string must be at least 3 characters and start with a 0x prefix");
+    }
+
+    let mut pos = 2;
+    let mut val :u16 = 0;
+
+    while pos < len {
+        let byte = bytes[pos];
+        val <<= 4;
+
+        if byte >= b'0' && byte <= b'9' {
+            val += (byte as u16) - (b'0' as u16);
+        } else if byte >= b'A' && byte <= b'F' {
+            val += 10 + (byte as u16) - (b'A' as u16);
+        } else {
+            assert!(false, "Invalid character in address string. Hex characters must be in uppercase if you're using them.");
+        }
+        pos += 1;
+    }
+
+    val
+}
+
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    unsafe { 
+    unsafe {
         writeStringOnNewline(b"We've made it to Rust!");
 
         if IsTheA20LineEnabled() {
@@ -36,13 +64,16 @@ pub extern "C" fn _start() -> ! {
                 Setup64BitGDT();
                 writeStringOnNewline(b"The new GDT is in place");
                 asm!(
-                    "jmp 0x8, 0xD800" // BUGUBG: Fix this offset hardcoding
+                    "jmp 0x8, {adr}", // Far jump to the 64bit kernel
+                    adr = const { getKernel64Address() },
                 );
             } else {
                 writeStringOnNewline(b"No 64-bit mode. :(");
             }
         } else {
-            writeStringOnNewline(b"You have hardware/emulator with the A20 address line disabled...");
+            writeStringOnNewline(
+                b"You have hardware/emulator with the A20 address line disabled...",
+            );
         }
     };
 
