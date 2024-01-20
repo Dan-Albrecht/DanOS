@@ -1,7 +1,7 @@
 ENTRY(_start)
 
 SECTIONS {
-    . = KERNEL64_LOAD_TARGET;
+    . = KERNEL32_LOAD_TARGET;
 
     .start : {
         *(.start)

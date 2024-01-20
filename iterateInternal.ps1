@@ -1,39 +1,50 @@
 $ErrorActionPreference = 'Stop'
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUserDeclaredVarsMoreThanAssignments', 'This is a global PS state variable')]
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
+Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
-    nasm.exe .\bootloaderStage1.asm -f bin -o .\bootloaderStage1.bin
-    nasm.exe .\bootloaderStage2.asm -f bin -o .\bootloaderStage2.bin
-    .\kernel\buildKernel.ps1
-    .\kernel64\buildKernel.ps1
 
-    # Really hate PowerShell sometimes
-    if (![System.IO.File]::Exists("${PSScriptRoot}\empty.vhd")) {
+    # I really hate you PowerShell
+    [System.Environment]::CurrentDirectory = ${PSScriptRoot}
+
+    $STAGE_2_LOAD_TARGET = 0xD000
+    
+    nasm.exe .\bootloaderStage2.asm -f bin -o .\bootloaderStage2.bin
+    $stage2Bytes = Get-Content .\bootloaderStage2.bin -Raw -AsByteStream
+    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
+
+    $STAGE_3_LOAD_TARGET = $STAGE_2_LOAD_TARGET + ($stage2Sectors * 512)
+
+    # Secret handshake to eventaully get this passed to the linker
+    $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
+    .\kernel\buildKernel.ps1
+    $kernelBytes = Get-Content .\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
+    $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
+
+    $STAGE_4_LOAD_TARGET = $STAGE_3_LOAD_TARGET + ($kernelSectors * 512)
+
+    # Secret handshake to eventaully get this passed to the linker
+    $env:KERNEL64_LOAD_TARGET = "0x$(([int]$STAGE_4_LOAD_TARGET).ToString("X"))"
+    .\kernel64\buildKernel.ps1
+    $kernel64Bytes = Get-Content .\kernel64\target\x86_64-unknown-none\release\kernel64.bin -Raw -AsByteStream
+    $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
+
+    $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors
+    # This needs to be in segment so divide by 16
+    $stage2Segment = $STAGE_2_LOAD_TARGET -shr 4
+    Write-Host "Stage 1 @ 0x7C00, Stage 2 @ 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X")) (which is segment 0x$(([int]$stage2Segment).ToString("X"))), Stage 3 @ 0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X")), Stage 4 @ 0x$(([int]$STAGE_4_LOAD_TARGET).ToString("X")). For a total of 0x$(([int]$neededSectors).ToString("X")) sectors to load from disk."
+
+    nasm.exe .\bootloaderStage1.asm -DSTAGE2_LENGTH_SECTORS="$neededSectors" -DSTAGE2_TARGET_MEMORY_SEGMENT="$stage2Segment" -f bin -o .\bootloaderStage1.bin
+    $stage1Bytes = Get-Content .\bootloaderStage1.bin -Raw -AsByteStream
+    if ($stage1Bytes.Length -ne 512 ) { Write-Error 'Bootloader should be exactly 512 bytes' }
+
+    if (![System.IO.File]::Exists("empty.vhd")) {
         # Creation is too slow, so just cache an empty one and use it
         New-VHD -Path empty.vhd -Fixed -SizeBytes 3MB
     }
 
     Copy-Item -Force .\empty.vhd .\DanOS.vhd
-
-    $stage1Bytes = Get-Content .\bootloaderStage1.bin -Raw -AsByteStream
-    if ($stage1Bytes.Length -ne 512 ) { Write-Error 'Bootloader should be exactly 512 bytes' }
-
-    $stage2Bytes = Get-Content .\bootloaderStage2.bin -Raw -AsByteStream
-
-    # This doesn't currenty pad, we're relying on the VHD to be 0'd
-    $kernelBytes = Get-Content .\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
-    $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
-    $kernel64Bytes = Get-Content .\kernel64\target\x86_64-unknown-none\release\kernel64.bin -Raw -AsByteStream
-    $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
-
-    # Do this in sector count so obvious what we have to update the loader to.
-    $neededSectors = $kernelSectors + $kernel64Sectors
-    Write-Host "Kernel32 is $($kernelBytes.Length) bytes and $kernelSectors sectors. Kernel64 is $($kernel64Bytes.Length) bytes and $kernel64Sectors sectors. So we need a total of $neededSectors sectors loaded from disk for kernels."
-    if ($neededSectors -gt 0x1C ) { 
-        $sectorsInHex = ([int]$neededSectors).ToString("X")
-        Write-Error "Kernel has grown again, update the loader. Need $neededSectors (0x$sectorsInHex) sector for kernel." 
-    }
 
     $osBytes = Get-Content .\DanOS.vhd -Raw -AsByteStream
     for ($x = 0; $x -lt $stage1Bytes.Length; $x++ ) { $osBytes[$x] = $stage1Bytes[$x] }
@@ -48,4 +59,5 @@ try {
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
+    Pop-Location
 }
