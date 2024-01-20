@@ -1,4 +1,5 @@
     BITS  32
+    ORG STAGE_2_LOAD_TARGET ; This is where we loaded when we read from disk
 
     KERNEL_ADDRESS      equ entry + 0x200   ; It's in the next sector
     VGA_ADDRESS_PORT    equ 0x3D4           ; Cathode Ray Tube Control (CRTC) Address Register
