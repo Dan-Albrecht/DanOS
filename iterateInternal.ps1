@@ -10,7 +10,7 @@ try {
 
     $STAGE_2_LOAD_TARGET = 0xD000
     
-    nasm.exe .\bootloaderStage2.asm -f bin -o .\bootloaderStage2.bin
+    nasm.exe .\bootloaderStage2.asm -DSTAGE_2_LOAD_TARGET="$STAGE_2_LOAD_TARGET" -f bin -o .\bootloaderStage2.bin
     $stage2Bytes = Get-Content .\bootloaderStage2.bin -Raw -AsByteStream
     $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
 
@@ -38,6 +38,7 @@ try {
     nasm.exe .\bootloaderStage1.asm -DSTAGE2_LENGTH_SECTORS="$neededSectors" -DSTAGE2_TARGET_MEMORY_SEGMENT="$stage2Segment" -f bin -o .\bootloaderStage1.bin
     $stage1Bytes = Get-Content .\bootloaderStage1.bin -Raw -AsByteStream
     if ($stage1Bytes.Length -ne 512 ) { Write-Error 'Bootloader should be exactly 512 bytes' }
+    $stage1Sectors = 1 # Must be per above and the laws of bios
 
     if (![System.IO.File]::Exists("empty.vhd")) {
         # Creation is too slow, so just cache an empty one and use it
@@ -48,9 +49,9 @@ try {
 
     $osBytes = Get-Content .\DanOS.vhd -Raw -AsByteStream
     for ($x = 0; $x -lt $stage1Bytes.Length; $x++ ) { $osBytes[$x] = $stage1Bytes[$x] }
-    for ($x = 0; $x -lt $stage2Bytes.Length; $x++ ) { $osBytes[$x + 512] = $stage2Bytes[$x] }
-    for ($x = 0; $x -lt $kernelBytes.Length; $x++ ) { $osBytes[$x + 1024] = $kernelBytes[$x] }
-    for ($x = 0; $x -lt $kernel64Bytes.Length; $x++ ) { $osBytes[$x + 1024 + ($kernelSectors * 512)] = $kernel64Bytes[$x] }
+    for ($x = 0; $x -lt $stage2Bytes.Length; $x++ ) { $osBytes[$x + (($stage1Sectors) * 512)] = $stage2Bytes[$x] }
+    for ($x = 0; $x -lt $kernelBytes.Length; $x++ ) { $osBytes[$x + (($stage1Sectors + $stage2Sectors) * 512)] = $kernelBytes[$x] }
+    for ($x = 0; $x -lt $kernel64Bytes.Length; $x++ ) { $osBytes[$x + (($stage1Sectors + $stage2Sectors + $kernelSectors) * 512)] = $kernel64Bytes[$x] }
 
     Write-Host "Writing $($osBytes.Length) bytes"
     [System.IO.File]::WriteAllBytes("${PSScriptRoot}\DanOS.vhd", $osBytes)
