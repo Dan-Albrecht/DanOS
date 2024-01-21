@@ -8,6 +8,16 @@ try {
     # For now, always handy to have the assembly around
     rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\release\kernel64 > .\target\x86_64-unknown-none\release\kernel64.asm
 
+    $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\x86_64-unknown-none\release\kernel64.asm")
+    if ($allLines[3] -ne "Disassembly of section .text:") {
+        Write-Error "Linking seems screwed up again. Text section isn't first. Found: $($allLines[3])"
+    }
+
+    # We might change the loader address, but we expect the symbol to be here
+    if (!$allLines[5].EndsWith(" <DanMain>:")) {
+        Write-Error "Linking seems screwed up again. DanMain wasn't at the start. Found: $($allLines[5])"
+    }
+
     # Turn it into the actual bits we'll run
     rust-objcopy.exe -O binary .\target\x86_64-unknown-none\release\kernel64 .\target\x86_64-unknown-none\release\kernel64.bin
 

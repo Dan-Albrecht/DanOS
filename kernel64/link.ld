@@ -1,13 +1,11 @@
-ENTRY(_start)
+ENTRY(DanMain)
 
 SECTIONS {
     . = KERNEL64_LOAD_TARGET;
 
-    .start : {
-        *(.start)
-    }
     .text : {
-        *(.text .text.*)
+        *(.text.DanMain);
+        *(.text*);
     }
     .rodata : {
         *(.rodata .rodata.*)
@@ -17,5 +15,11 @@ SECTIONS {
     }
     .bss : {
         *(.bss .bss.*)
+    }
+    .eh_frame : {
+        *(.eh_frame .eh_frame.*)
+    }
+    .eh_frame_hdr : {
+        *(.eh_frame_hdr .eh_frame_hdr.*)
     }
 }

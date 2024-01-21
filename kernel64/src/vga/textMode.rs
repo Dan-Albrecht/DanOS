@@ -1,4 +1,5 @@
-pub const VGA_WIDTH: u16 = 80;
+const VGA_WIDTH: u16 = 80;
+const VGA_HEIGHT: u16 = 25;
 
 const VGA_ADDRESS_PORT: u16 = 0x3D4;
 const VGA_DATA_PORT: u16 = 0x3D5;
@@ -13,6 +14,37 @@ pub struct CursorPosition {
     pub y: u8,
 }
 
+pub unsafe fn scrollUp() {
+    let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
+
+    for row in 1..VGA_HEIGHT {
+        for column in 0..VGA_WIDTH {
+            // Each character on the screen takes 2 bytes (color+character)
+            let sourceOffset = (row * VGA_WIDTH + column) * 2;
+            let destinationOffset = ((row - 1) * VGA_WIDTH + column) * 2;
+
+            // Character
+            *vgaBuffer.offset(destinationOffset as isize) =
+                *vgaBuffer.offset(sourceOffset as isize);
+
+            // Color
+            *vgaBuffer.offset(destinationOffset as isize + 1) =
+                *vgaBuffer.offset(sourceOffset as isize + 1);
+        }
+    }
+
+    // Clear the last row as we've scrolled it up now
+    for column in 0..VGA_WIDTH {
+        let row = VGA_HEIGHT - 1;
+        let destinationOffset = (row * VGA_WIDTH + column) * 2;
+
+        *vgaBuffer.offset(destinationOffset as isize) = 0;
+
+        // Assign a default color so if the cursor is blinking here you can see it
+        *vgaBuffer.offset(destinationOffset as isize + 1) = 7;
+    }
+}
+
 pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
     let mut bufferOffset: u16;
@@ -21,16 +53,17 @@ pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
     unsafe {
         cursorPosition = getCursorPosition();
         cursorPosition.x = 0;
-        cursorPosition.y += 1;
 
-        // BUGBUG: Implment scrolling
-        cursorPosition.y = 24;
+        if cursorPosition.y == 24 {
+            scrollUp();
+        } else {
+            cursorPosition.y += 1;
+        }
 
         bufferOffset = cursorPosition.y as u16;
         bufferOffset *= VGA_WIDTH;
         bufferOffset += cursorPosition.x as u16;
         bufferOffset *= 2; // Each character takes up 2 bytes in the buffer
-        setCursorPosition(&cursorPosition);
     }
 
     for (i, &byte) in msg.iter().enumerate() {
@@ -40,11 +73,11 @@ pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
             *vgaBuffer.offset(currentOffset) = byte;
             *vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
 
-            // BUGBUG: Should probably just set this once at the end
             cursorPosition.x += 1;
-            setCursorPosition(&cursorPosition);
         }
     }
+
+    setCursorPosition(&cursorPosition);
 }
 
 pub unsafe fn getCursorPosition() -> CursorPosition {

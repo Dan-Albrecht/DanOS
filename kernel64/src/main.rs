@@ -15,7 +15,7 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn DanMain() -> ! {
 
     unsafe{
         writeStringOnNewline(b"Welcome to 64-bit Rust!");

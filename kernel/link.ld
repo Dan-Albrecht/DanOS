@@ -1,13 +1,11 @@
-ENTRY(_start)
+ENTRY(DanMain)
 
 SECTIONS {
     . = KERNEL32_LOAD_TARGET;
 
-    .start : {
-        *(.start)
-    }
     .text : {
-        *(.text .text.*)
+        *(.text.DanMain);
+        *(.text*);
     }
     .rodata : {
         *(.rodata .rodata.*)

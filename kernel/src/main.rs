@@ -9,18 +9,14 @@ mod cursorStuff;
 mod gdtStuff;
 mod pagingStuff;
 
-use core::{arch::asm, panic::PanicInfo};
+use core::panic::PanicInfo;
+use core::arch::asm;
 
 use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
 use cursorStuff::writeStringOnNewline;
 use gdtStuff::Setup64BitGDT;
 use pagingStuff::enablePaging;
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
 
 const fn getKernel64Address() -> u16 {
     let bytes = core::env!("KERNEL64_LOAD_TARGET").as_bytes();
@@ -50,31 +46,34 @@ const fn getKernel64Address() -> u16 {
     val
 }
 
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn DanMain() -> ! {
     unsafe {
         writeStringOnNewline(b"We've made it to Rust!");
 
-        if IsTheA20LineEnabled() {
-            if Is64BitModeSupported() {
-                writeStringOnNewline(b"64-bit mode is available");
-                enablePaging();
-                writeStringOnNewline(b"64-bit paging mode enabled...");
-                writeStringOnNewline(b"...though we're in compatability (32-bit) mode currently.");
-                Setup64BitGDT();
-                writeStringOnNewline(b"The new GDT is in place");
-                asm!(
-                    "jmp 0x8, {adr}", // Far jump to the 64bit kernel
-                    adr = const { getKernel64Address() },
-                );
-            } else {
-                writeStringOnNewline(b"No 64-bit mode. :(");
-            }
-        } else {
-            writeStringOnNewline(
-                b"You have hardware/emulator with the A20 address line disabled...",
+    if IsTheA20LineEnabled() {
+        if Is64BitModeSupported() {
+            writeStringOnNewline(b"64-bit mode is available");
+            enablePaging();
+            writeStringOnNewline(b"64-bit paging mode enabled...");
+            writeStringOnNewline(b"...though we're in compatability (32-bit) mode currently.");
+            Setup64BitGDT();
+            writeStringOnNewline(b"The new GDT is in place");
+            asm!(
+                "jmp 0x8, {adr}", // Far jump to the 64bit kernel
+                adr = const { getKernel64Address() },
             );
+        } else {
+            writeStringOnNewline(b"No 64-bit mode. :(");
         }
+    } else {
+        writeStringOnNewline(b"You have hardware/emulator with the A20 address line disabled...");
+    }
     };
 
     loop {}
