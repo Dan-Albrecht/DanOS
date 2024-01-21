@@ -27,10 +27,12 @@ main:
 
     call loadStage2
 
+    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
+
     mov si, to32BitMsg
     call printString
 
-    call switchTo32bit
+    jmp switchTo32bit
 
     ; Should never reach this
     mov si, returnedFrom32
