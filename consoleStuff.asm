@@ -1,3 +1,8 @@
+    VGA_ADDRESS_PORT    equ 0x3D4           ; Cathode Ray Tube Control (CRTC) Address Register
+    VGA_DATA_PORT       equ 0x3D5           ; CRTC Data Register
+    CURSOR_HIGH         equ 0xE             ; Cursor Location High Register
+    CURSOR_LOW          equ 0xF             ; Cursor Location Low Register
+
 disableCursor:
     pusha
 
@@ -9,6 +14,28 @@ disableCursor:
 
     inc dx          ; CRTC Data Register
     mov al, 0x20    ; Bit 5 disables, other stuff dunno
+    out dx, al
+
+    popa
+    ret
+
+moveCursorToTopLeft:
+    pusha
+
+    mov dx, VGA_ADDRESS_PORT
+    mov al, CURSOR_HIGH
+    out dx, al
+    
+    mov dx, VGA_DATA_PORT
+    xor eax, eax
+    out dx, al
+
+    mov dx, VGA_ADDRESS_PORT
+    mov al, CURSOR_LOW
+    out dx, al
+    
+    mov dx, VGA_DATA_PORT
+    xor eax, eax
     out dx, al
 
     popa
@@ -36,6 +63,28 @@ scrollVga:
     inc bx
     jmp .beginZero
 
+.end:
+    popa
+    ret
+
+printChar:          ; AL set to char to print.
+    pusha
+    mov ah, 0x0E    ; Teletype output function
+    xor bx, bx      ; BH = page number (0), BL is N/A for this mode 
+                    ; so 0 it for consistency
+    int 0x10        ; Video Services
+    popa
+    ret
+
+printString:        ; Null-terminated string at DS:[SI]. Modifies AX, BX, SI.
+    pusha
+.begin:
+    mov al, [si]    ; [si] is shorthand for ds:[si]?
+    or al, al       ; Are we at the end of the string?
+    je .end         ; Yes, break out of loop
+    call printChar
+    inc si
+    jmp .begin
 .end:
     popa
     ret
@@ -118,6 +167,42 @@ printBin8:
     popa
     ret
 
+; Print AX as hex with 0x prefix
+printHex16:
+    pusha 
+
+    mov si, hexPrefix
+    call printString
+
+    mov dx, ax      ; DX contains the original AX incoming value
+    mov cl, 12      ; Ammount to shift number we're working on
+    mov bx, 4       ; Iteration counter
+
+.begin:
+    mov ax, dx      ; Copy the original value
+    shr ax, cl
+    and ax, 0xF
+    cmp ax, 10
+    jae .hexDigit
+    add ax, 48
+    jmp .decimalDigit
+
+.hexDigit:
+    add ax, 55
+
+.decimalDigit:
+    call printChar
+
+    dec bx
+    je .end
+    sub cl, 4
+    jmp .begin
+
+.end:
+    popa
+    ret
+
 colorMsg        db "01234567891123456789212345678931234567894123456789512345678961234567897123456789", 0
 binaryPrefix    db "0b", 0
 newline         db `\r\n`, 0
+hexPrefix       db "0x", 0

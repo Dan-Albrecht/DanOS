@@ -12,13 +12,11 @@
 ; ss      | Stack | sp, bp          | Stack, Base
 
 main:
+    cli             ; We'll enable this when we're ready
     xor ax, ax      ; Clear segments as we've set org
     mov ds, ax
     mov es, ax
-    mov bx, 0x8000  ; Build stack out of the way a bit
-
-    ; Aparently if we wanted to work around some 8088 errata we'd
-    ; disable interupts here, but I'll take the space instead.
+    mov bx, 0x7000  ; Build stack out of the way a bit
     mov ss, ax
     mov sp, bx
 
@@ -87,7 +85,6 @@ loadStage2:
     ret
 
 switchTo32bit:
-    cli                                 ; Don't want any interuptions during this critical phase
     lgdt [gdtDescriptor]
     mov eax, cr0                        ; Get current state so we can only modify what we want
     or eax, 0x1                         ; We want protected mode
