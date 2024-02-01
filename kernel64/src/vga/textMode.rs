@@ -45,7 +45,11 @@ pub unsafe fn scrollUp() {
     }
 }
 
-pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
+pub fn writeStringOnNewline2(msg: &'static [u8], _:usize) {
+    writeStringOnNewline(msg)
+}
+
+pub fn writeStringOnNewline(msg: &'static [u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
     let mut bufferOffset: u16;
     let mut cursorPosition: CursorPosition;
@@ -77,7 +81,9 @@ pub unsafe fn writeStringOnNewline(msg: &'static [u8]) {
         }
     }
 
-    setCursorPosition(&cursorPosition);
+    unsafe {
+        setCursorPosition(&cursorPosition);
+    }
 }
 
 pub unsafe fn getCursorPosition() -> CursorPosition {

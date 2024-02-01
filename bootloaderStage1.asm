@@ -1,10 +1,6 @@
     BITS  16
     ORG   0x7C00
 
-    ; From the build scripts:
-    ; STAGE2_LENGTH_SECTORS
-    ; STAGE2_TARGET_MEMORY_SEGMENT
-
 ; Segment | Name  | Offset Register | Purpose
 ; cs      | Code  | ip              | Instruction
 ; ds      | Data  | bx, di, si      | Data
@@ -25,7 +21,8 @@ main:
 
     call loadStage2
 
-    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
+    ; Disable for now, want to play with Rust code
+    ; call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
 
     mov si, to32BitMsg
     call printString
@@ -45,7 +42,7 @@ superHault:
     hlt             ; Go ahead and park
     jmp .hault      ; And if somehow we executed again...
 
-; Loads code to STAGE2_TARGET_MEMORY_SEGMENT:0
+; Loads code to DISK_DATA_MEMORY_SEGMENT:0
 loadStage2:
     pusha
 
@@ -59,26 +56,26 @@ loadStage2:
     mov si, loadMsg2
     call printString
 
-    mov al, STAGE2_LENGTH_SECTORS
+    mov al, DISK_DATA_SECTOR_LOAD_COUNT
     call printHex16     ; Prints sectores we'll read
 
     mov si, loadMsg3
     call printString
 
     mov ah, 0x2         ; Read Sectors From Drive function
-    ; AL (sectore to read) already set
+    ; AL (sectors to read) already set
     mov ch, 0x0         ; Read cylinder 0
-    mov cl, 0x2         ; Read sector 2. This bootloader was read from sector 1.
-                        ; and we've put stage 2 right after it.    
+    mov cl, 0x2         ; Read sector 2. This bootloader was read from sector 1
+                        ; and we've put everything else to load right after it.
     mov dh, 0x0         ; Read head 0
     ; DL (read drive) is set by bios and we hopefully didn't overwrite it.
-    mov bx, STAGE2_TARGET_MEMORY_SEGMENT
+    mov bx, DISK_DATA_MEMORY_SEGMENT
     mov es, bx          ; Setup es:bx memory target
     xor bx, bx          ; No segment offset to load to
 
     int 0x13            ; Do it
     jc readFailed
-    cmp al, STAGE2_LENGTH_SECTORS
+    cmp al, DISK_DATA_SECTOR_LOAD_COUNT
     jne readMismatch
 
     popa
@@ -191,7 +188,7 @@ handOffTo32bitCode:
     mov ebp, 0x80000        ; Put stack back where it was
     mov esp, ebp            ; Both are the same as its empty to start with
 
-    jmp STAGE2_TARGET_MEMORY_SEGMENT << 4
+    jmp STAGE_2_JUMP_TARGET
 
 
 times 510 - ($ - $$) db 0xDA ; Pad so this will end up exactly at 512 bytes

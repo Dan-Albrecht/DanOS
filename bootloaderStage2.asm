@@ -1,7 +1,6 @@
     BITS  32
     ORG STAGE_2_LOAD_TARGET ; This is where we loaded when we read from disk
 
-    KERNEL_ADDRESS      equ entry + 0x200   ; It's in the next sector
     VGA_ADDRESS_PORT    equ 0x3D4           ; Cathode Ray Tube Control (CRTC) Address Register
     VGA_DATA_PORT       equ 0x3D5           ; CRTC Data Register
     CURSOR_HIGH         equ 0xE             ; Cursor Location High Register
@@ -12,7 +11,7 @@ entry:
 
     mov esi, welcomeMsg32
     call printVgaStringLastLine32
-    jmp KERNEL_ADDRESS
+    jmp KERNEL32_JUMP_TARGET
 
 ; We seem to be running in 80x25
 printVgaStringLastLine32:

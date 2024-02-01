@@ -27,8 +27,9 @@ pub unsafe fn Setup64BitGDT() {
             | 1 << (32 + 15)    /* Present */
             // 13 & 14 = 0. DPL - This is for Ring0
             | 1 << (32 + 12)    /* S Field - User Descriptor */ 
-            /* 11 = 0. Data segment */,
-        gdtSize: core::mem::size_of::<OurGdt>() as u16, // BUGBUG: OS wiki loves to say -1, but don't see that in AMD manual
+            /* 11 = 0. Data segment */
+            | 1 << (32 + 9),    /* Writable */ 
+        gdtSize: (core::mem::size_of::<OurGdt>() as u16) - 1, // BUGBUG: OS wiki loves to say -1, but don't see that in AMD manual
         selfPointer: 0,
     };
 
