@@ -6,7 +6,6 @@ SECTIONS {
     .text : {
         *(.text.DanMain);
         *(.text*);
-        *(.text.Stupid);
     }
     .rodata : {
         *(.rodata .rodata.*)
