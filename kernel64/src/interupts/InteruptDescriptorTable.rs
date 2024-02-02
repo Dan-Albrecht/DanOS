@@ -1,14 +1,8 @@
 use core::arch::asm;
 use core::ptr::addr_of;
 use core::mem::size_of;
-
-/////////////////////////////
-// BUGBUG: These two are only here to make the macro work.
-// This seems super janky so I assume I'm doing something majorly wrong...
-use crate::vga::textMode::VgaHelper;
 use core::fmt::Write;
 use crate::vgaWriteLine;
-/////////////////////////////
 
 // See Intel Volume 3A, Chapter 6: Interrupt and Exception Handling
 #[repr(C, packed)]

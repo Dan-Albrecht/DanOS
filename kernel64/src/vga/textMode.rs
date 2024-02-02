@@ -7,12 +7,10 @@ const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
 const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 
-use core::fmt::Write;
-
 use crate::assemblyHelpers::ports::{inB, outB};
 
 pub struct VgaHelper;
-impl Write for VgaHelper {
+impl core::fmt::Write for VgaHelper {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         writeString(s.as_bytes());
         Ok(())
@@ -20,17 +18,9 @@ impl Write for VgaHelper {
 }
 
 #[macro_export]
-macro_rules! vgaWrite {
-    ($($arg:tt)*) => {
-        let mut x: Foo = Foo;
-        let _ = write!(&mut x, $($arg)*);
-    };
-}
-
-#[macro_export]
 macro_rules! vgaWriteLine {
     ($($args:tt)*) => {
-        let mut x: VgaHelper = VgaHelper;
+        let mut x = $crate::vga::textMode::VgaHelper;
         let _ = write!(&mut x, $($args)*);
         let _ = write!(&mut x, "\r\n");
     };

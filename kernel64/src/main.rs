@@ -10,17 +10,11 @@ mod assemblyHelpers;
 mod interupts;
 mod vga;
 
+use core::fmt::Write;
 use core::panic::PanicInfo;
 
 use assemblyHelpers::breakpoint::Breakpoint;
 use interupts::InteruptDescriptorTable::{DisableInterrupts, SetIDT};
-
-/////////////////////////////
-// BUGBUG: These two are only here to make the macro work.
-// This seems super janky so I assume I'm doing something majorly wrong...
-use vga::textMode::VgaHelper;
-use core::fmt::Write;
-/////////////////////////////
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
