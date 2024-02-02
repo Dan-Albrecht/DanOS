@@ -1,6 +1,14 @@
-use core::{arch::asm, mem::size_of, ptr::addr_of};
+use core::arch::asm;
+use core::ptr::addr_of;
+use core::mem::size_of;
 
-use crate::vga::textMode::{writeStringOnNewline, writeStringOnNewline2};
+/////////////////////////////
+// BUGBUG: These two are only here to make the macro work.
+// This seems super janky so I assume I'm doing something majorly wrong...
+use crate::vga::textMode::VgaHelper;
+use core::fmt::Write;
+use crate::vgaWriteLine;
+/////////////////////////////
 
 // See Intel Volume 3A, Chapter 6: Interrupt and Exception Handling
 #[repr(C, packed)]
@@ -63,22 +71,26 @@ static DONT_STRIP_THIS2: extern "x86-interrupt" fn(ExceptionStackFrame, u64) =
     InterruptHandlerWithCode;
 
 #[inline(never)]
-pub extern "x86-interrupt" fn InterruptHandler(_stack_frame: ExceptionStackFrame) {
-    writeStringOnNewline(b"Hi, I'm the interrupt handler!");
+pub extern "x86-interrupt" fn InterruptHandler(stackFrame: ExceptionStackFrame) {
+    let cs = stackFrame.CodeSegment;
+    let ip = stackFrame.InstructionPointer;
+    vgaWriteLine!("Interupt without error code. CS: 0x{:X} IP: 0x{:X}", cs, ip);
 }
 
 #[inline(never)]
 pub extern "x86-interrupt" fn InterruptHandlerWithCode(
-    _stack_frame: ExceptionStackFrame,
+    stackFrame: ExceptionStackFrame,
     errorCode: u64,
 ) {
-    writeStringOnNewline2(b"Hi, I'm the interrupt handler with a status code", errorCode as usize);
+    let cs = stackFrame.CodeSegment;
+    let ip = stackFrame.InstructionPointer;
+    vgaWriteLine!("Interupt with error code 0x{:X}. CS: 0x{:X} IP: 0x{:X}", errorCode, cs, ip);
 }
 
 #[inline(never)] // BUGBUG: Just temp for debugging
 pub fn SetIDT() {
 
-    let randomPointer = 0xF000 as *mut Table;
+    let randomPointer = 0x10000 as *mut Table;
     let func = InterruptHandler;
     let funAddress = func as u64;
     let otherFunc = InterruptHandlerWithCode;

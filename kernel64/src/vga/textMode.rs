@@ -7,7 +7,34 @@ const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
 const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 
+use core::fmt::Write;
+
 use crate::assemblyHelpers::ports::{inB, outB};
+
+pub struct VgaHelper;
+impl Write for VgaHelper {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        writeString(s.as_bytes());
+        Ok(())
+    }
+}
+
+#[macro_export]
+macro_rules! vgaWrite {
+    ($($arg:tt)*) => {
+        let mut x: Foo = Foo;
+        let _ = write!(&mut x, $($arg)*);
+    };
+}
+
+#[macro_export]
+macro_rules! vgaWriteLine {
+    ($($args:tt)*) => {
+        let mut x: VgaHelper = VgaHelper;
+        let _ = write!(&mut x, $($args)*);
+        let _ = write!(&mut x, "\r\n");
+    };
+}
 
 pub struct CursorPosition {
     pub x: u8,
@@ -45,39 +72,28 @@ pub unsafe fn scrollUp() {
     }
 }
 
-pub fn writeStringOnNewline2(msg: &'static [u8], _:usize) {
-    writeStringOnNewline(msg)
-}
-
-pub fn writeStringOnNewline(msg: &'static [u8]) {
+fn writeString(msg: &[u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
-    let mut bufferOffset: u16;
-    let mut cursorPosition: CursorPosition;
+    let mut cursorPosition = getCursorPosition();
 
-    unsafe {
-        cursorPosition = getCursorPosition();
-        cursorPosition.x = 0;
-
-        if cursorPosition.y == 24 {
-            scrollUp();
-        } else {
-            cursorPosition.y += 1;
-        }
-
-        bufferOffset = cursorPosition.y as u16;
-        bufferOffset *= VGA_WIDTH;
-        bufferOffset += cursorPosition.x as u16;
-        bufferOffset *= 2; // Each character takes up 2 bytes in the buffer
-    }
-
-    for (i, &byte) in msg.iter().enumerate() {
+    for (_i, &byte) in msg.iter().enumerate() {
         unsafe {
-            let mut currentOffset = bufferOffset as isize;
-            currentOffset += (i * 2) as isize;
-            *vgaBuffer.offset(currentOffset) = byte;
-            *vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
+            if byte == b'\r' {
+                cursorPosition.x = 0;
+            } else if byte == b'\n' {
+                if cursorPosition.y == 24 {
+                    scrollUp();
+                } else {
+                    cursorPosition.y += 1;
+                }
+            } else {
+                let currentOffset = calculatedOffset(&cursorPosition);
 
-            cursorPosition.x += 1;
+                *vgaBuffer.offset(currentOffset) = byte;
+                *vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
+
+                cursorPosition.x += 1;
+            }
         }
     }
 
@@ -86,18 +102,29 @@ pub fn writeStringOnNewline(msg: &'static [u8]) {
     }
 }
 
-pub unsafe fn getCursorPosition() -> CursorPosition {
-    outB(VGA_ADDRESS_PORT, CURSOR_HIGH_REG);
-    let mut position = inB(VGA_DATA_PORT) as u16;
-    position <<= 8; // Move to high byte.
+fn calculatedOffset(cursorPosition: &CursorPosition) -> isize {
+    let mut result = cursorPosition.y as u16;
+    result *= VGA_WIDTH;
+    result += cursorPosition.x as u16;
+    result *= 2; // Each character takes up 2 bytes in the buffer
 
-    outB(VGA_ADDRESS_PORT, CURSOR_LOW_REG);
-    position |= inB(VGA_DATA_PORT) as u16;
+    return result as isize;
+}
 
-    let x = (position % VGA_WIDTH) as u8;
-    let y = (position / VGA_WIDTH) as u8;
+pub fn getCursorPosition() -> CursorPosition {
+    unsafe {
+        outB(VGA_ADDRESS_PORT, CURSOR_HIGH_REG);
+        let mut position = inB(VGA_DATA_PORT) as u16;
+        position <<= 8; // Move to high byte.
 
-    CursorPosition { x, y }
+        outB(VGA_ADDRESS_PORT, CURSOR_LOW_REG);
+        position |= inB(VGA_DATA_PORT) as u16;
+
+        let x = (position % VGA_WIDTH) as u8;
+        let y = (position / VGA_WIDTH) as u8;
+
+        CursorPosition { x, y }
+    }
 }
 
 pub unsafe fn setCursorPosition(pos: &CursorPosition) {

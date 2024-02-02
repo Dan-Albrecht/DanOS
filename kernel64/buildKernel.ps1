@@ -8,7 +8,6 @@ try {
 
     # For now, always handy to have the assembly around
     rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\release\kernel64 > .\target\x86_64-unknown-none\release\kernel64.asm
-    rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\release\libkernel64.rlib > .\target\x86_64-unknown-none\release\libkernel64.rlib.asm
 
     $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\x86_64-unknown-none\release\kernel64.asm")
     if ($allLines[3] -ne "Disassembly of section .text:") {

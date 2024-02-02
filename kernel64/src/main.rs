@@ -14,7 +14,13 @@ use core::panic::PanicInfo;
 
 use assemblyHelpers::breakpoint::Breakpoint;
 use interupts::InteruptDescriptorTable::{DisableInterrupts, SetIDT};
-use vga::textMode::writeStringOnNewline;
+
+/////////////////////////////
+// BUGBUG: These two are only here to make the macro work.
+// This seems super janky so I assume I'm doing something majorly wrong...
+use vga::textMode::VgaHelper;
+use core::fmt::Write;
+/////////////////////////////
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -23,11 +29,13 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
-    writeStringOnNewline(b"Welcome to 64-bit Rust!");
+
+    // Previous stage left the cursor on the last line
+    vgaWriteLine!("\r\nWelcome to 64-bit Rust!");
     SetIDT();
-    writeStringOnNewline(b"Sending a breakpoint...");
+    vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
-    writeStringOnNewline(b"We handled the breakpoint!");
+    vgaWriteLine!("We handled the breakpoint!");
     DisableInterrupts();
 
     loop {}
