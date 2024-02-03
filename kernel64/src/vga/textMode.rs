@@ -9,29 +9,22 @@ const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 
 use crate::assemblyHelpers::ports::{inB, outB};
 
-pub struct VgaHelper;
-impl core::fmt::Write for VgaHelper {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        writeString(s.as_bytes());
-        Ok(())
-    }
-}
-
 #[macro_export]
 macro_rules! vgaWriteLine {
     ($($args:tt)*) => {
-        let mut x = $crate::vga::textMode::VgaHelper;
-        let _ = write!(&mut x, $($args)*);
-        let _ = write!(&mut x, "\r\n");
+        if let Some(ssss) = format_args!($($args)*).as_str() {
+            $crate::vga::textMode::writeString(ssss.as_bytes());
+            $crate::vga::textMode::writeString(b"\r\n");
+        }
     };
 }
 
-pub struct CursorPosition {
+struct CursorPosition {
     pub x: u8,
     pub y: u8,
 }
 
-pub unsafe fn scrollUp() {
+pub fn scrollUp() {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
 
     for row in 1..VGA_HEIGHT {
@@ -40,13 +33,15 @@ pub unsafe fn scrollUp() {
             let sourceOffset = (row * VGA_WIDTH + column) * 2;
             let destinationOffset = ((row - 1) * VGA_WIDTH + column) * 2;
 
-            // Character
-            *vgaBuffer.offset(destinationOffset as isize) =
-                *vgaBuffer.offset(sourceOffset as isize);
+            unsafe {
+                // Character
+                *vgaBuffer.offset(destinationOffset as isize) =
+                    *vgaBuffer.offset(sourceOffset as isize);
 
-            // Color
-            *vgaBuffer.offset(destinationOffset as isize + 1) =
-                *vgaBuffer.offset(sourceOffset as isize + 1);
+                // Color
+                *vgaBuffer.offset(destinationOffset as isize + 1) =
+                    *vgaBuffer.offset(sourceOffset as isize + 1);
+            }
         }
     }
 
@@ -55,14 +50,16 @@ pub unsafe fn scrollUp() {
         let row = VGA_HEIGHT - 1;
         let destinationOffset = (row * VGA_WIDTH + column) * 2;
 
-        *vgaBuffer.offset(destinationOffset as isize) = 0;
+        unsafe {
+            *vgaBuffer.offset(destinationOffset as isize) = 0;
 
-        // Assign a default color so if the cursor is blinking here you can see it
-        *vgaBuffer.offset(destinationOffset as isize + 1) = 7;
+            // Assign a default color so if the cursor is blinking here you can see it
+            *vgaBuffer.offset(destinationOffset as isize + 1) = 7;
+        }
     }
 }
 
-fn writeString(msg: &[u8]) {
+pub fn writeString(msg: &[u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
     let mut cursorPosition = getCursorPosition();
 
@@ -87,9 +84,7 @@ fn writeString(msg: &[u8]) {
         }
     }
 
-    unsafe {
-        setCursorPosition(&cursorPosition);
-    }
+    setCursorPosition(&cursorPosition);
 }
 
 fn calculatedOffset(cursorPosition: &CursorPosition) -> isize {
@@ -101,7 +96,7 @@ fn calculatedOffset(cursorPosition: &CursorPosition) -> isize {
     return result as isize;
 }
 
-pub fn getCursorPosition() -> CursorPosition {
+fn getCursorPosition() -> CursorPosition {
     unsafe {
         outB(VGA_ADDRESS_PORT, CURSOR_HIGH_REG);
         let mut position = inB(VGA_DATA_PORT) as u16;
@@ -117,14 +112,16 @@ pub fn getCursorPosition() -> CursorPosition {
     }
 }
 
-pub unsafe fn setCursorPosition(pos: &CursorPosition) {
+fn setCursorPosition(pos: &CursorPosition) {
     let mut positionOffset: u16 = pos.y as u16;
     positionOffset *= VGA_WIDTH;
     positionOffset += pos.x as u16;
 
-    outB(VGA_ADDRESS_PORT, CURSOR_HIGH_REG);
-    outB(VGA_DATA_PORT, (positionOffset >> 8) as u8);
+    unsafe {
+        outB(VGA_ADDRESS_PORT, CURSOR_HIGH_REG);
+        outB(VGA_DATA_PORT, (positionOffset >> 8) as u8);
 
-    outB(VGA_ADDRESS_PORT, CURSOR_LOW_REG);
-    outB(VGA_DATA_PORT, positionOffset as u8);
+        outB(VGA_ADDRESS_PORT, CURSOR_LOW_REG);
+        outB(VGA_DATA_PORT, positionOffset as u8);
+    }
 }

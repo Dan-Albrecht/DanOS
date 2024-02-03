@@ -1,7 +1,6 @@
 use core::arch::asm;
 use core::ptr::addr_of;
 use core::mem::size_of;
-use core::fmt::Write;
 use crate::vgaWriteLine;
 
 // See Intel Volume 3A, Chapter 6: Interrupt and Exception Handling
