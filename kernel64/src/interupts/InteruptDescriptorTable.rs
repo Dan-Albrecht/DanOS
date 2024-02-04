@@ -110,14 +110,36 @@ pub fn InterruptHandlerWithCodeIntImpl(
     HaltLoop();
 }
 
-#[inline(never)] // BUGBUG: Just temp for debugging
 pub fn SetIDT() {
+
+    // We're the kernel, we can write wherver we want
+    // BUGUBG: Codify this somewhere so we can move it easier later and not randomly overwrite it
     let randomPointer = 0x12000 as *mut Table;
+
+    // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,
+    // but I'd like to still do it directly.
+    let bytePointer = randomPointer as *mut u8;    
+    for x in 0..(size_of::<Table>() as isize) {
+        unsafe {
+            *bytePointer.offset(x) = 0;
+        }
+    }
+
     SetupStuff(randomPointer);
+    let limit:u16;
+
+    unsafe{
+        let size = size_of::<Entry>();
+        let length = (*randomPointer).Table.Entries.len();
+
+        // The last byte of the table
+        limit = (size * length - 1) as u16;
+        vgaWriteLine!("IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.", randomPointer as usize, size, length, limit);
+    }
 
     let idtr = IDTR {
         Base: randomPointer as usize,
-        Limit: size_of::<Table>() as u16 * 256 - 1, // BUGBUG: Don't hardcode
+        Limit: limit,
     };
 
     unsafe {

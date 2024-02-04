@@ -7,7 +7,6 @@ use core::fmt::Write;
 
 pub fn SetupStuff(table: *mut Table) {
     unsafe {
-        vgaWriteLine!("Starting to build");
         SetAddress(&mut (*table).Table.Entries[0], Interrupt0 as u64, 0);
         SetAddress(&mut (*table).Table.Entries[3], Interrupt3 as u64, 3);
         SetAddress(&mut (*table).Table.Entries[14], Interrupt14 as u64, 14);

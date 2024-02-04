@@ -34,10 +34,10 @@ pub extern "C" fn DanMain() -> ! {
     SetIDT();
     vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
-    vgaWriteLine!("We handled the breakpoint!");
-    
+    vgaWriteLine!("We handled the breakpoint! Now let's divide by 0...");
     DivideByZero();
 
+    vgaWriteLine!("!! We succesfuly divide by zere. We broke.");
     DisableInterrupts();
     HaltLoop();
 }

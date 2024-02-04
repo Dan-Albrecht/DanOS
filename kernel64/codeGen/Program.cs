@@ -30,7 +30,6 @@ use core::fmt::Write;
 
 pub fn SetupStuff(table: *mut Table) {
     unsafe {
-        vgaWriteLine!("Starting to build");
 
 """;
 
@@ -64,9 +63,8 @@ fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
 
 var exceptionsToHandle = new int[] { 0, 3, 14 };
 
-
 // Rust macros are too limited for simply identifer concatentation
-// So just do this in C#
+// So just do this in C#. Should probably just do this in a standalone Rust program though...
 using var tableStream = new FileStream("table.rs", FileMode.Create);
 using var tableWriter = new StreamWriter(tableStream);
 using var setupStream = new FileStream("setup.rs", FileMode.Create);

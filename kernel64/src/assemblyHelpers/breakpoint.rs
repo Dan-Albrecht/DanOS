@@ -1,7 +1,7 @@
 use core::arch::asm;
 use core::fmt::Write;
 
-use crate::vgaWriteLine;
+use crate::vgaWrite;
 
 pub fn Breakpoint() {
     unsafe {
@@ -10,7 +10,7 @@ pub fn Breakpoint() {
 }
 
 pub fn HaltLoop() -> ! {
-    vgaWriteLine!("Halted");
+    vgaWrite!("Halted");
 
     loop {
         unsafe {

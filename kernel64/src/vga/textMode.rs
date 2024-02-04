@@ -10,14 +10,20 @@ const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 use crate::assemblyHelpers::ports::{inB, outB};
 
 #[macro_export]
-macro_rules! vgaWriteLine {
+macro_rules! vgaWrite {
     ($($args:tt)*) => {
         if let Some(ssss) = format_args!($($args)*).as_str() {
             $crate::vga::textMode::writeString(ssss.as_bytes());
         } else {
             let _ = write!($crate::vga::writer::Writer::new(), $($args)*);
         }
+    };
+}
 
+#[macro_export]
+macro_rules! vgaWriteLine {
+    ($($args:tt)*) => {
+        $crate::vgaWrite!($($args)*);
         $crate::vga::textMode::writeString(b"\r\n");
     };
 }
