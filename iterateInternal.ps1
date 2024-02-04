@@ -4,7 +4,7 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
-    $loadMemoryTarget = 0xE000
+    $loadMemoryTarget = 0x9000
 
     # I really hate you PowerShell
     [System.Environment]::CurrentDirectory = ${PSScriptRoot}

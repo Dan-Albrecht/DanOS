@@ -14,8 +14,11 @@ macro_rules! vgaWriteLine {
     ($($args:tt)*) => {
         if let Some(ssss) = format_args!($($args)*).as_str() {
             $crate::vga::textMode::writeString(ssss.as_bytes());
-            $crate::vga::textMode::writeString(b"\r\n");
+        } else {
+            let _ = write!($crate::vga::writer::Writer::new(), $($args)*);
         }
+
+        $crate::vga::textMode::writeString(b"\r\n");
     };
 }
 

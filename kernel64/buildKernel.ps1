@@ -4,6 +4,14 @@ Push-Location ${PSScriptRoot}
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
     $PSNativeCommandUseErrorActionPreference = $true
+    Push-Location .\src\interupts
+    try{
+        dotnet run --project ..\..\codeGen\codeGen.csproj
+    }
+    finally{
+        Pop-Location
+    }
+
     cargo build --release
 
     # For now, always handy to have the assembly around
