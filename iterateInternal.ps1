@@ -28,7 +28,7 @@ try {
     $stage2Bytes = Get-Content .\bootloaderStage2.bin -Raw -AsByteStream
     $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
 
-    $STAGE_1_5_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
+    $STAGE_1_5_LOAD_TARGET = $STAGE_2_LOAD_TARGET + ($stage2Sectors * 512)
     nasm.exe .\bootloaderStage1_5.asm -DSTAGE_1_5_LOAD_TARGET="$STAGE_1_5_LOAD_TARGET" -f bin -o .\bootloaderStage1_5.bin
     $stage1_5Bytes = Get-Content .\bootloaderStage1_5.bin -Raw -AsByteStream
     $stage1_5Sectors = [Math]::Ceiling($stage1_5Bytes.Length / 512)
