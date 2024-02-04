@@ -21,8 +21,8 @@ main:
 
     call loadStage2
 
-    ; Disable for now, want to play with Rust code
-    ; call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
+    mov ax, 1
+    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
 
     mov si, to32BitMsg
     call printString

@@ -1,6 +1,68 @@
     BITS  16
     ORG   STAGE_1_5_LOAD_TARGET
 
+    cmp ax, 0
+    jne .check1
+    call doVbeStuff
+    jmp .end
+.check1:
+    cmp ax, 1
+    jne .dunno
+    call doMemoryStuff
+    jmp .end
+
+.dunno:
+    mov si, badFunction
+    call printString
+    hlt
+
+.end:
+    ret
+
+
+doMemoryStuff:
+    pusha
+
+    xor eax, eax
+    mov es, eax                         ; BUGBUG: Stop the code that's whacking this in the first place
+
+    
+    xor bp, bp                          ; Use as an entry counter. BUGBUG: Do we care?
+    mov eax, 0xE820                     ; Query System Address Map
+    xor ebx, ebx                        ; EBX is to be round tripped across calls to pick up where we left off and starts at 0
+    mov ecx, 20                         ; Avilable space
+    mov edx, "PAMS"                     ; Call signature. BUGBUG: Figure how to specify this forward, writing it backwards I'd be better to just hardcode the number
+    mov di, MEMORY_MAP_TARGET + 0x10    ; Location where we'll store the info eventualy to be read by the kernel. Plus 16 as we'll put number of records at the start.
+
+    int 0x15
+    jc .failed                          ; First call must succeed. Subsequent calls are allowed to set carry bit to say 'done.'
+    
+.loopStart:
+    inc bp                              ; A new entry was read
+    mov eax, 0xE820                     ; Restore, gets trashed each call
+    mov ecx, 20                         ; "
+    add di, cx                          ; Increment to next entry
+    int 0x15
+    jc .done
+    test ebx, ebx
+    jz .readLastOne
+    jmp .loopStart
+
+.failed
+    mov si, failedMemory
+    call printString
+    hlt
+
+.readLastOne:
+    inc bp                              ; The last read was valid, but no more will come
+    jmp .done
+
+.done:
+    mov word [MEMORY_MAP_TARGET], bp    ; Save the number of records
+    popa
+    ret
+
+doVbeStuff:
     pusha
 
     mov ax, 0x4F00          ; Function 00h - Return VBE Controller Information
@@ -206,6 +268,8 @@ msgSpace        db " ", 0
 msgCallFailed   db `VBE call failed`, 0
 noModesFound    db `No good modes found\r\n`, 0
 weMadeIt        db `This is our new video mode\r\n`, 0
+badFunction     db `Invalid stage 1.5 function requested\r\n`, 0
+failedMemory    db `Failed to query memory information\r\n`, 0
 
 ; 512 bytes
 vbeInfoBlock:

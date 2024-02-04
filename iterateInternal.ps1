@@ -5,6 +5,7 @@ Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
     $loadMemoryTarget = 0x9000
+    $memoryMapTarget = 0x6000
 
     # I really hate you PowerShell
     [System.Environment]::CurrentDirectory = ${PSScriptRoot}
@@ -29,7 +30,7 @@ try {
     $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
 
     $STAGE_1_5_LOAD_TARGET = $STAGE_2_LOAD_TARGET + ($stage2Sectors * 512)
-    nasm.exe .\bootloaderStage1_5.asm -DSTAGE_1_5_LOAD_TARGET="$STAGE_1_5_LOAD_TARGET" -f bin -o .\bootloaderStage1_5.bin
+    nasm.exe .\bootloaderStage1_5.asm -DSTAGE_1_5_LOAD_TARGET="$STAGE_1_5_LOAD_TARGET" -DMEMORY_MAP_TARGET="$memoryMapTarget" -f bin -o .\bootloaderStage1_5.bin
     $stage1_5Bytes = Get-Content .\bootloaderStage1_5.bin -Raw -AsByteStream
     $stage1_5Sectors = [Math]::Ceiling($stage1_5Bytes.Length / 512)
     $stage1_5Segment = $STAGE_1_5_LOAD_TARGET -shr 4
