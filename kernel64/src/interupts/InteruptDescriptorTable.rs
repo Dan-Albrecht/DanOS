@@ -145,6 +145,8 @@ pub fn SetIDT() {
     unsafe {
         asm!(
             "lidt [{0}]",
+            //"ljmp $2f", // OS Dev says do a long jump after loading the table
+            "2:",
             "sti",
             in(reg) addr_of!(idtr),
         );

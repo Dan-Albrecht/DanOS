@@ -10,15 +10,21 @@
 
 mod assemblyHelpers;
 mod interupts;
+mod pic;
+mod magicConstants;
+mod memory;
 mod vga;
 
+use core::fmt::Write;
 use core::panic::PanicInfo;
 
-use assemblyHelpers::breakpoint::Breakpoint;
+use assemblyHelpers::breakpoint::{Breakpoint, DivideByZero, HaltLoop};
 use interupts::InteruptDescriptorTable::{DisableInterrupts, SetIDT};
-use core::fmt::Write;
+use memory::memoryMap::MemoryMap;
 
-use crate::assemblyHelpers::breakpoint::{DivideByZero, HaltLoop};
+use magicConstants::MEMORY_MAP_LOCATION;
+
+use crate::pic::picStuff::disablePic;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -27,9 +33,15 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
-
     // Previous stage left the cursor on the last line
     vgaWriteLine!("\r\nWelcome to 64-bit Rust!");
+
+    MemoryMap::Load(MEMORY_MAP_LOCATION);
+    //x.Display();
+
+    vgaWriteLine!("Configuring PIC...");
+    disablePic();
+
     vgaWriteLine!("Installing interrupt table...");
     SetIDT();
     vgaWriteLine!("Sending a breakpoint...");

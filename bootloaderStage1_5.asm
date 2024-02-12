@@ -1,5 +1,6 @@
     BITS  16
     ORG   STAGE_1_5_LOAD_TARGET
+    MEM_MAP_ENTRY_SIZE equ 24
 
     cmp ax, 0
     jne .check1
@@ -30,7 +31,7 @@ doMemoryStuff:
     xor bp, bp                          ; Use as an entry counter. BUGBUG: Do we care?
     mov eax, 0xE820                     ; Query System Address Map
     xor ebx, ebx                        ; EBX is to be round tripped across calls to pick up where we left off and starts at 0
-    mov ecx, 20                         ; Avilable space
+    mov ecx, MEM_MAP_ENTRY_SIZE         ; Avilable space
     mov edx, "PAMS"                     ; Call signature. BUGBUG: Figure how to specify this forward, writing it backwards I'd be better to just hardcode the number
     mov di, MEMORY_MAP_TARGET + 0x10    ; Location where we'll store the info eventualy to be read by the kernel. Plus 16 as we'll put number of records at the start.
 
@@ -40,7 +41,7 @@ doMemoryStuff:
 .loopStart:
     inc bp                              ; A new entry was read
     mov eax, 0xE820                     ; Restore, gets trashed each call
-    mov ecx, 20                         ; "
+    mov ecx, MEM_MAP_ENTRY_SIZE         ; "
     add di, cx                          ; Increment to next entry
     int 0x15
     jc .done

@@ -24,9 +24,9 @@ pub extern "x86-interrupt" fn Interrupt__SUFFIX__(stackFrame: ExceptionStackFram
 """;
 
 const string setupProlog = """
-use crate::vgaWriteLine;
+//use crate::vgaWriteLine;
 use super::InteruptDescriptorTable::{Entry, Table};
-use core::fmt::Write;
+//use core::fmt::Write;
 
 pub fn SetupStuff(table: *mut Table) {
     unsafe {
@@ -48,8 +48,8 @@ const string setupEpilog = """
 
 #[inline(never)]
 #[no_mangle]
-fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
-    vgaWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);
+fn SetAddress(entry: &mut Entry, address: u64, _index: u16) {
+    //vgaWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);
     entry.IsrHigh = (address >> 32) as u32;
     entry.IsrMid = ((address >> 16) & 0xFFFF) as u16;
     entry.IsrLow = (address & 0xFFFF) as u16;
@@ -62,6 +62,7 @@ fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
 """;
 
 var exceptionsToHandle = new int[] { 0, 3, 14 };
+//var exceptionsToHandle = new int[] { };
 
 // Rust macros are too limited for simply identifer concatentation
 // So just do this in C#. Should probably just do this in a standalone Rust program though...
@@ -72,7 +73,7 @@ using var setupWriter = new StreamWriter(setupStream);
 
 for (int i = 0; i <= 255; i++)
 {
-    if (!exceptionsToHandle.Contains(i))
+    if (exceptionsToHandle.Any() && !exceptionsToHandle.Contains(i))
     {
         continue;
     }
@@ -88,7 +89,7 @@ tableWriter.Write("\n\n");
 
 for (int i = 0; i <= 255; i++)
 {
-    if (!exceptionsToHandle.Contains(i))
+    if (exceptionsToHandle.Any() && !exceptionsToHandle.Contains(i))
     {
         continue;
     }
