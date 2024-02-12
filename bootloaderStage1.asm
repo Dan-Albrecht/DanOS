@@ -161,7 +161,7 @@ printHex16:
     ret
 
 welcomeMsg          db `Welcome to DanOS!\r\n`, 0
-loadMsg1            db "Reading Stage 2 loader from drive ", 0
+loadMsg1            db "Reading from drive ", 0
 loadMsg2            db " for ", 0
 loadMsg3            db ` sectors...\r\n`, 0
 readFailedMsg       db "Disk read failed with: ", 0
@@ -185,7 +185,7 @@ handOffTo32bitCode:
     mov gs, ax
     mov ss, ax
 
-    mov ebp, 0x80000        ; Put stack back where it was
+    mov ebp, 0x7000         ; Put stack back where it was
     mov esp, ebp            ; Both are the same as its empty to start with
 
     jmp STAGE_2_JUMP_TARGET
