@@ -49,7 +49,7 @@ doMemoryStuff:
     jz .readLastOne
     jmp .loopStart
 
-.failed
+.failed:
     mov si, failedMemory
     call printString
     hlt
