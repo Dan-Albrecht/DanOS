@@ -68,6 +68,7 @@ pub fn scrollUp() {
     }
 }
 
+// BUGBUG: Handle line wrap
 pub fn writeString(msg: &[u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
     let mut cursorPosition = getCursorPosition();

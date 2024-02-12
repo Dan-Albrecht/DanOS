@@ -3,6 +3,7 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 
 use crate::assemblyHelpers::breakpoint::HaltLoop;
+use crate::pic::picStuff::disablePic;
 use crate::vgaWriteLine;
 
 use super::setup::SetupStuff;
@@ -154,6 +155,7 @@ pub fn SetIDT() {
 }
 
 pub fn DisableInterrupts() {
+    disablePic();
     unsafe {
         asm!("cli");
     }

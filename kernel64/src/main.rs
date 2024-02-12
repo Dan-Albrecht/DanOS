@@ -24,7 +24,7 @@ use memory::memoryMap::MemoryMap;
 
 use magicConstants::MEMORY_MAP_LOCATION;
 
-use crate::pic::picStuff::disablePic;
+use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -36,7 +36,7 @@ pub extern "C" fn DanMain() -> ! {
     // Previous stage left the cursor on the last line
     vgaWriteLine!("\r\nWelcome to 64-bit Rust!");
 
-    MemoryMap::Load(MEMORY_MAP_LOCATION);
+    let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     //x.Display();
 
     vgaWriteLine!("Configuring PIC...");
@@ -46,7 +46,17 @@ pub extern "C" fn DanMain() -> ! {
     SetIDT();
     vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
-    vgaWriteLine!("We handled the breakpoint! Now let's divide by 0...");
+    vgaWriteLine!("We handled the breakpoint!");
+
+    vgaWriteLine!("Seting up heap...");
+    let mut heap = DumbHeap::new(memoryMap);
+    let count = 100;
+    let myAlloc = heap.DoSomething(count);
+    vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
+
+    heap.DumpHeap();
+
+    vgaWriteLine!("Now let's divide by 0...");
     DivideByZero();
 
     vgaWriteLine!("!! We succesfuly divide by zere. We broke.");
