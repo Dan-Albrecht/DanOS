@@ -61,8 +61,8 @@ fn SetAddress(entry: &mut Entry, address: u64, _index: u16) {
 }
 """;
 
-var exceptionsToHandle = new int[] { 0, 3, 14 };
-//var exceptionsToHandle = new int[] { };
+//var exceptionsToHandle = new int[] { 0, 3, 14 };
+var exceptionsToHandle = new int[] { };
 
 // Rust macros are too limited for simply identifer concatentation
 // So just do this in C#. Should probably just do this in a standalone Rust program though...
