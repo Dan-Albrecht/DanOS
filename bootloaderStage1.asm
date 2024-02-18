@@ -1,3 +1,7 @@
+; Stage 1's goal is just to load the next stage from disk and jump to it.
+; Stage 1 is constrained to a single sector minus partion info / MBR overhead.
+; Next stage doesn't have a size contraint.
+; Stage 1 starts and exits in read mode.
     BITS  16
     ORG   0x7C00
 
@@ -8,7 +12,7 @@
 ; ss      | Stack | sp, bp          | Stack, Base
 
 main:
-    cli             ; We'll enable this when we're ready
+    cli             ; No interupts. We'll enable in the kernel when we can actually handle.
     xor ax, ax      ; Clear segments as we've set org
     mov ds, ax
     mov es, ax
@@ -19,18 +23,16 @@ main:
     mov si, welcomeMsg
     call printString
 
-    call loadStage2
+    call loadFromDisk
 
     mov ax, 1
     call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
 
-    mov si, to32BitMsg
-    call printString
-
-    jmp switchTo32bit
+    mov ax, 2
+    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
 
     ; Should never reach this
-    mov si, returnedFrom32
+    mov si, unexpectedReturn
     call printString
     jmp superHault
 
@@ -43,7 +45,7 @@ superHault:
     jmp .hault      ; And if somehow we executed again...
 
 ; Loads code to DISK_DATA_MEMORY_SEGMENT:0
-loadStage2:
+loadFromDisk:
     pusha
 
     mov si, loadMsg1
@@ -80,13 +82,6 @@ loadStage2:
 
     popa
     ret
-
-switchTo32bit:
-    lgdt [gdtDescriptor]
-    mov eax, cr0                        ; Get current state so we can only modify what we want
-    or eax, 0x1                         ; We want protected mode
-    mov cr0, eax                        ; Apply it
-    jmp CODE_SEGMENT:handOffTo32bitCode ; Far jump to flush cache/piplines
 
 ; AH has return code
 readFailed:
@@ -168,28 +163,16 @@ readFailedMsg       db "Disk read failed with: ", 0
 readMismatchMsg     db "Wrong count of sectors read: ", 0
 to32BitMsg          db `Switching to 32bit...\r\n`, 0
 hexPrefix           db "0x", 0
-returnedFrom32      db `32bit mode returned. Something is really busted.\r\n`, 0
+unexpectedReturn    db `Execution returned to Stage1 bootloader. Something is really busted.\r\n`, 0
 haltMsg             db `\r\nEnd of line.`, 0
 
-%include "gdt.asm"
+times 440 - ($ - $$) db 0xDA ; Above can be a max of 440 bytes add padding as needed so below will be at exact needed offsets
 
-    BITS 32
-; Gets everything in a consistent state after switching to 32bit/protected mode
-; Then move execution to the stage2 loader (which we've previously loaded to memory)
-; as we're too chatty with log messages and are out of space in this segment.
-handOffTo32bitCode:
-    mov ax, DATA_SEGMENT    ; Load the data segment address
-    mov ds, ax              ; Set all segments do it
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    mov ebp, 0x7000         ; Put stack back where it was
-    mov esp, ebp            ; Both are the same as its empty to start with
-
-    jmp STAGE_2_JUMP_TARGET
-
-
-times 510 - ($ - $$) db 0xDA ; Pad so this will end up exactly at 512 bytes
-dw 0xAA55                    ; Boot sector magic number
+; MBR Data
+dd 0            ; Unique Disk ID. Aparently some OSs will just randomly overwrite
+dw 0            ; Read Write (0) / ReadOnly (5A5A)
+dq 0,0          ; First partion entry
+dq 0,0          ; Second partion entry
+dq 0,0          ; Thrid partion entry
+dq 0,0          ; Fouth patition entry
+db 0x55, 0xAA   ; Boot sector magic number

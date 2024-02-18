@@ -2,14 +2,22 @@
     ORG   STAGE_1_5_LOAD_TARGET
     MEM_MAP_ENTRY_SIZE equ 24
 
+.check0:
     cmp ax, 0
     jne .check1
     call doVbeStuff
     jmp .end
+
 .check1:
     cmp ax, 1
-    jne .dunno
+    jne .check2
     call doMemoryStuff
+    jmp .end
+
+.check2:
+    cmp ax, 2
+    jne .dunno
+    call switchTo32bit
     jmp .end
 
 .dunno:
@@ -256,6 +264,13 @@ callFailed:
     call printString
     hlt
 
+switchTo32bit:
+    lgdt [gdtDescriptor]
+    mov eax, cr0                        ; Get current state so we can only modify what we want
+    or eax, 0x1                         ; We want protected mode
+    mov cr0, eax                        ; Apply it
+    jmp CODE_SEGMENT:handOffTo32bitCode ; Far jump to flush cache/piplines
+
 %include "consoleStuff.asm"
 
 msg0            db `Potential video modes:\r\n`, 0
@@ -301,3 +316,23 @@ modeAttributes          dw 0
     numberOfPlanes      db 0
     bitsPerPixel        db 0
     otherStuff2         times 256 - ($ - modeInfoBlock) db 0xDB
+
+%include "gdt.asm"
+
+    BITS 32
+; Gets everything in a consistent state after switching to 32bit/protected mode
+; Then move execution to the stage2 loader (which we've previously loaded to memory)
+; as we're too chatty with log messages and are out of space in this segment.
+handOffTo32bitCode:
+    mov ax, DATA_SEGMENT    ; Load the data segment address
+    mov ds, ax              ; Set all segments do it
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    mov ebp, 0x7000         ; Put stack back where it was
+    mov esp, ebp            ; Both are the same as its empty to start with
+
+    jmp STAGE_2_JUMP_TARGET
+
