@@ -1,0 +1,3 @@
+CreateFile
+ReadFile
+GENERIC_ACCESS_RIGHTS
