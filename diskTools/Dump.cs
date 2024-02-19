@@ -11,7 +11,7 @@
 
     internal class Dump : ICommandHandler
     {
-        const string path = @"\\.\PhysicalDrive4";
+        const string path = @"\\.\PhysicalDrive3";
 
         public static void Run()
         {

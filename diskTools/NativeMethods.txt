@@ -1,3 +1,15 @@
 CreateFile
 ReadFile
+SetupDiGetClassDevs
+SetupDiEnumDeviceInfo
 GENERIC_ACCESS_RIGHTS
+DIGCF_PRESENT
+DIGCF_DEVICEINTERFACE
+WIN32_ERROR
+GUID_DEVINTERFACE_DISK
+SetupDiGetDevicePropertyKeys
+SetupDiEnumDeviceInterfaces
+SetupDiGetDeviceInterfaceDetail
+DeviceIoControl
+IOCTL_STORAGE_GET_DEVICE_NUMBER
+STORAGE_DEVICE_NUMBER 
