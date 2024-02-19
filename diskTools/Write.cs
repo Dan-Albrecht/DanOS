@@ -52,6 +52,12 @@
             }
 
             Console.WriteLine();
+            Console.WriteLine("What's the file you want to write?");
+            string path = Console.ReadLine() ?? throw new InvalidDataException("Null from the console...");
+            // Just let this implictly do the path check
+            var bytesToWrite = File.ReadAllBytes(path);
+
+            Console.WriteLine();
             Console.WriteLine($"Last chance! Are you really sure you want to use {driveSelection} and LOSE ALL DATA? (y/n)");
             var key = Console.ReadKey(true);
 
@@ -60,10 +66,10 @@
                 Console.WriteLine("Ok, doing nothing.");
             }
 
-            WriteDrive(driveSelection);
+            WriteDrive(driveSelection, bytesToWrite);
         }
 
-        private void WriteDrive(string driveSelection)
+        private void WriteDrive(string driveSelection, byte[] bytesToWrite)
         {
             SafeFileHandle usbDrive = PInvoke.CreateFile(
                 driveSelection,
@@ -80,7 +86,6 @@
                 throw new InvalidDataException($"Couldn't open the drive: {lastError}");
             }
 
-            var bytesToWrite = File.ReadAllBytes(@"usbMerged.bin");
             uint bytesWritten;
             BOOL result;
 
