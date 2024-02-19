@@ -23,6 +23,10 @@ main:
     mov si, welcomeMsg
     call printString
 
+.blip:
+    hlt
+    jmp .blip
+
     call loadFromDisk
 
     mov ax, 1

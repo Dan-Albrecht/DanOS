@@ -13,3 +13,4 @@ SetupDiGetDeviceInterfaceDetail
 DeviceIoControl
 IOCTL_STORAGE_GET_DEVICE_NUMBER
 STORAGE_DEVICE_NUMBER 
+WriteFile

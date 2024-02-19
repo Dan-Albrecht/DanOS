@@ -3,6 +3,7 @@
     using Microsoft.Win32.SafeHandles;
     using System;
     using System.CommandLine.Invocation;
+    using System.IO;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using System.Threading.Tasks;
@@ -54,7 +55,7 @@
             Console.WriteLine($"Last chance! Are you really sure you want to use {driveSelection} and LOSE ALL DATA? (y/n)");
             var key = Console.ReadKey(true);
 
-            if(key.Key != ConsoleKey.Y)
+            if (key.Key != ConsoleKey.Y)
             {
                 Console.WriteLine("Ok, doing nothing.");
             }
@@ -64,7 +65,46 @@
 
         private void WriteDrive(string driveSelection)
         {
-            throw new NotImplementedException();
+            SafeFileHandle usbDrive = PInvoke.CreateFile(
+                driveSelection,
+                (uint)GENERIC_ACCESS_RIGHTS.GENERIC_WRITE,
+                FILE_SHARE_MODE.FILE_SHARE_NONE,
+                null,
+                FILE_CREATION_DISPOSITION.OPEN_EXISTING,
+                FILE_FLAGS_AND_ATTRIBUTES.FILE_ATTRIBUTE_NORMAL,
+                null);
+
+            if (usbDrive.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+                throw new InvalidDataException($"Couldn't open the drive: {lastError}");
+            }
+
+            var bytesToWrite = File.ReadAllBytes(@"usbMerged.bin");
+            uint bytesWritten;
+            BOOL result;
+
+            unsafe
+            {
+                result = PInvoke.WriteFile(
+                   usbDrive,
+                   bytesToWrite,
+                   &bytesWritten,
+                   null);
+            }
+
+            if (result == false)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+                throw new InvalidDataException($"Write failed: {lastError}");
+            }
+
+            if (bytesToWrite.Length != bytesWritten)
+            {
+                throw new InvalidDataException($"Expected to write {bytesToWrite.Length}, but wrote {bytesWritten}");
+            }
+
+            usbDrive.Close();
         }
     }
 }
