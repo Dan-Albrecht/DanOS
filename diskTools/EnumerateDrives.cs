@@ -2,6 +2,7 @@
 {
     using Microsoft.Win32.SafeHandles;
     using System;
+    using System.CommandLine.Invocation;
     using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
     using Windows.Win32;
@@ -10,7 +11,7 @@
     using Windows.Win32.Storage.FileSystem;
     using Windows.Win32.System.Ioctl;
 
-    internal class EnumerateDrives
+    internal class EnumerateDrives : ICommandHandler
     {
         public static List<(string deviceName, string classInfo)> Fetch()
         {
@@ -123,6 +124,18 @@
 
             results.Sort();
             return results;
+        }
+
+        public int Invoke(InvocationContext context)
+        {
+            return InvokeAsync(context).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        public async Task<int> InvokeAsync(InvocationContext context)
+        {
+            await Task.Yield();
+            Run();
+            return 0;
         }
 
         private void Run()

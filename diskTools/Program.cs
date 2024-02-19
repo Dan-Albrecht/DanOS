@@ -31,7 +31,7 @@ var root = new RootCommand("Various commands to operator on a disk at the raw le
     },
     new Command("list", "List potential drives we can write to.")
     {
-        Handler = new Dump(),
+        Handler = new EnumerateDrives(),
     },
     new Command("write", "Write to a disk. Must be run interactive, this is DANGEROUS.")
     {
