@@ -1,16 +1,18 @@
 use core::fmt::Write;
-use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
+use crate::{alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWriteLine };
+
+// Version 1 (Revsion 0) defintion
+#[repr(C, packed)]
+pub struct RsdpImpl {
+    Signature: [u8; 8],
+    Checksum: u8,
+    OEMID: [u8; 6],
+    Revision: u8,
+    RsdtAddress: u32,
+}
 
 // Root System Description Pointer
-#[repr(C, align(16))]
-pub struct RSDP {
-    RSDP_I: RSDP_I,
-}
-
-#[repr(C, packed)]
-pub struct RSDP_I {
-    Signature: [u8; 8],
-}
+pub type RSDP = Aligned16<RsdpImpl>;
 
 pub fn getRsdp() -> *const RSDP {
     // We're going to assume this won't appear in the Extended BIOS Data Area (EBDA)
@@ -33,8 +35,10 @@ pub fn getRsdp() -> *const RSDP {
 fn checkSignature(ptr: *const RSDP) -> bool {
     let expected = *b"RSD PTR ";
     unsafe {
-        let toCheck = (*ptr).RSDP_I.Signature;
+        let toCheck = (*ptr).Field.Signature;
         if toCheck == expected {
+            // BUGBUG: Validate checksum
+            vgaWriteLine!("OEM {:?}", (*ptr).Field.OEMID);
             return true;
         }
     }

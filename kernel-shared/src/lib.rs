@@ -3,4 +3,5 @@
 
 pub mod acpi;
 pub mod assemblyStuff;
+pub mod alignment;
 pub mod textMode;
