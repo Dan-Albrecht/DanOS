@@ -1,4 +1,6 @@
-use crate::{assemblyStuff::halt::haltLoop, cursorStuff::writeStringOnNewline};
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
+use crate::cursorStuff::writeStringOnNewline;
 
 // Root System Description Pointer
 #[repr(C, align(16))]

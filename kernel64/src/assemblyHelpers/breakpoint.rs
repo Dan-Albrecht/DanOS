@@ -1,7 +1,7 @@
 use core::arch::asm;
 use core::fmt::Write;
 
-use crate::vgaWrite;
+use kernel_shared::vgaWrite;
 
 pub fn Breakpoint() {
     unsafe {

@@ -13,13 +13,13 @@ mod interupts;
 mod pic;
 mod magicConstants;
 mod memory;
-mod vga;
 
 use core::fmt::Write;
 use core::panic::PanicInfo;
 
 use assemblyHelpers::breakpoint::{Breakpoint, DivideByZero, HaltLoop};
 use interupts::InteruptDescriptorTable::{DisableInterrupts, SetIDT};
+use kernel_shared::vgaWriteLine;
 use memory::memoryMap::MemoryMap;
 
 use magicConstants::MEMORY_MAP_LOCATION;

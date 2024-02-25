@@ -1,12 +1,11 @@
 [package]
-name = "kernel64"
+name = "kernel-shared"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kernel-shared = { path = "../kernel-shared" }
 
 [profile.dev]
 panic = "abort"

@@ -1,4 +1,4 @@
-use crate::assemblyHelpers::ports::outB;
+use kernel_shared::assemblyStuff::ports::outB;
 
 const PIC1_DATA: u16 = 0x21;
 const PIC2_DATA: u16 = 0xA1;

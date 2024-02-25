@@ -1,3 +1,5 @@
+use crate::assemblyStuff::ports::{inB, outB};
+
 const VGA_WIDTH: u16 = 80;
 const VGA_HEIGHT: u16 = 25;
 
@@ -7,15 +9,13 @@ const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
 const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 
-use crate::assemblyHelpers::ports::{inB, outB};
-
 #[macro_export]
 macro_rules! vgaWrite {
     ($($args:tt)*) => {
         if let Some(ssss) = format_args!($($args)*).as_str() {
-            $crate::vga::textMode::writeString(ssss.as_bytes());
+            $crate::textMode::textMode::writeString(ssss.as_bytes());
         } else {
-            let _ = write!($crate::vga::writer::Writer::new(), $($args)*);
+            let _ = write!($crate::textMode::writer::Writer::new(), $($args)*);
         }
     };
 }
@@ -24,7 +24,7 @@ macro_rules! vgaWrite {
 macro_rules! vgaWriteLine {
     ($($args:tt)*) => {
         $crate::vgaWrite!($($args)*);
-        $crate::vga::textMode::writeString(b"\r\n");
+        $crate::textMode::textMode::writeString(b"\r\n");
     };
 }
 
