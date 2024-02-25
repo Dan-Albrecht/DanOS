@@ -5,7 +5,6 @@
 
 mod a20Stuff;
 mod assemblyStuff;
-mod cursorStuff;
 mod diskStuff;
 mod gdtStuff;
 mod pagingStuff;
@@ -15,10 +14,11 @@ use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
-use cursorStuff::writeStringOnNewline;
 use diskStuff::read::readBytes;
 use gdtStuff::Setup64BitGDT;
+use kernel_shared::vgaWriteLine;
 use pagingStuff::enablePaging;
+use core::fmt::Write;
 
 const fn getKernel64Address() -> u16 {
     let bytes = core::env!("KERNEL64_LOAD_TARGET").as_bytes();
@@ -59,28 +59,27 @@ fn panic(_info: &PanicInfo) -> ! {
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     unsafe {
-        writeStringOnNewline(b"We've made it to Rust!");
+        // Previous stage didn't newline after its last message
+        vgaWriteLine!("\r\nWe've made it to Rust!");
         readBytes();
 
         if IsTheA20LineEnabled() {
             if Is64BitModeSupported() {
-                writeStringOnNewline(b"64-bit mode is available");
+                vgaWriteLine!("64-bit mode is available");
                 enablePaging();
-                writeStringOnNewline(b"64-bit paging mode enabled...");
-                writeStringOnNewline(b"...though we're in compatability (32-bit) mode currently.");
+                vgaWriteLine!("64-bit paging mode enabled...");
+                vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT();
-                writeStringOnNewline(b"The new GDT is in place");
+                vgaWriteLine!("The new GDT is in place");
                 asm!(
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel
                     adr = const { getKernel64Address() },
                 );
             } else {
-                writeStringOnNewline(b"No 64-bit mode. :(");
+                vgaWriteLine!("No 64-bit mode. :(");
             }
         } else {
-            writeStringOnNewline(
-                b"You have hardware/emulator with the A20 address line disabled...",
-            );
+            vgaWriteLine!("You have hardware/emulator with the A20 address line disabled...");
         }
     };
 
