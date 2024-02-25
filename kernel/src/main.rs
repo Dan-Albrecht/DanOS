@@ -6,6 +6,7 @@
 mod a20Stuff;
 mod assemblyStuff;
 mod cursorStuff;
+mod diskStuff;
 mod gdtStuff;
 mod pagingStuff;
 
@@ -15,6 +16,7 @@ use core::arch::asm;
 use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
 use cursorStuff::writeStringOnNewline;
+use diskStuff::read::readBytes;
 use gdtStuff::Setup64BitGDT;
 use pagingStuff::enablePaging;
 
@@ -55,6 +57,7 @@ fn panic(_info: &PanicInfo) -> ! {
 pub extern "C" fn DanMain() -> ! {
     unsafe {
         writeStringOnNewline(b"We've made it to Rust!");
+        readBytes();
 
     if IsTheA20LineEnabled() {
         if Is64BitModeSupported() {
