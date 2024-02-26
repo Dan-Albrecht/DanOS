@@ -1,5 +1,7 @@
-use core::fmt::Write;
-use crate::{alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWriteLine };
+use crate::{alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWriteLine};
+use core::{fmt::Write, str::from_utf8};
+
+use super::rsdt::RSDT;
 
 // Version 1 (Revsion 0) defintion
 #[repr(C, packed)]
@@ -13,6 +15,13 @@ pub struct RsdpImpl {
 
 // Root System Description Pointer
 pub type RSDP = Aligned16<RsdpImpl>;
+
+impl RSDP {
+    pub fn getRsdt(&self) -> *const RSDT {
+        // BUGBUG: The theory here is this will properly 0-extend on 64 bit...
+        self.Field.RsdtAddress as *const RSDT
+    }
+}
 
 pub fn getRsdp() -> *const RSDP {
     // We're going to assume this won't appear in the Extended BIOS Data Area (EBDA)
@@ -37,8 +46,24 @@ fn checkSignature(ptr: *const RSDP) -> bool {
     unsafe {
         let toCheck = (*ptr).Field.Signature;
         if toCheck == expected {
+
+            vgaWriteLine!("Potential ACIP info at: 0x{:X}", ptr as usize);
             // BUGBUG: Validate checksum
-            vgaWriteLine!("OEM {:?}", (*ptr).Field.OEMID);
+
+            match from_utf8(&(*ptr).Field.OEMID) {
+                Ok(theString) => {
+                    vgaWriteLine!("ACPI by {}", theString);
+
+                    // Spec says this is always a 32 bit address
+                    vgaWriteLine!("RSDT is at 0x{:X}", (*ptr).Field.RsdtAddress as u32);
+                }
+                _ => {
+                    vgaWriteLine!("Couldn't read ACPI OEM: {:?}", (*ptr).Field.OEMID);
+                }
+            };
+
+            // BUGBUG: Delete after debugging
+            (*(*ptr).getRsdt()).walkEntries();
             return true;
         }
     }
