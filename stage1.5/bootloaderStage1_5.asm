@@ -335,4 +335,3 @@ handOffTo32bitCode:
     mov esp, ebp            ; Both are the same as its empty to start with
 
     jmp STAGE_2_JUMP_TARGET
-
