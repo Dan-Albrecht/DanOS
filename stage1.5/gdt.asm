@@ -41,7 +41,11 @@ dataSegment:
 
 gdtDescriptor:
     dw gdtDescriptor - nullSegment - 1  ; Table size - 1 (per spec)
-    dd nullSegment                      ; Starting address
+    dd GDT_ADDRESS                      ; Starting address
 
-CODE_SEGMENT    equ codeSegment - nullSegment
-DATA_SEGMENT    equ dataSegment - nullSegment
+end:
+
+CODE_SEGMENT        equ codeSegment - nullSegment
+DATA_SEGMENT        equ dataSegment - nullSegment
+DESCRIPTOR_OFFSET   equ gdtDescriptor - nullSegment
+GDT_SIZE            equ end - nullSegment

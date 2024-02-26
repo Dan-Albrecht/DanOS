@@ -1,6 +1,11 @@
     BITS  16
-    ORG   STAGE_1_5_LOAD_TARGET
+    ;ORG   STAGE_1_5_LOAD_TARGET ; Almost don't need this constant anymore, except the far jump below
     MEM_MAP_ENTRY_SIZE equ 24
+
+    ; Get DS = CS
+    push ds
+    push cs
+    pop ds
 
 .check0:
     cmp ax, 0
@@ -26,6 +31,7 @@
     hlt
 
 .end:
+    pop ds
     retf
 
 
@@ -265,11 +271,29 @@ callFailed:
     hlt
 
 switchTo32bit:
-    lgdt [gdtDescriptor]
+
+    mov di, GDT_ADDRESS                 ; It seems like the GDT needs to be in a location that is directly addressable by a 16 bit
+    mov si, nullSegment                 ; offset with no segment to help. Our bootloaders size have us operating past that limit,
+    mov cx, GDT_SIZE                    ; so copy the GDT in a lower memory location.
+    cld
+    rep movsb
+
+    xor eax, eax
+    mov eax, GDT_ADDRESS                ; Magic 'low' constant we'll pass in from the command line
+    add eax, DESCRIPTOR_OFFSET          ; Offset from the start of the GDT to the descriptor
+
+    xor ebx, ebx                        ; lgdt still will look at the ds selector so clear it as we've now located the GDT
+    push ebx                            ; at a location accessible from 0
+    pop ds
+
+    lgdt [eax]
     mov eax, cr0                        ; Get current state so we can only modify what we want
     or eax, 0x1                         ; We want protected mode
     mov cr0, eax                        ; Apply it
-    jmp CODE_SEGMENT:handOffTo32bitCode ; Far jump to flush cache/piplines
+
+    ; Mixed instructions: https://www.nasm.us/xdoc/2.11.08/html/nasmdo10.html
+    ; BUGBUG: Would really like to figure out the instruction so we can just calculate this at runtime and not have to know the origin
+    jmp dword 0x8:(handOffTo32bitCode + STAGE_1_5_LOAD_TARGET)
 
 %include "consoleStuff.asm"
 
@@ -334,4 +358,5 @@ handOffTo32bitCode:
     mov ebp, 0x7000         ; Put stack back where it was
     mov esp, ebp            ; Both are the same as its empty to start with
 
-    jmp STAGE_2_JUMP_TARGET
+    mov eax, STAGE_2_JUMP_TARGET
+    jmp eax
