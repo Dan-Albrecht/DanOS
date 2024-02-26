@@ -26,7 +26,7 @@
     hlt
 
 .end:
-    ret
+    retf
 
 
 doMemoryStuff:

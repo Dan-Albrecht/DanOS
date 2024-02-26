@@ -26,10 +26,10 @@ main:
     call loadFromDisk
 
     mov ax, 1
-    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
+    call STAGE1_5_TARGET_MEMORY_SEGMENT:0
 
     mov ax, 2
-    call STAGE1_5_TARGET_MEMORY_SEGMENT << 4
+    call STAGE1_5_TARGET_MEMORY_SEGMENT:0
 
     ; Should never reach this
     mov si, unexpectedReturn

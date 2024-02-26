@@ -27,7 +27,7 @@ try {
     nasm.exe .\bootloaderStage1_5.asm -DSTAGE_1_5_LOAD_TARGET="$origin" -DMEMORY_MAP_TARGET="$memoryMapTarget" -DSTAGE_2_JUMP_TARGET="$stage2Address" -f bin -o .\bootloaderStage1_5.bin
 
     # Dissassemble to see what we actually got
-    ndisasm.exe -b 16 .\bootloaderStage1_5.bin > .\bootloaderStage1_5.disasm.asm
+    ndisasm.exe "-o$origin" -b 16 .\bootloaderStage1_5.bin > .\bootloaderStage1_5.disasm.asm
 
     Write-Host "Finished assembling Stage 1.5"
 }
