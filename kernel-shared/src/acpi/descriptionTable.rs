@@ -2,11 +2,11 @@ use core::str::from_utf8;
 use core::fmt::Write;
 use crate::vgaWriteLine;
 
-
+// https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#system-description-table-header
 #[repr(C, packed)]
 pub struct DescriptionTable {
-    Signature: [u8; 4],
-    Length: u32,
+    pub Signature: [u8; 4], // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#description-header-signatures-for-tables-defined-by-acpi
+    pub Length: u32,
     Revision: u8,
     Checksum: u8,
     OEMID: [u8; 6],
@@ -20,7 +20,8 @@ impl DescriptionTable {
     pub fn printSignature(&self) {
         match from_utf8(&self.Signature) {
             Ok(theString) => {
-                vgaWriteLine!("{}", theString);
+                let length = self.Length;
+                vgaWriteLine!("{} long {}", length, theString);
             }
             _ => {
                 vgaWriteLine!("Couldn't read signature: {:?}", self.Signature);

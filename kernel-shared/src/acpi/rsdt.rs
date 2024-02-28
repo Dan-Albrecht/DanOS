@@ -1,8 +1,9 @@
 use crate::{
-    acpi::descriptionTable::DescriptionTable, alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine
+    acpi::{descriptionTable::DescriptionTable, fadt::FADT}, alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine
 };
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
+// https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-table-rsdt
 #[repr(C, packed)]
 pub struct RsdtImpl {
     Signature: [u8; 4],
@@ -49,8 +50,13 @@ impl RSDT {
             unsafe {
                 let ptr = address as *const u32;
                 vgaWrite!("Entry {} @ 0x{:X} is a ", x, *ptr);
-                let dt = *ptr as *const DescriptionTable;
-                (*dt).printSignature();
+                let ptr = *ptr as *const DescriptionTable;
+                (*ptr).printSignature();
+
+                if &(*ptr).Signature == b"FACP" {
+                    let ptr = ptr as *const FADT;
+                    (*ptr).printSomeInfo();
+                }
             }
         }
     }
