@@ -12,3 +12,13 @@ Cargo.lock
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# Various binary files we'll produce
+*.bin
+*.vhd
+
+# Temp build files
+obj/
+
+# Us disassembling file to see if they look like the way we expect
+*.disasm.asm
