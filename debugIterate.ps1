@@ -4,8 +4,8 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
     $PSNativeCommandUseErrorActionPreference = $true
     .\iterateInternal.ps1
-    # qemu-system-i386 -drive file=.\DanOS.vhd,format=raw -S -gdb tcp::3333 -d cpu_reset
-    qemu-system-x86_64 -drive file=.\DanOS.vhd,format=raw -S -gdb tcp::3333 -d cpu_reset
+
+    qemu-system-x86_64.exe -machine type=q35,accel=whpx -drive file=.\DanOS.vhd,format=raw -S -gdb tcp::3333 -d cpu_reset -monitor stdio
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

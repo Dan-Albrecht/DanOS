@@ -5,7 +5,8 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
     .\iterateInternal.ps1
 
-    qemu-system-x86_64.exe  -drive file=.\DanOS.bin,format=raw
+    # Min size bug: https://stackoverflow.com/a/68750259 so cannot use .bin file
+    qemu-system-x86_64.exe -machine type=q35,accel=whpx -drive file=.\DanOS.vhd,format=raw -monitor stdio
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
