@@ -1,5 +1,9 @@
+pub mod camEntry;
 pub mod descriptionTable;
 pub mod dsdt;
 pub mod fadt;
 pub mod rsdp;
 pub mod rsdt;
+pub mod pciHeader;
+pub mod mcfg;
+pub mod mcfgEntry;

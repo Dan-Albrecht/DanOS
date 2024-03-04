@@ -16,6 +16,7 @@ use a20Stuff::IsTheA20LineEnabled;
 use assemblyStuff::cpuID::Is64BitModeSupported;
 use diskStuff::read::readBytes;
 use gdtStuff::Setup64BitGDT;
+use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::vgaWriteLine;
 use pagingStuff::enablePaging;
 use core::fmt::Write;
@@ -53,7 +54,8 @@ const fn getKernel64Address() -> u16 {
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    vgaWriteLine!("32-bit kernel panic!");
+    haltLoop();
 }
 
 #[no_mangle]
@@ -75,6 +77,8 @@ pub extern "C" fn DanMain() -> ! {
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel
                     adr = const { getKernel64Address() },
                 );
+
+                vgaWriteLine!("64-bit kernel returned!");
             } else {
                 vgaWriteLine!("No 64-bit mode. :(");
             }
@@ -83,5 +87,5 @@ pub extern "C" fn DanMain() -> ! {
         }
     };
 
-    loop {}
+    haltLoop();
 }

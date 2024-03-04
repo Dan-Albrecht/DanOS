@@ -3,6 +3,7 @@ use core::{fmt::Write, str::from_utf8};
 
 use super::rsdt::RSDT;
 
+// https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-pointer-rsdp-structure
 // Version 1 (Revsion 0) defintion
 #[repr(C, packed)]
 pub struct RsdpImpl {
@@ -41,14 +42,25 @@ pub fn getRsdp() -> *const RSDP {
     }
 }
 
+#[allow(arithmetic_overflow)]
 fn checkSignature(ptr: *const RSDP) -> bool {
     let expected = *b"RSD PTR ";
     unsafe {
         let toCheck = (*ptr).Field.Signature;
         if toCheck == expected {
+            vgaWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
+            
+            let mut calculated: u8 = 0;
+            let asBytes = ptr as *const u8;
+            for index in 0..20 {
+                let byte = *asBytes.offset(index);
+                calculated = calculated + byte;
+            }
 
-            vgaWriteLine!("Potential ACIP info at: 0x{:X}", ptr as usize);
-            // BUGBUG: Validate checksum
+            if calculated != 0 {
+                vgaWriteLine!("Checksum fail (should be 0): {calculated}");
+                return false;
+            }
 
             match from_utf8(&(*ptr).Field.OEMID) {
                 Ok(theString) => {

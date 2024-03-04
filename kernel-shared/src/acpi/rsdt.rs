@@ -1,5 +1,5 @@
 use crate::{
-    acpi::{descriptionTable::DescriptionTable, fadt::FADT}, alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine
+    acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG}, alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine
 };
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
@@ -15,7 +15,7 @@ pub struct RsdtImpl {
     OemRevision: [u8; 4],
     CreateID: [u8; 4],
     CreatorRevision: [u8; 4],
-    Entry: u32,
+    FirstEntry: u32,
 }
 
 // BUGBUG: This one might not be aligned
@@ -42,7 +42,7 @@ impl RSDT {
             totalEntries
         );
 
-        let firstEntryAddress = addr_of!(self.Field.Entry);
+        let firstEntryAddress = addr_of!(self.Field.FirstEntry);
 
         for x in 0..totalEntries {
             let address = firstEntryAddress as usize + x * size_of::<u32>();
@@ -55,6 +55,9 @@ impl RSDT {
 
                 if &(*ptr).Signature == b"FACP" {
                     let ptr = ptr as *const FADT;
+                    (*ptr).printSomeInfo();
+                } else if &(*ptr).Signature == b"MCFG" {
+                    let ptr = ptr as *const MCFG;
                     (*ptr).printSomeInfo();
                 }
             }

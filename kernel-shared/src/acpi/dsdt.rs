@@ -22,6 +22,6 @@ impl DSDT {
         let length = self.Length as usize;
         let blockLength = length - size_of::<DSDT>() + 1; // +1 because the first byte is defined in the struct
         let startAt = addr_of!(self.DefintionBlock);
-        vgaWriteLine!("    Think we have {} bytes to read starting at 0x{:X}", blockLength, startAt as usize);
+        vgaWriteLine!("    DSDT DefBlock has {} bytes to read starting at 0x{:X}", blockLength, startAt as usize);
     }
 }

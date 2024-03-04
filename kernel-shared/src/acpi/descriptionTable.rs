@@ -21,7 +21,7 @@ impl DescriptionTable {
         match from_utf8(&self.Signature) {
             Ok(theString) => {
                 let length = self.Length;
-                vgaWriteLine!("{} long {}", length, theString);
+                vgaWriteLine!("{} byte long {}", length, theString);
             }
             _ => {
                 vgaWriteLine!("Couldn't read signature: {:?}", self.Signature);
