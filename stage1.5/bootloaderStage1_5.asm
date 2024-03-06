@@ -1,3 +1,7 @@
+; Stage 1.5 is our arbitrary length 16 bit real mode code.
+; The main stuff this does right now is loads the memory map to a fixed location
+; and make the switch to 32 bit protected mode.
+; There's also the inital code to muck with the graphics settings via VBE.
     BITS  16
     ;ORG   STAGE_1_5_LOAD_TARGET ; Almost don't need this constant anymore, except the far jump below
     MEM_MAP_ENTRY_SIZE equ 24

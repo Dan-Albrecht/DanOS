@@ -14,24 +14,24 @@ try {
 
     # Secret handshake to eventaully get this passed to the linker
     $env:KERNEL64_LOAD_TARGET = "0x$(([int]$STAGE_4_LOAD_TARGET).ToString("X"))"
-    .\kernel64\buildKernel.ps1
-    $kernel64Bytes = Get-Content .\kernel64\target\x86_64-unknown-none\release\kernel64.bin -Raw -AsByteStream
+    ..\kernel64\buildKernel.ps1
+    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.bin -Raw -AsByteStream
     $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
     $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
-    .\kernel\buildKernel.ps1
-    $kernelBytes = Get-Content .\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
+    ..\kernel\buildKernel.ps1
+    $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
     $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
 
     $STAGE_2_LOAD_TARGET = $STAGE_3_LOAD_TARGET + ($kernelSectors * 512)    
-    nasm.exe .\bootloaderStage2.asm -DSTAGE_2_LOAD_TARGET="$STAGE_2_LOAD_TARGET" -DKERNEL32_JUMP_TARGET="$STAGE_3_LOAD_TARGET" -f bin -o .\bootloaderStage2.bin
-    $stage2Bytes = Get-Content .\bootloaderStage2.bin -Raw -AsByteStream
+    ..\stage2\build.ps1 -origin $STAGE_2_LOAD_TARGET -kernel32Address $STAGE_3_LOAD_TARGET
+    $stage2Bytes = Get-Content ..\stage2\bootloaderStage2.bin -Raw -AsByteStream
     $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
 
     $STAGE_1_5_LOAD_TARGET = $STAGE_2_LOAD_TARGET + ($stage2Sectors * 512)
-    .\stage1.5\build.ps1 -origin $STAGE_1_5_LOAD_TARGET -memoryMapTarget $memoryMapTarget -stage2Address $STAGE_2_LOAD_TARGET
-    $stage1_5Bytes = Get-Content .\stage1.5\bootloaderStage1_5.bin -Raw -AsByteStream
+    ..\stage1.5\build.ps1 -origin $STAGE_1_5_LOAD_TARGET -memoryMapTarget $memoryMapTarget -stage2Address $STAGE_2_LOAD_TARGET
+    $stage1_5Bytes = Get-Content ..\stage1.5\bootloaderStage1_5.bin -Raw -AsByteStream
     $stage1_5Sectors = [Math]::Ceiling($stage1_5Bytes.Length / 512)
     $stage1_5Segment = $STAGE_1_5_LOAD_TARGET -shr 4
 
@@ -48,12 +48,12 @@ try {
     Write-Host "This is a total of 0x$(([int]$neededSectors).ToString("X")) sectors to load from disk to segment 0x$(([int]$diskDataSegment).ToString("X"))."
 
     # BUGUBG: Don't harcode load target, just change address to sector
-    .\stage1\build.ps1 -sectorsToLoad $neededSectors -targetMemorySegment $diskDataSegment -handoffToSegment $stage1_5Segment
+    ..\stage1\build.ps1 -sectorsToLoad $neededSectors -targetMemorySegment $diskDataSegment -handoffToSegment $stage1_5Segment
     
     # Slap on some partition info to make this look like an actual MBR disk so we can boot from it on real hardware
-    dotnet run --runtime win-x64 --no-launch-profile --project .\diskTools\diskTools.csproj merge .\stage1\bootloaderStage1.bin \temp\usb2.bin .\mergedStage1.bin
+    dotnet run --runtime win-x64 --no-launch-profile --project ..\diskTools\diskTools.csproj merge ..\stage1\bootloaderStage1.bin \temp\usb2.bin ..\mergedStage1.bin
     
-    $stage1Bytes = Get-Content .\mergedStage1.bin -Raw -AsByteStream
+    $stage1Bytes = Get-Content ..\mergedStage1.bin -Raw -AsByteStream
     if ($stage1Bytes.Length -ne 512 ) { Write-Error 'Bootloader should be exactly 512 bytes' }
     $stage1Sectors = 1 # Must be per above and the laws of bios
 
