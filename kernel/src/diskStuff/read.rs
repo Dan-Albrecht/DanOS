@@ -1,9 +1,5 @@
-//use core::fmt::Write;
-
-use kernel_shared::{acpi::rsdp::getRsdp, assemblyStuff::halt::haltLoop};
+use kernel_shared::acpi::rsdp::getRsdp;
 
 pub fn readBytes() {
     let _foo = getRsdp();
-    haltLoop();
 }
-

@@ -3,8 +3,6 @@ use crate::{assemblyHelpers::breakpoint::HaltLoop, vgaWriteLine};
 use core::{fmt::Write, mem::size_of, ptr::null_mut};
 
 pub struct DumbHeap {
-    MemoryMap: MemoryMap,
-    Index: usize,
     First: *mut HeapEntry,
 }
 
@@ -50,8 +48,6 @@ impl DumbHeap {
                     }
 
                     return DumbHeap {
-                        MemoryMap: memoryMap,
-                        Index: index,
                         First: heapEntryAddress,
                     };
                 }
@@ -71,9 +67,10 @@ impl DumbHeap {
                         HaltLoop();
                     } else {
                         let headerSize = size_of::<HeapEntry>();
-                        let remainingAfterHeader = (*self.First).Size - ammount - headerSize;
-                        // BUGBUG: Deal with some underflow or whatever this warning is reffering to
-                        if remainingAfterHeader >= 0 {
+                        let totalNeeded = ammount + headerSize;
+
+                        if totalNeeded <= (*self.First).Size  {
+                            let remainingAfterHeader = (*self.First).Size - totalNeeded;
                             vgaWriteLine!(
                                 "Enough for another 0x{:X} byte entry",
                                 remainingAfterHeader
@@ -109,10 +106,6 @@ impl DumbHeap {
                 HaltLoop();
             }
         }
-    }
-
-    fn NeededSize(requested: u64) -> usize {
-        requested as usize + size_of::<HeapEntry>()
     }
 
     pub fn DumpHeap(&mut self) {
