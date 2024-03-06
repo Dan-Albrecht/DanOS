@@ -37,7 +37,6 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("\r\nWelcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
-    //x.Display();
 
     vgaWriteLine!("Configuring PIC...");
     disablePic();
