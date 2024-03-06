@@ -44,10 +44,9 @@ doMemoryStuff:
 
     xor eax, eax
     mov es, eax                         ; BUGBUG: Stop the code that's whacking this in the first place
-
     
     xor bp, bp                          ; Use as an entry counter. BUGBUG: Do we care?
-    mov eax, 0xE820                     ; Query System Address Map
+    mov eax, 0xE820                     ; Query System Address Map https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/int-15h-e820h---query-system-address-map.html
     xor ebx, ebx                        ; EBX is to be round tripped across calls to pick up where we left off and starts at 0
     mov ecx, MEM_MAP_ENTRY_SIZE         ; Avilable space
     mov edx, "PAMS"                     ; Call signature. BUGBUG: Figure how to specify this forward, writing it backwards I'd be better to just hardcode the number
@@ -77,7 +76,7 @@ doMemoryStuff:
     jmp .done
 
 .done:
-    mov word [MEMORY_MAP_TARGET], bp    ; Save the number of records
+    mov word es:[MEMORY_MAP_TARGET], bp    ; Save the number of records
     popa
     ret
 
