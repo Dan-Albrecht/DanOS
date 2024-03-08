@@ -3,23 +3,60 @@ use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 use super::mcfgEntry::McfgEntry;
 use core::fmt::Write;
 
-#[repr(C, packed)]
-pub struct CamEntry {
-    VendorID: u16,
-    DeviceID: u16,
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum PciHeaderType {
+    General,
+    NormalBridge, // PCI to PCI
+    CardBridge,   // PCI to CardBus
+    MultiFunctionGeneral,
+    Dunno,
 }
 
-impl CamEntry {
-    pub fn tryGetEntry(entry: &McfgEntry, bus: u8, device: u8, function: u8) -> Option<*const CamEntry> {
+#[repr(C, packed)]
+pub struct PciCommonHeader {
+    VendorID: u16,
+    DeviceID: u16,
+    Command: u16,
+    Status: u16,
+    RevisionID: u8,
+    pub ProgIF: u8, // Programming Interface Byte
+    pub Subclass: u8,
+    pub ClassCode: u8,
+    CacheLineSize: u8,
+    LatenchTimer: u8,
+    pub HeaderType: u8,
+    BIST: u8, // Built In Self Test
+}
+
+impl PciCommonHeader {
+    pub fn tryGetEntry(
+        entry: &McfgEntry,
+        bus: u8,
+        device: u8,
+        function: u8,
+    ) -> Option<*const PciCommonHeader> {
         let targetAddress = Self::calculateAddress(entry, bus, device, function);
 
         unsafe {
+            // Note if you look at this memory directly in Bochs it doesn't reflect what it actually is
+            // You have to read it
             let data = *(targetAddress as *const u32);
             if data == 0xFFFFFFFF {
                 return None;
-            } else{
-                return Some(targetAddress as *const CamEntry);
+            } else {
+                return Some(targetAddress as *const PciCommonHeader);
             }
+        }
+    }
+
+    pub fn getType(&self) -> PciHeaderType {
+        match self.HeaderType {
+            0 => PciHeaderType::General,
+            1 => PciHeaderType::NormalBridge,
+            2 => PciHeaderType::CardBridge,
+            0x80 => PciHeaderType::MultiFunctionGeneral, // BUGBUG: I'm pretty sure this should be a bit flag on the other types
+            _ => PciHeaderType::Dunno,
         }
     }
 

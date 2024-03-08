@@ -1,5 +1,12 @@
-use kernel_shared::acpi::rsdp::getRsdp;
+use kernel_shared::{acpi::rsdp::getRsdp, assemblyStuff::halt::haltLoop, vgaWriteLine};
+use core::fmt::Write;
 
 pub fn readBytes() {
-    let _foo = getRsdp();
+    let foo = getRsdp();
+    if let Some(firstAhci) = foo {
+        vgaWriteLine!("Maybe can read some bytes from 0x{:X}", firstAhci as usize);
+    } else {
+        vgaWriteLine!("Didn't find an AHCI controller");
+    }
+    haltLoop();
 }

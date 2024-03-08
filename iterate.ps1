@@ -6,7 +6,7 @@ try {
     .\build\iterateInternal.ps1
 
     # Min size bug: https://stackoverflow.com/a/68750259 so cannot use .bin file
-    qemu-system-x86_64.exe -machine type=q35,accel=whpx -drive file=.\build\DanOS.vhd,format=raw -monitor stdio
+    qemu-system-x86_64.exe -machine type=q35,accel=whpx -drive id=disk,file=.\build\DanOS.vhd,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -monitor stdio
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

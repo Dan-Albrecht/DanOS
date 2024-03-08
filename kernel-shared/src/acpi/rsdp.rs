@@ -1,7 +1,7 @@
 use crate::{alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWriteLine};
 use core::{fmt::Write, str::from_utf8};
 
-use super::rsdt::RSDT;
+use super::{pciGeneralDevice::PciGeneralDevice, rsdt::RSDT};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-pointer-rsdp-structure
 // Version 1 (Revsion 0) defintion
@@ -24,14 +24,15 @@ impl RSDP {
     }
 }
 
-pub fn getRsdp() -> *const RSDP {
+pub fn getRsdp() -> Option<*const PciGeneralDevice> {
     // We're going to assume this won't appear in the Extended BIOS Data Area (EBDA)
     // and just search the BIOS readonly area.
     let mut address: usize = 0x0E0000;
     loop {
         let ptr = address as *const RSDP;
-        if checkSignature(ptr) {
-            return ptr;
+        let checkMe = checkSignature(ptr);
+        if let Ok(xxx) = checkMe {
+            return xxx;
         }
 
         address = address + 16;
@@ -43,13 +44,13 @@ pub fn getRsdp() -> *const RSDP {
 }
 
 #[allow(arithmetic_overflow)]
-fn checkSignature(ptr: *const RSDP) -> bool {
+fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u8> {
     let expected = *b"RSD PTR ";
     unsafe {
         let toCheck = (*ptr).Field.Signature;
         if toCheck == expected {
             vgaWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
-            
+
             let mut calculated: u8 = 0;
             let asBytes = ptr as *const u8;
             for index in 0..20 {
@@ -59,7 +60,7 @@ fn checkSignature(ptr: *const RSDP) -> bool {
 
             if calculated != 0 {
                 vgaWriteLine!("Checksum fail (should be 0): {calculated}");
-                return false;
+                return Err(1);
             }
 
             match from_utf8(&(*ptr).Field.OEMID) {
@@ -75,10 +76,10 @@ fn checkSignature(ptr: *const RSDP) -> bool {
             };
 
             // BUGBUG: Delete after debugging
-            (*(*ptr).getRsdt()).walkEntries();
-            return true;
+            let result = (*(*ptr).getRsdt()).walkEntries();
+            return Ok(result);
         }
     }
 
-    return false;
+    return Err(2);
 }

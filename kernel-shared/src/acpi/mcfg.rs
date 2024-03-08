@@ -2,6 +2,8 @@ use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
 use crate::{acpi::mcfgEntry::McfgEntry, assemblyStuff::halt::haltLoop, vgaWriteLine};
 
+use super::pciGeneralDevice::PciGeneralDevice;
+
 // UEFI doesn't doc this and links to something you need to register for, so OSDev it is
 // https://wiki.osdev.org/PCI_Express#Enhanced_Configuration_Mechanism
 // Memory-mapped ConFiGuration space
@@ -21,7 +23,7 @@ pub struct MCFG {
 }
 
 impl MCFG {
-    pub fn printSomeInfo(&self) {
+    pub fn printSomeInfo(&self) -> Option<*const PciGeneralDevice>{
         let length = self.Length;
         let lengthForEntries = length - size_of::<MCFG>() as u32 + 1; // +1 as FirstConfigEntryis the first byte of the first entry, so shouldn't count as the base size of this table
         let size = size_of::<McfgEntry>() as u32;
@@ -44,11 +46,17 @@ impl MCFG {
         );
 
         let base = addr_of!(self.FirstConfigEntry) as *const McfgEntry;
+        let mut result = None;
         unsafe {
             for index in 0..numOfEntries as isize {
                 let entry = base.offset(index);
-                (*entry).printSomeInfo();
+                let maybeResult = (*entry).printSomeInfo();
+                if result == None && maybeResult != None{
+                    result = maybeResult;
+                }
             }
         }
+
+        return result;
     }
 }

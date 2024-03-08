@@ -3,6 +3,8 @@ use crate::{
 };
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
+use super::pciGeneralDevice::PciGeneralDevice;
+
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-table-rsdt
 #[repr(C, packed)]
 pub struct RsdtImpl {
@@ -23,7 +25,7 @@ pub struct RsdtImpl {
 pub type RSDT = Aligned16<RsdtImpl>;
 
 impl RSDT {
-    pub fn walkEntries(&self) {
+    pub fn walkEntries(&self)-> Option<*const PciGeneralDevice> {
         let length = self.Field.Length as usize;
         let extraLength = length - size_of::<RsdtImpl>();
         let remainder = extraLength % 4;
@@ -43,6 +45,7 @@ impl RSDT {
         );
 
         let firstEntryAddress = addr_of!(self.Field.FirstEntry);
+        let mut result = None;
 
         for x in 0..totalEntries {
             let address = firstEntryAddress as usize + x * size_of::<u32>();
@@ -58,9 +61,14 @@ impl RSDT {
                     (*ptr).printSomeInfo();
                 } else if &(*ptr).Signature == b"MCFG" {
                     let ptr = ptr as *const MCFG;
-                    (*ptr).printSomeInfo();
+                    let maybeResult = (*ptr).printSomeInfo();
+                    if result == None && maybeResult != None {
+                        result = maybeResult;
+                    }
                 }
             }
         }
+
+        return  result;
     }
 }
