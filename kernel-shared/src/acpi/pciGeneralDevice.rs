@@ -1,7 +1,10 @@
 use crate::{vgaWrite, vgaWriteLine};
-use core::fmt::Write;
+use core::{fmt::Write, ptr::addr_of};
 
-use super::pciCommonHeader::{PciCommonHeader, PciHeaderType};
+use super::{
+    bar::Bar,
+    pciCommonHeader::{PciCommonHeader, PciHeaderType},
+};
 
 #[repr(C, packed)]
 pub struct PciGeneralDevice {
@@ -28,8 +31,10 @@ impl PciGeneralDevice {
     pub fn tryGet(commonHeader: &PciCommonHeader) -> Option<*const PciGeneralDevice> {
         let headerType = commonHeader.getType();
         match headerType {
-            PciHeaderType::General | PciHeaderType::MultiFunctionGeneral => return Some(commonHeader as *const _ as *const PciGeneralDevice),
-            _ => return  None,
+            PciHeaderType::General | PciHeaderType::MultiFunctionGeneral => {
+                return Some(commonHeader as *const _ as *const PciGeneralDevice)
+            }
+            _ => return None,
         }
     }
 
@@ -42,6 +47,47 @@ impl PciGeneralDevice {
         Self::printBarDetails(5, self.BAR5);
     }
 
+    pub fn tryGetBarAddress(&self, barNumber: u8) -> Option<Bar> {
+        if barNumber >= 6 {
+            return None;
+        }
+
+        let barAddress = match barNumber {
+            0 => addr_of!(self.BAR0),
+            1 => addr_of!(self.BAR1),
+            2 => addr_of!(self.BAR2),
+            3 => addr_of!(self.BAR3),
+            4 => addr_of!(self.BAR4),
+            5 => addr_of!(self.BAR5),
+            _ => return None,
+        };
+
+        let barAddress = barAddress as *mut u32;
+
+        unsafe {
+            let barValue = *barAddress;
+            if barValue == 0 {
+                return None;
+            }
+
+            if barValue & 1 == 1 {
+                // I/O port
+                return None;
+            }
+
+            let memoryType = (barValue >> 1) & 0x3;
+            if memoryType != 0 {
+                // BUGBUG: Only supporting 32-bit for now
+                return None;
+            }
+
+            let address = barValue & 0xFFFFFFF0;
+            let result = Bar::new(address, barValue, barAddress);
+
+            return Some(result);
+        }
+    }
+
     fn printBarDetails(barNumber: u8, barValue: u32) {
         if barValue != 0 {
             vgaWrite!("      BAR{}: 0x{:X}", barNumber, barValue);
@@ -50,11 +96,19 @@ impl PciGeneralDevice {
             } else {
                 let memoryType = (barValue >> 1) & 0x3;
                 match memoryType {
-                    0 => {vgaWriteLine!(" 32-bit memory @ 0x{:X}", barValue & 0xFFFFFFF0);},
-                    1 => {vgaWriteLine!(" (reserved-type)");},
+                    0 => {
+                        vgaWriteLine!(" 32-bit memory @ 0x{:X}", barValue & 0xFFFFFFF0);
+                    }
+                    1 => {
+                        vgaWriteLine!(" (reserved-type)");
+                    }
                     // BUGBUG: Implment fully, needs two entries to get full address
-                    2 => {vgaWriteLine!(" 64-bit memory");},
-                    _ => {vgaWriteLine!(" ({}-type memory)", memoryType);},
+                    2 => {
+                        vgaWriteLine!(" 64-bit memory");
+                    }
+                    _ => {
+                        vgaWriteLine!(" ({}-type memory)", memoryType);
+                    }
                 }
             }
         }

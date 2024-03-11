@@ -1,3 +1,4 @@
+pub mod bar;
 pub mod pciCommonHeader;
 pub mod pciGeneralDevice;
 pub mod descriptionTable;
