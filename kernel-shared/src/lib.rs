@@ -6,3 +6,4 @@ pub mod ahci;
 pub mod assemblyStuff;
 pub mod alignment;
 pub mod textMode;
+pub mod  magicConstants;

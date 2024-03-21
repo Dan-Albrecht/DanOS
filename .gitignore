@@ -22,3 +22,5 @@ obj/
 
 # Us disassembling file to see if they look like the way we expect
 *.disasm.asm
+
+.vs/
