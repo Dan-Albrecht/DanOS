@@ -4,6 +4,7 @@ use crate::{
         SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS,
         SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
     },
+    memoryHelpers::zeroMemory2,
     vgaWriteLine,
 };
 
@@ -49,7 +50,7 @@ impl SataDrive {
                 let value = read_volatile(addr_of!((*port).CMD));
                 if value & CMD_CR_MASK == 0 {
                     break;
-                } 
+                }
             }
 
             (*port).CMD |= CMD_FRE_MASK;
@@ -75,15 +76,25 @@ impl SataDrive {
     pub fn remapStuff(&self) {
         let port = self.Controller.getPort(self.Port);
         unsafe {
-            (*port).CLB = SATA_DRIVE_BASE_CMD_BASE_ADDRESS;
 
-            // In 32-bit space
-            (*port).CLBU = 0;
+            (*port).setClb(SATA_DRIVE_BASE_CMD_BASE_ADDRESS);
+            
 
             let bytePointer = (*port).CLB as *mut u8;
 
             for offset in 0..size_of::<CommandList>() {
                 *(bytePointer.offset(offset as isize)) = 0;
+            }
+
+            let cl = (*port).CLB as *mut CommandList;
+            for index in 0..32 {
+                let header = (*cl).getHeader(index);
+                zeroMemory2(header);
+
+                (*header).setPrdtl(COUNT_OF_PRDT);
+
+                let offset = CommandTable::getFullLength() * index as usize;
+                (*header).setCommandTable(SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS + offset)
             }
 
             (*port).FB = SATA_DRIVE_BASE_FIS_BASE_ADDRESS;
@@ -97,16 +108,6 @@ impl SataDrive {
             // BUGBUG: Create a 0-memory function
             for offset in 0..256 {
                 *(bytePointer.offset(offset)) = 0;
-            }
-
-            let cl = (*port).CLB as *mut CommandList;
-            for index in 0..32 {
-                let header = (*cl).getHeader(index);
-
-                (*header).setPrdtl(COUNT_OF_PRDT);
-
-                let offset = CommandTable::getFullLength() * index as usize;
-                (*header).setCommandTable(SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS + offset)
             }
         }
     }
@@ -176,8 +177,8 @@ impl CommandHeader {
     }
 
     pub fn setCommandTable(&mut self, address: usize) {
-        if address & 0x7F != 0 {
-            vgaWriteLine!("{address} is not properly aligned");
+        if address & 0b111_1111 != 0 {
+            vgaWriteLine!("0x{:X} is not 128-bit aligned", address);
             haltLoop();
         }
 

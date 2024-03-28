@@ -3,7 +3,9 @@
 
 pub mod acpi;
 pub mod ahci;
-pub mod assemblyStuff;
 pub mod alignment;
+pub mod assemblyStuff;
+pub mod magicConstants;
+pub mod memoryHelpers;
+pub mod pageTable;
 pub mod textMode;
-pub mod  magicConstants;

@@ -1,5 +1,6 @@
 use crate::{
     acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice},
+    assemblyStuff::halt::haltLoop,
     vgaWriteLine,
 };
 use core::fmt::Write;
@@ -15,9 +16,9 @@ pub struct ABar {
 #[repr(C, packed)]
 pub struct HbaData {
     pub GHC: GenericHostControl,
-    Reserved: [u8; 0x34],  // Normal Reserved
-    Reserved2: [u8; 0x40], // Reserved for NVMHCI 🤷🏻‍♂️
-    Vendor: [u8; 0x60],    // Vendor specific registers
+    Reserved: [u8; 0x34],    // Normal Reserved
+    Reserved2: [u8; 0x40],   // Reserved for NVMHCI 🤷🏻‍♂️
+    Vendor: [u8; 0x60],      // Vendor specific registers
     pub Port0: PortRegister, // Port X control register. Consult with GHC.PI for find out which ones are actually avilable
     pub Port1: PortRegister,
     pub Port2: PortRegister,
@@ -71,8 +72,8 @@ pub struct GenericHostControl {
 // 3.3 Port Registers (one set per port)
 #[repr(C, packed)]
 pub struct PortRegister {
-    pub CLB: u32,  // Command Line Base Address
-    pub CLBU: u32, // Command Line Base Address Upper 32-Bits
+    pub CLB: u32,  // Command List Base Address
+    pub CLBU: u32, // Command List Base Address Upper 32-Bits
     pub FB: u32,   // FIS Base Address
     pub FBU: u32,  // FIS Base Address Upper 32-Bits
     pub IS: u32,   // Interrupt Status
@@ -91,6 +92,19 @@ pub struct PortRegister {
     pub DEVSLP: u32, // Device Setup
     Reserved2: [u8; 0x28],
     pub VS: u32, // Vendor Specific
+}
+impl PortRegister {
+    pub fn setClb(&mut self, address: u32) {
+        if address & 0b11_1111_1111 != 0 {
+            vgaWriteLine!("0x{:X} is not 1K-byte aligned", address);
+            haltLoop();
+        }
+
+        self.CLB = address;
+
+        // In 32-bit space
+        self.CLBU = 0;
+    }
 }
 
 impl ABar {
