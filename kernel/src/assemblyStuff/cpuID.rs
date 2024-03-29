@@ -43,15 +43,10 @@ unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
         return false;
     }
 
-    let mut eax: u32 = MAXIMUM_EXTENDED_FUNCTION;
-    asm!(
-        // Ask for the maximum extended function
-        "cpuid",
-        inout("eax") eax
-    );
+    let cpuid = CpuId(MAXIMUM_EXTENDED_FUNCTION);
 
     // If this is bigger than
-    if eax > MAXIMUM_EXTENDED_FUNCTION {
+    if cpuid.eax > MAXIMUM_EXTENDED_FUNCTION {
         true
     } else {
         false
@@ -63,17 +58,35 @@ pub unsafe fn Is64BitModeSupported() -> bool {
         return false;
     }
 
-    let mut edx: u32;
-    asm!(
-        "cpuid",
-        in("eax") SOME_EXTENDED_FUNCTION,
-        out("edx") edx,
-    );
+    let cpuid = CpuId(SOME_EXTENDED_FUNCTION);
 
     // 29th bit says if this is supported or not
-    if (edx & (1 << 29)) != 0 {
+    if (cpuid.edx & (1 << 29)) != 0 {
         return true;
     } else {
         return false;
     }
+}
+
+fn CpuId(function: u32) -> CpuIdResult {
+    unsafe {
+        let (mut eax, mut ebx, mut ecx, mut edx): (u32, u32, u32, u32);
+        eax = function;
+        asm!(
+            "cpuid",
+            inout("eax") eax,
+            out("ebx") ebx,
+            out("ecx") ecx,
+            out("edx") edx,
+        );
+
+        return CpuIdResult { eax, ebx, ecx, edx };
+    }
+}
+
+struct CpuIdResult {
+    eax: u32,
+    ebx: u32,
+    ecx: u32,
+    edx: u32,
 }
