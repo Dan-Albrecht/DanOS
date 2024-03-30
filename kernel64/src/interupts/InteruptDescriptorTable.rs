@@ -2,8 +2,8 @@ use core::arch::asm;
 use core::mem::size_of;
 use core::ptr::addr_of;
 
-use crate::assemblyHelpers::breakpoint::HaltLoop;
-use crate::pic::picStuff::disablePic;
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
 use crate::vgaWriteLine;
 
 use super::setup::SetupStuff;
@@ -81,7 +81,7 @@ pub fn InterruptHandlerIntImpl(vector: u8, stackFrame: ExceptionStackFrame) {
 
     // Breakpoint can resume
     if vector != 3 {
-        HaltLoop();
+        haltLoop();
     }
 }
 
@@ -108,7 +108,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
         sp,
     );
 
-    HaltLoop();
+    haltLoop();
 }
 
 pub fn SetIDT() {
@@ -146,17 +146,10 @@ pub fn SetIDT() {
     unsafe {
         asm!(
             "lidt [{0}]",
-            //"ljmp $2f", // OS Dev says do a long jump after loading the table
+            //"ljmp $2f", // BUGBUG? OS Dev says do a long jump after loading the table
             "2:",
             "sti",
             in(reg) addr_of!(idtr),
         );
-    }
-}
-
-pub fn DisableInterrupts() {
-    disablePic();
-    unsafe {
-        asm!("cli");
     }
 }

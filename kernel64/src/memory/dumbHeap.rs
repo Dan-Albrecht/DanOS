@@ -1,5 +1,7 @@
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
 use super::memoryMap::{MemoryMap, MemoryMapEntryType};
-use crate::{assemblyHelpers::breakpoint::HaltLoop, vgaWriteLine};
+use crate::vgaWriteLine;
 use core::{fmt::Write, mem::size_of, ptr::null_mut};
 
 pub struct DumbHeap {
@@ -55,7 +57,7 @@ impl DumbHeap {
         }
 
         vgaWriteLine!("Couldn't find any useable memory!");
-        HaltLoop();
+        haltLoop();
     }
 
     pub fn DoSomething(&mut self, ammount: usize) -> usize {
@@ -64,7 +66,7 @@ impl DumbHeap {
                 if ammount <= (*self.First).Size {
                     if (*self.First).Next != null_mut() {
                         vgaWriteLine!("Next poitner is already populated...");
-                        HaltLoop();
+                        haltLoop();
                     } else {
                         let headerSize = size_of::<HeapEntry>();
                         let totalNeeded = ammount + headerSize;
@@ -94,16 +96,16 @@ impl DumbHeap {
                             return (*self.First).Address;
                         } else {
                             vgaWriteLine!("Allocation wouldn't leave room for next pointer");
-                            HaltLoop();
+                            haltLoop();
                         }
                     }
                 } else {
                     vgaWriteLine!("You want too much");
-                    HaltLoop();
+                    haltLoop();
                 }
             } else {
                 vgaWriteLine!("Don't know how to grow mem list yet");
-                HaltLoop();
+                haltLoop();
             }
         }
     }

@@ -8,7 +8,6 @@
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
 
-mod assemblyHelpers;
 mod interupts;
 mod pic;
 mod magicConstants;
@@ -17,9 +16,8 @@ mod memory;
 use core::fmt::Write;
 use core::panic::PanicInfo;
 
-use assemblyHelpers::breakpoint::{Breakpoint, DivideByZero, HaltLoop};
-use interupts::InteruptDescriptorTable::{DisableInterrupts, SetIDT};
-use kernel_shared::vgaWriteLine;
+use interupts::InteruptDescriptorTable::SetIDT;
+use kernel_shared::{assemblyStuff::{halt::haltLoop, misc::{Breakpoint, DivideByZero}}, vgaWriteLine};
 use memory::memoryMap::MemoryMap;
 
 use magicConstants::MEMORY_MAP_LOCATION;
@@ -55,11 +53,9 @@ pub extern "C" fn DanMain() -> ! {
 
     heap.DumpHeap();
 
-    // BUGBUG: QEMU isn't liking this...
-    /*vgaWriteLine!("Now let's divide by 0...");
+    vgaWriteLine!("Now let's divide by 0...");
     DivideByZero();
 
     vgaWriteLine!("!! We succesfuly divide by zere. We broke.");
-    DisableInterrupts();*/
-    HaltLoop();
+    haltLoop();
 }
