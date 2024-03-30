@@ -25,8 +25,10 @@ use magicConstants::MEMORY_MAP_LOCATION;
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic(info: &PanicInfo) -> ! {
+    vgaWriteLine!("64-bit kernel panic!");
+    vgaWriteLine!("{info}");
+    haltLoop();
 }
 
 #[no_mangle]
