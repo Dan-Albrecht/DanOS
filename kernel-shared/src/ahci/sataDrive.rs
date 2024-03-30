@@ -11,7 +11,7 @@ use crate::{
 use super::controller::Controller;
 use core::{
     fmt::Write,
-    mem::{offset_of, size_of},
+    mem::size_of,
     ptr::{addr_of, read_volatile},
 };
 

@@ -3,8 +3,8 @@ use core::{fmt::Write, ptr::read_volatile};
 
 pub struct Bar {
     pub BarTarget: u32, // Where the BAR points to with metadata bits masked off
-    Value: u32,         // Original value of the BAR value with the metadata bits intact
-    AddressSpace: u32,  // The extend of memory this points to
+    _Value: u32,        // Original value of the BAR value with the metadata bits intact
+    _AddressSpace: u32, // The extent of memory this points to
 }
 impl Bar {
     pub fn new(address: u32, barValue: u32, barAddress: *mut u32) -> Bar {
@@ -22,8 +22,8 @@ impl Bar {
 
             return Bar {
                 BarTarget: address,
-                AddressSpace: size,
-                Value: barValue,
+                _AddressSpace: size,
+                _Value: barValue,
             };
         }
     }

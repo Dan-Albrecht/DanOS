@@ -7,7 +7,7 @@ use core::fmt::Write;
 
 // AHCI Base Address Register
 pub struct ABar {
-    Bar: Bar,
+    _Bar: Bar,
     pub HBA: *const HbaData,
 }
 
@@ -114,7 +114,7 @@ impl ABar {
             vgaWriteLine!("Got BAR 5");
             let data = bar.BarTarget as *const HbaData;
             return Some(ABar {
-                Bar: bar,
+                _Bar: bar,
                 HBA: data,
             });
         }

@@ -2,8 +2,6 @@ use core::fmt::Write;
 use core::mem::size_of;
 
 use crate::{
-    assemblyStuff::halt::haltLoop,
-    magicConstants::PHYSICAL_ADDRESS_OF_PAGE_BOOK,
     memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
     vgaWriteLine,
 };
