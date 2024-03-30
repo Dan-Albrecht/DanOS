@@ -4,7 +4,6 @@
 #![feature(asm_const)]
 
 mod a20Stuff;
-mod assemblyStuff;
 mod diskStuff;
 mod gdtStuff;
 mod pagingStuff;
@@ -13,9 +12,9 @@ use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
-use assemblyStuff::cpuID::Is64BitModeSupported;
 use diskStuff::read::readBytes;
 use gdtStuff::Setup64BitGDT;
+use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::vgaWriteLine;
 use pagingStuff::enablePaging;

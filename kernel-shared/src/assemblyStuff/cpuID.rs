@@ -73,9 +73,14 @@ fn CpuId(function: u32) -> CpuIdResult {
         let (mut eax, mut ebx, mut ecx, mut edx): (u32, u32, u32, u32);
         eax = function;
         asm!(
+            // LLVM doesn't want us messing with bx, so
+            // indirect through edi
+            "push ebx",
             "cpuid",
+            "mov edi, ebx",
+            "pop ebx",
             inout("eax") eax,
-            out("ebx") ebx,
+            out("edi") ebx,
             out("ecx") ecx,
             out("edx") edx,
         );
