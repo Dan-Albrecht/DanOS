@@ -1,4 +1,7 @@
+use core::fmt::Write;
 use core::mem::size_of;
+
+use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
 pub unsafe fn zeroMemory(address: usize, ammount: usize) {
     assert!(ammount <= isize::MAX as usize);
@@ -12,4 +15,53 @@ pub unsafe fn zeroMemory2<T>(address: *const T) {
     let address = address as usize;
     let ammount = size_of::<T>();
     zeroMemory(address, ammount);
+}
+
+pub fn haltOnMisaligned(msg: &'static str, address: usize, alignment: usize) {
+    let mask = alignment - 1;
+    if address & mask != 0 {
+        vgaWriteLine!("{} 0x{:X} is not 0x{:X} aligned", msg, address, alignment);
+        let theMod = address % alignment;
+        let low = address - theMod;
+        let high = low + alignment;
+        vgaWriteLine!("Maybe 0x{:X} or 0x{:X}", low, high);
+        haltLoop();
+    }
+}
+
+pub fn alignUp(address: usize, alignment: usize) -> usize {
+    let theMod = address % alignment;
+    if theMod == 0 {
+        return address;
+    }
+    let low = address - theMod;
+    let high = low + alignment;
+    return high;
+}
+
+pub(crate) fn setCommonBitAndValidate(
+    msg: &'static str,
+    address: usize,
+    present: bool,
+    writable: bool,
+    cachable: bool,
+) -> u64 {
+
+    haltOnMisaligned(msg, address, 0x1000);
+
+    let mut address = address;
+
+    if present {
+        address |= 1 << 0;
+    }
+
+    if writable {
+        address |= 1 << 1;
+    }
+
+    if !cachable {
+        address |= 1 << 4;
+    }
+
+    return address as u64;
 }

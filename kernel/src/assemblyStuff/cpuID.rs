@@ -80,13 +80,13 @@ fn CpuId(function: u32) -> CpuIdResult {
             out("edx") edx,
         );
 
-        return CpuIdResult { eax, ebx, ecx, edx };
+        return CpuIdResult { eax, _ebx: ebx, _ecx: ecx, edx };
     }
 }
 
 struct CpuIdResult {
     eax: u32,
-    ebx: u32,
-    ecx: u32,
+    _ebx: u32,
+    _ecx: u32,
     edx: u32,
 }

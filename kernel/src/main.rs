@@ -53,8 +53,9 @@ const fn getKernel64Address() -> u16 {
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
     vgaWriteLine!("32-bit kernel panic!");
+    vgaWriteLine!("{info}");
     haltLoop();
 }
 

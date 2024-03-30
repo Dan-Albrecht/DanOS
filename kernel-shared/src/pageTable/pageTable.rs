@@ -1,3 +1,7 @@
+use crate::memoryHelpers::setCommonBitAndValidate;
+
+use super::physicalPage::PhysicalPage;
+
 #[repr(C, packed)]
 pub struct PageTable {
     // PTE
@@ -9,38 +13,20 @@ impl PageTable {
     pub fn setEntry(
         &mut self,
         index: usize,
-        address: u64,
+        entry: *const PhysicalPage,
         present: bool,
         writable: bool,
         cachable: bool,
     ) {
-        let mut address = address;
-
-        assert!(address & 0xFFF == 0, "Entry isn't properly aligned");
-        assert!(
-            address & 0xFFF0_0000_0000_0000 != 0,
-            "This is more memory that the processor supports..."
-        );
-
-        if present {
-            address |= 1;
-        }
-
-        if writable {
-            address |= 1 << 1;
-        }
-
-        if !cachable {
-            address |= 1 << 4;
-        }
+        let address = setCommonBitAndValidate("PTE", entry as usize, present, writable, cachable);
 
         self.Entries[index] = address;
     }
 
-    pub fn getAddressForEntry(&self, index: usize) -> u64 {
+    pub fn getAddressForEntry(&self, index: usize) -> *const PhysicalPage {
         let mut entry = self.Entries[index];
         entry = entry & 0xF_FFFF_FFFF_F000;
 
-        return entry;
+        return entry as *const PhysicalPage;
     }
 }

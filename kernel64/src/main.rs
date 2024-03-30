@@ -55,10 +55,11 @@ pub extern "C" fn DanMain() -> ! {
 
     heap.DumpHeap();
 
-    vgaWriteLine!("Now let's divide by 0...");
+    // BUGBUG: QEMU isn't liking this...
+    /*vgaWriteLine!("Now let's divide by 0...");
     DivideByZero();
 
     vgaWriteLine!("!! We succesfuly divide by zere. We broke.");
-    DisableInterrupts();
+    DisableInterrupts();*/
     HaltLoop();
 }
