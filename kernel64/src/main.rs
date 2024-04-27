@@ -9,15 +9,22 @@
 #![feature(const_trait_impl)]
 
 mod interupts;
-mod pic;
 mod magicConstants;
 mod memory;
+mod pic;
 
 use core::fmt::Write;
 use core::panic::PanicInfo;
 
 use interupts::InteruptDescriptorTable::SetIDT;
-use kernel_shared::{assemblyStuff::{halt::haltLoop, misc::{Breakpoint, DivideByZero}}, vgaWriteLine};
+use kernel_shared::{
+    assemblyStuff::{
+        halt::haltLoop,
+        misc::{Breakpoint, DivideByZero},
+    },
+    pageTable::pageBook::PageBook,
+    vgaWriteLine,
+};
 use memory::memoryMap::MemoryMap;
 
 use magicConstants::MEMORY_MAP_LOCATION;
@@ -33,10 +40,15 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
-    // Previous stage left the cursor on the last line
-    vgaWriteLine!("\r\nWelcome to 64-bit Rust!");
+    vgaWriteLine!("Welcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+    let pageBook: PageBook;
+    unsafe {
+        pageBook = PageBook::fromExisting64();
+    }
+
+    vgaWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
     vgaWriteLine!("Configuring PIC...");
     disablePic();

@@ -69,14 +69,14 @@ impl MemoryMap {
             let entryType = entry.Type;
             result.Entries[index].Type = entryType;
 
-            vgaWriteLine!(
+            /*vgaWriteLine!(
                 "{}: Base - 0x{:X} Length - 0x{:X} Type: 0x{:X} Attributes: 0x{:X}",
                 index,
                 addr,
                 length,
                 entryType,
                 at
-            );
+            );*/
 
             entryAddress += size_of::<MemoryMapEntry>();
         }

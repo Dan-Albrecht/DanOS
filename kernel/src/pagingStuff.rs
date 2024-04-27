@@ -5,15 +5,14 @@ use kernel_shared::{assemblyStuff::halt::haltLoop, pageTable::pageBook::PageBook
 
 pub fn enablePaging() {
     unsafe {
-        vgaWriteLine!("Enable PAE");
+        vgaWriteLine!("Enabling PAE");
         enablePae();
-        vgaWriteLine!("Set page data");
+        vgaWriteLine!("Setting page data");
         setPageData();
-        vgaWriteLine!("Enable long mode");
+        vgaWriteLine!("Enabling long mode");
         enableLongMode();
         vgaWriteLine!("Enabling paging");
         reallyEnablePaging();
-        vgaWriteLine!("done (for now)");
     }
 }
 
@@ -51,7 +50,7 @@ unsafe fn setPageData() {
         vgaWriteLine!("Page table structs in 64-bit space, but we're still in 32");
         haltLoop();
     }
-    vgaWriteLine!("Registering book");
+    vgaWriteLine!("Registering book at 0x{:X}", cr3);
     asm!(
         "mov cr3, eax",
         in("eax") cr3 as u32,

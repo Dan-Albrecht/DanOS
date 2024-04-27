@@ -1,5 +1,5 @@
-use core::fmt::Write;
 use core::mem::size_of;
+use core::fmt::Write;
 
 use crate::{
     memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
@@ -68,9 +68,16 @@ impl PageBook {
     }
 
     // This will just blindly assume you've already created this
-    pub fn fromExisting() -> *const PageBook {
-        // Probalby just pull from teh control registers?
-        todo!()
+    #[cfg(target_pointer_width = "64")]
+    pub unsafe fn fromExisting64() -> PageBook {
+        let cr3: u64;
+
+        core::arch::asm!(
+            "mov rax, cr3",
+            out("rax") cr3,
+        );
+
+        return PageBook { Entry: cr3 as u64 };
     }
 
     pub fn setEntry(&mut self, pml4: *const PageMapLevel4Table, pcd: bool, pwt: bool) {
