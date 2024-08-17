@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 #![allow(non_snake_case)]
-#![feature(asm_const)]
 
 mod a20Stuff;
 mod gdtStuff;

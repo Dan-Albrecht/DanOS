@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 #![allow(non_snake_case)]
-#![feature(asm_const)]
 #![feature(naked_functions)]
 #![feature(abi_x86_interrupt)]
 #![feature(used_with_arg)]
