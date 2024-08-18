@@ -26,7 +26,7 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
     
     Write-Host "Assembling Stage1.5 with origin 0x$(([int]$origin).ToString("X")), will find Stage2 at 0x$(([int]$stage2Address).ToString("X")), and will copy GDT to 0x$(([int]$gdtAddress).ToString("X"))"
-    nasm.exe .\bootloaderStage1_5.asm -DSTAGE_1_5_LOAD_TARGET="$origin" -DMEMORY_MAP_TARGET="$memoryMapTarget" -DSTAGE_2_JUMP_TARGET="$stage2Address" -DGDT_ADDRESS="$gdtAddress" -f bin -o .\bootloaderStage1_5.bin
+    nasm.exe .\bootloaderStage1_5.asm -Werror -DSTAGE_1_5_LOAD_TARGET="$origin" -DMEMORY_MAP_TARGET="$memoryMapTarget" -DSTAGE_2_JUMP_TARGET="$stage2Address" -DGDT_ADDRESS="$gdtAddress" -f bin -o .\bootloaderStage1_5.bin
 
     # Dissassemble to see what we actually got
     ndisasm.exe "-o$origin" -b 16 .\bootloaderStage1_5.bin > .\bootloaderStage1_5.disasm.asm

@@ -21,7 +21,7 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
 
     Write-Host "Assembling Stage2 with origin 0x$(([int]$origin).ToString("X")), will find Kernel32 at 0x$(([int]$kernel32Address).ToString("X"))"
-    nasm.exe .\bootloaderStage2.asm -DSTAGE_2_LOAD_TARGET="$origin" -DKERNEL32_JUMP_TARGET="$kernel32Address" -f bin -o .\bootloaderStage2.bin
+    nasm.exe .\bootloaderStage2.asm -Werror -DSTAGE_2_LOAD_TARGET="$origin" -DKERNEL32_JUMP_TARGET="$kernel32Address" -f bin -o .\bootloaderStage2.bin
 
     # Dissassemble to see what we actually got
     ndisasm.exe "-o$origin" -b 32 .\bootloaderStage2.bin > .\bootloaderStage2.disasm.asm
