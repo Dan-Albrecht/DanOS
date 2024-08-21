@@ -7,6 +7,7 @@ const SOME_EXTENDED_FUNCTION: u32 = 0x80000001;
 
 // BUGBUG: The loaded assembly is screwed up, its only because we run through a ton of 0x0 instructions
 // we even make it here.
+#[cfg(target_pointer_width = "32")]
 unsafe fn IsCpuIDSupported() -> bool {
     let eax: u32;
 
@@ -38,6 +39,7 @@ unsafe fn IsCpuIDSupported() -> bool {
     }
 }
 
+#[cfg(target_pointer_width = "32")]
 unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
     if !IsCpuIDSupported() {
         return false;
@@ -53,6 +55,7 @@ unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
     }
 }
 
+#[cfg(target_pointer_width = "32")]
 pub unsafe fn Is64BitModeSupported() -> bool {
     if !AreExtendedCpuIDFunctionsSupported() {
         return false;
@@ -68,6 +71,7 @@ pub unsafe fn Is64BitModeSupported() -> bool {
     }
 }
 
+#[cfg(target_pointer_width = "32")]
 fn CpuId(function: u32) -> CpuIdResult {
     unsafe {
         let (mut eax, mut ebx, mut ecx, mut edx): (u32, u32, u32, u32);
@@ -85,10 +89,16 @@ fn CpuId(function: u32) -> CpuIdResult {
             out("edx") edx,
         );
 
-        return CpuIdResult { eax, _ebx: ebx, _ecx: ecx, edx };
+        return CpuIdResult {
+            eax,
+            _ebx: ebx,
+            _ecx: ecx,
+            edx,
+        };
     }
 }
 
+#[cfg(target_pointer_width = "32")]
 struct CpuIdResult {
     eax: u32,
     _ebx: u32,

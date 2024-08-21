@@ -19,3 +19,6 @@ https://os.phil-opp.com/edition-1/
 
 Custom linker setup might help with our unexpected layout (and giant size)
 https://www.rustyelectrons.com/posts/1-bare-metal-rust-bootstrapped-by-c/
+
+https://github.com/rust-osdev
+https://github.com/rust-osdev/bootloader

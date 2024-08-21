@@ -44,6 +44,16 @@ superHault:
     hlt             ; Go ahead and park
     jmp .hault      ; And if somehow we executed again...
 
+; Disk Address Packet Structure
+DAPS:
+    db 0x10     ; Size of packet
+    db 0x0      ; Always 0
+readCount:    dw DISK_DATA_SECTOR_LOAD_COUNT ; Number of sectors to load, set to actual read after complete. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care.
+    dw 0x0      ; Target address offset
+    dw DISK_DATA_MEMORY_SEGMENT    ; Target address segment
+    dd 0x1      ; Lower 32-bits of LBA. Starts at 0. This code is in 0 and then the rest of the code is immediately next.
+    dd 0x0      ; Upper 16-bits of LBA.
+
 ; Loads code to DISK_DATA_MEMORY_SEGMENT:0
 loadFromDisk:
     pusha
@@ -64,19 +74,13 @@ loadFromDisk:
     mov si, loadMsg3
     call printString
 
-    mov ah, 0x2         ; Read Sectors From Drive function
-    ; AL (sectors to read) already set
-    mov ch, 0x0         ; Read cylinder 0
-    mov cl, 0x2         ; Read sector 2. This bootloader was read from sector 1
-                        ; and we've put everything else to load right after it.
-    mov dh, 0x0         ; Read head 0
+    mov si, DAPS
+    mov ah, 0x42    ; Extended read function
     ; DL (read drive) is set by bios and we hopefully didn't overwrite it.
-    mov bx, DISK_DATA_MEMORY_SEGMENT
-    mov es, bx          ; Setup es:bx memory target
-    xor bx, bx          ; No segment offset to load to
-
-    int 0x13            ; Do it
+    int 0x13
     jc readFailed
+
+    mov ax, [readCount]
     cmp al, DISK_DATA_SECTOR_LOAD_COUNT
     jne readMismatch
 
@@ -87,7 +91,7 @@ loadFromDisk:
 readFailed:
     mov si, readFailedMsg
     call printString
-    shr ax, 8       ; Move this to the low byte so it only show the error code
+    shr ax, 8       ; Error code is just in AH, so shift it down so that'll all that is present.
     call printHex16
     jmp superHault
 
@@ -163,10 +167,10 @@ readFailedMsg       db "Disk read failed with: ", 0
 readMismatchMsg     db "Wrong count of sectors read: ", 0
 to32BitMsg          db `Switching to 32bit...\r\n`, 0
 hexPrefix           db "0x", 0
-unexpectedReturn    db `Execution returned to Stage1 bootloader. Something is really busted.\r\n`, 0
+unexpectedReturn    db `Retruned to Stage1...\r\n`, 0
 haltMsg             db `\r\nEnd of line.`, 0
 
-times 440 - ($ - $$) db 0xDA ; Above can be a max of 440 bytes add padding as needed so below will be at exact needed offsets
+times 440 - ($ - $$) db 0xDA ; Above can be a max of 440 bytes; add padding as needed so below will be at exact needed offsets
 
 ; MBR Data
 dd 0            ; Unique Disk ID. Aparently some OSs will just randomly overwrite

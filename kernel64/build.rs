@@ -8,13 +8,18 @@ fn main() {
 
     // The default is here only because we want to just run a compile without
     // needing to know what the correct value is.
+    // This is the address of the .text section loaded into memory. We might end up loading file junk (e.g. ELF header) before it
     let kernel64_load = std::env::var("KERNEL64_LOAD_TARGET").unwrap_or("0".to_string());
 
-    println!("cargo:warning=Not a warning. Just FYI start address is {}.", kernel64_load);
+    println!(
+        "cargo:warning=Not a warning. Just FYI start address is {}.",
+        kernel64_load
+    );
 
     println!(
         "cargo:rustc-link-arg-bins=--defsym=KERNEL64_LOAD_TARGET={}",
-        kernel64_load);
+        kernel64_load
+    );
 
     println!(
         "cargo:rustc-link-arg-bins=--script={}",

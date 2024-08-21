@@ -4,7 +4,8 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
-    $loadMemoryTarget = 0x7E00
+    $loadMemoryTarget = 0x8000
+    $kernel64JumpAddress = 0x8100
     $memoryMapTarget = 0x6000
 
     # I really hate you PowerShell
@@ -13,9 +14,10 @@ try {
     $STAGE_4_LOAD_TARGET = $loadMemoryTarget
 
     # Secret handshake to eventaully get this passed to the linker
-    $env:KERNEL64_LOAD_TARGET = "0x$(([int]$STAGE_4_LOAD_TARGET).ToString("X"))"
+    $env:KERNEL64_LOAD_TARGET = "0x$($kernel64JumpAddress.ToString("X"))"
+    $env:KERNEL64_IMAGE_START = "0x$($loadMemoryTarget.ToString("X"))"
     TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64'
-    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.bin -Raw -AsByteStream
+    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
     $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
@@ -36,6 +38,11 @@ try {
     $stage1_5Segment = $STAGE_1_5_LOAD_TARGET -shr 4
 
     $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors + $stage1_5Sectors
+
+    if($neededSectors -gt 0x80) {
+        # We're already really close. Likely will just need to break this into chunks.
+        Write-Error "Needed sectors of $neededSectors is larder than we think one of the emulators can handle in one shot"
+    }
 
     # Divide by 16 to get to segment
     $diskDataSegment = $loadMemoryTarget -shr 4
