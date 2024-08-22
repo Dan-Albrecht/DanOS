@@ -24,8 +24,12 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
     $PSNativeCommandUseErrorActionPreference = $true
 
-    Write-Host "Assembling Stage1 with 0x$(([int]$sectorsToLoad).ToString("X")) sector to load, which will be loaded to segment 0x$(([int]$targetMemorySegment).ToString("X")), and we'll hand off to 0x$(([int]$handoffToSegment).ToString("X"))"
-    nasm.exe .\bootloaderStage1.asm -Werror -DDISK_DATA_SECTOR_LOAD_COUNT="$sectorsToLoad" -DDISK_DATA_MEMORY_SEGMENT="$targetMemorySegment" -DSTAGE1_5_TARGET_MEMORY_SEGMENT="$handoffToSegment" -f bin -o .\bootloaderStage1.bin
+    # We can only load a max of 0x80 sectors in one shot, so need to chunk it
+    $fullBlocks = [System.Math]::Floor($sectorsToLoad / 0x80)
+    $remainingSectors = $sectorsToLoad - ($fullBlocks * 0x80)
+
+    Write-Host "Assembling Stage1 with 0x$(([int]$sectorsToLoad).ToString("X")) sector to load across 0x$(([int]$fullBlocks).ToString("X")) full and 0x$(([int]$remainingSectors).ToString("X")) remaining, which will be loaded to segment 0x$(([int]$targetMemorySegment).ToString("X")), and we'll hand off to 0x$(([int]$handoffToSegment).ToString("X"))"
+    nasm.exe .\bootloaderStage1.asm -Werror -DFULL_SECTOR_BLOCKS="$fullBlocks" -DREMAINING_SECTORS="$remainingSectors" -DDISK_DATA_MEMORY_SEGMENT="$targetMemorySegment" -DSTAGE1_5_TARGET_MEMORY_SEGMENT="$handoffToSegment" -f bin -o .\bootloaderStage1.bin
 
     # Dissassemble to see what we actually got
     ndisasm.exe -o0x7c00 -b 16 .\bootloaderStage1.bin > .\bootloaderStage1.disasm.asm

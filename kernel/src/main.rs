@@ -60,7 +60,6 @@ pub extern "C" fn DanMain() -> ! {
     unsafe {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
-        //readBytes();
 
         if IsTheA20LineEnabled() {
             if Is64BitModeSupported() {

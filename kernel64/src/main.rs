@@ -20,9 +20,7 @@ use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
         misc::{Breakpoint, DivideByZero},
-    },
-    pageTable::pageBook::PageBook,
-    vgaWriteLine,
+    }, diskStuff::read::readBytes, pageTable::pageBook::PageBook, vgaWriteLine
 };
 use memory::memoryMap::MemoryMap;
 
@@ -65,6 +63,8 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
 
     heap.DumpHeap();
+
+    readBytes();
 
     vgaWriteLine!("Now let's divide by 0...");
     DivideByZero();

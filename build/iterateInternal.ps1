@@ -39,11 +39,6 @@ try {
 
     $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors + $stage1_5Sectors
 
-    if($neededSectors -gt 0x80) {
-        # We're already really close. Likely will just need to break this into chunks.
-        Write-Error "Needed sectors of $neededSectors is larder than we think one of the emulators can handle in one shot"
-    }
-
     # Divide by 16 to get to segment
     $diskDataSegment = $loadMemoryTarget -shr 4
 

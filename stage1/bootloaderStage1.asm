@@ -46,13 +46,13 @@ superHault:
 
 ; Disk Address Packet Structure
 DAPS:
-    db 0x10     ; Size of packet
-    db 0x0      ; Always 0
-readCount:    dw DISK_DATA_SECTOR_LOAD_COUNT ; Number of sectors to load, set to actual read after complete. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care.
-    dw 0x0      ; Target address offset
-    dw DISK_DATA_MEMORY_SEGMENT    ; Target address segment
-    dd 0x1      ; Lower 32-bits of LBA. Starts at 0. This code is in 0 and then the rest of the code is immediately next.
-    dd 0x0      ; Upper 16-bits of LBA.
+                    db 0x10                         ; Size of packet
+                    db 0x0                          ; Always 0
+    readCount:      dw 0x80                         ; Number of sectors to load, set to actual read after complete. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care.
+                    dw 0x0                          ; Target address offset
+    targetSegment:  dw DISK_DATA_MEMORY_SEGMENT     ; Target address segment
+    lba:            dd 0x1                          ; Lower 32-bits of LBA. Starts at 0. This code is in 0 and then the rest of the code is immediately next.
+                    dd 0x0                          ; Upper 16-bits of LBA.
 
 ; Loads code to DISK_DATA_MEMORY_SEGMENT:0
 loadFromDisk:
@@ -68,20 +68,39 @@ loadFromDisk:
     mov si, loadMsg2
     call printString
 
-    mov al, DISK_DATA_SECTOR_LOAD_COUNT
+    mov al, FULL_SECTOR_BLOCKS
+    call printHex16     ; Prints sectores we'll read
+
+    mov si, loadMsg2_5
+    call printString
+
+    mov al, REMAINING_SECTORS
     call printHex16     ; Prints sectores we'll read
 
     mov si, loadMsg3
     call printString
 
     mov si, DAPS
-    mov ah, 0x42    ; Extended read function
     ; DL (read drive) is set by bios and we hopefully didn't overwrite it.
+
+    mov cx, FULL_SECTOR_BLOCKS
+
+loadFullBlock:    
+    mov ah, 0x42    ; Extended read function
+    int 0x13
+    jc readFailed
+    add [targetSegment], word 0x1000
+    add [lba], dword 0x80
+    loop loadFullBlock
+
+loadPartialBlock:
+    mov [readCount], word REMAINING_SECTORS
+    mov ah, 0x42    ; Extended read function
     int 0x13
     jc readFailed
 
     mov ax, [readCount]
-    cmp al, DISK_DATA_SECTOR_LOAD_COUNT
+    cmp al, REMAINING_SECTORS
     jne readMismatch
 
     popa
@@ -160,10 +179,11 @@ printHex16:
     ret
 
 welcomeMsg          db `Welcome to DanOS!\r\n`, 0
-loadMsg1            db "Reading from drive ", 0
+loadMsg1            db "Read drive ", 0
 loadMsg2            db " for ", 0
-loadMsg3            db ` sectors...\r\n`, 0
-readFailedMsg       db "Disk read failed with: ", 0
+loadMsg2_5          db " blocks and ", 0
+loadMsg3            db ` sectors\r\n`, 0
+readFailedMsg       db "Read failed with: ", 0
 readMismatchMsg     db "Wrong count of sectors read: ", 0
 to32BitMsg          db `Switching to 32bit...\r\n`, 0
 hexPrefix           db "0x", 0
