@@ -14,5 +14,17 @@
                 "gdb-remote localhost:3333"
             ]
         },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug from WSL via GDB",
+            "executable": "${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink",
+            // Find host via:
+            // ip route show | grep -i default | awk '{ print $3}'
+            "target": "172.19.176.1:3333",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+        },
     ]
 }

@@ -48,6 +48,7 @@ fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u
     let expected = *b"RSD PTR ";
     unsafe {
         let toCheck = (*ptr).Field.Signature;
+
         if toCheck == expected {
             vgaWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
 

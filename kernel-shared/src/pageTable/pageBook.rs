@@ -2,8 +2,7 @@ use core::mem::size_of;
 use core::fmt::Write;
 
 use crate::{
-    memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
-    vgaWriteLine,
+    magicConstants::PAGE_TABLE_LOCATION, memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2}, vgaWriteLine
 };
 
 use super::{
@@ -25,8 +24,11 @@ impl PageBook {
         unsafe {
             //let pt = size_of::<PhysicalPage>() * 512;
             // BUGBUG: We want all the paging structure within paged memory, I think
-            let pt = 0x10_0000;
-            let pt = alignUp(pt, 0x1000) as *mut PageTable;
+            let pt = PAGE_TABLE_LOCATION;
+
+            // BUGBUG: Make this compile time
+            haltOnMisaligned("The page table", pt, 0x1000);
+            let pt = pt as *mut PageTable;
             zeroMemory2(pt);
             vgaWriteLine!("PageTable @ 0x{:X}", pt as usize);
 

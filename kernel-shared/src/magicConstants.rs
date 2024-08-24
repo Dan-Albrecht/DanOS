@@ -11,3 +11,5 @@ pub static RANDOM_ODD_MEGABYTE: usize = 0x112345;
 pub static RANDOM_EVEN_MEGABYTE: usize = 0x012345;
 
 pub static IDT_ADDRESS: usize = 0x4000;
+
+pub static PAGE_TABLE_LOCATION: usize = 0x50_0000;
