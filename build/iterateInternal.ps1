@@ -6,7 +6,7 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
     $loadMemoryTarget = 0x8000
     $kernel64JumpAddress = 0x8100
-    $memoryMapTarget = 0x6000
+    $memoryMapTarget = 0x1000
     $debug = $true
 
     # I really hate you PowerShell
@@ -19,11 +19,11 @@ try {
     $env:KERNEL64_IMAGE_START = "0x$($loadMemoryTarget.ToString("X"))"
 
     if ($debug) {
-        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $true } -message 'Kernel64'
+        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $true } -message 'Kernel64dbg'
         $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\debug\kernel64.strippedWithDebugLink -Raw -AsByteStream
     }
     else {
-        TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64'
+        TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64rel'
         $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
     }
     

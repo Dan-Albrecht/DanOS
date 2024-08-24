@@ -8,7 +8,6 @@
 #![feature(const_trait_impl)]
 
 mod interupts;
-mod magicConstants;
 mod memory;
 mod pic;
 
@@ -20,11 +19,9 @@ use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
         misc::{Breakpoint, DivideByZero},
-    }, diskStuff::read::readBytes, pageTable::pageBook::PageBook, vgaWriteLine
+    }, diskStuff::read::readBytes, magicConstants::MEMORY_MAP_LOCATION, pageTable::pageBook::PageBook, vgaWriteLine
 };
 use memory::memoryMap::MemoryMap;
-
-use magicConstants::MEMORY_MAP_LOCATION;
 
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 

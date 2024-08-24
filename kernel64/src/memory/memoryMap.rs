@@ -13,7 +13,6 @@ pub enum MemoryMapEntryType {
     OemDefined,
 }
 
-#[repr(C, packed)]
 pub struct MemoryMap {
     // BUGBUG: Figure out how to cojule this without hardcoding a waste
     pub Entries: [MemoryMapEntry; 32],
@@ -37,13 +36,14 @@ impl MemoryMap {
             totalEntries = *(address as *const usize);
         }
 
-        vgaWriteLine!(
-            "We should read 0x{:X} entries from 0x{:X} + 16 byte",
-            totalEntries,
-            address
-        );
-
         let mut entryAddress = address + 0x10;
+
+        vgaWriteLine!(
+            "We should read 0x{:X} entries from 0x{:X}",
+            totalEntries,
+            entryAddress
+        );
+        
         let mut result = MemoryMap {
             Count: totalEntries as u8,
             Entries: Default::default(),

@@ -3,6 +3,7 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::magicConstants::IDT_ADDRESS;
 
 use crate::vgaWriteLine;
 
@@ -112,34 +113,37 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub fn SetIDT() {
-
-    // We're the kernel, we can write wherver we want
-    // BUGUBG: Codify this somewhere so we can move it easier later and not randomly overwrite it
-    let randomPointer = 0x12000 as *mut Table;
+    let idt = IDT_ADDRESS as *mut Table;
 
     // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,
     // but I'd like to still do it directly.
-    let bytePointer = randomPointer as *mut u8;    
+    let bytePointer = idt as *mut u8;
     for x in 0..(size_of::<Table>() as isize) {
         unsafe {
             *bytePointer.offset(x) = 0;
         }
     }
 
-    SetupStuff(randomPointer);
-    let limit:u16;
+    SetupStuff(idt);
+    let limit: u16;
 
-    unsafe{
+    unsafe {
         let size = size_of::<Entry>();
-        let length = (*randomPointer).Table.Entries.len();
+        let length = (*idt).Table.Entries.len();
 
         // The last byte of the table
         limit = (size * length - 1) as u16;
-        vgaWriteLine!("IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.", randomPointer as usize, size, length, limit);
+        vgaWriteLine!(
+            "IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.",
+            idt as usize,
+            size,
+            length,
+            limit
+        );
     }
 
     let idtr = IDTR {
-        Base: randomPointer as usize,
+        Base: idt as usize,
         Limit: limit,
     };
 
