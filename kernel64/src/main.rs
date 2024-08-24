@@ -69,6 +69,6 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Now let's divide by 0...");
     DivideByZero();
 
-    vgaWriteLine!("!! We succesfuly divide by zere. We broke.");
+    vgaWriteLine!("!! We succesfuly divide by zero. We broke.");
     haltLoop();
 }

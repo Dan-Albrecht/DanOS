@@ -7,6 +7,7 @@ try {
     $loadMemoryTarget = 0x8000
     $kernel64JumpAddress = 0x8100
     $memoryMapTarget = 0x6000
+    $debug = $true
 
     # I really hate you PowerShell
     [System.Environment]::CurrentDirectory = ${PSScriptRoot}
@@ -16,8 +17,16 @@ try {
     # Secret handshake to eventaully get this passed to the linker
     $env:KERNEL64_LOAD_TARGET = "0x$($kernel64JumpAddress.ToString("X"))"
     $env:KERNEL64_IMAGE_START = "0x$($loadMemoryTarget.ToString("X"))"
-    TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64'
-    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
+
+    if ($debug) {
+        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $true } -message 'Kernel64'
+        $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\debug\kernel64.strippedWithDebugLink -Raw -AsByteStream
+    }
+    else {
+        TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64'
+        $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
+    }
+    
     $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)

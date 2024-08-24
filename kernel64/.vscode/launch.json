@@ -7,7 +7,8 @@
             "request": "custom",
             "name": "Debug from Windows",
             "targetCreateCommands": [
-                "target create ${workspaceRoot}/target/x86_64-unknown-none/release/kernel64.strippedWithDebugLink"
+                // "target create ${workspaceRoot}/target/x86_64-unknown-none/release/kernel64.strippedWithDebugLink"
+                "target create ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink"
             ],
             "processCreateCommands": [
                 "gdb-remote localhost:3333"

@@ -1,3 +1,15 @@
+<#
+.SYNOPSIS
+Builds the 64 bit kernel
+
+.PARAMETER debug
+True to build debug, false to build release
+#>
+
+param (
+    [int]$debug = $false
+)   
+
 $ErrorActionPreference = 'Stop'
 Push-Location ${PSScriptRoot}
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUserDeclaredVarsMoreThanAssignments', 'This is a global PS state variable')]
@@ -12,15 +24,22 @@ try {
         Pop-Location
     }
 
+    if ($debug) {
+        $buildType = "debug"
+    }
+    else {
+        $buildType = "release"
+    }
+
     cargo build --release
 
     # Call this an elf as that's what it is
-    Copy-Item -Path .\target\x86_64-unknown-none\release\kernel64 -Destination .\target\x86_64-unknown-none\release\kernel64.elf -Force
+    Copy-Item -Path .\target\x86_64-unknown-none\$buildType\kernel64 -Destination .\target\x86_64-unknown-none\$buildType\kernel64.elf -Force
 
     # For now, always handy to have the assembly around
-    rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\release\kernel64.elf > .\target\x86_64-unknown-none\release\kernel64.elf.asm
+    rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\$buildType\kernel64.elf > .\target\x86_64-unknown-none\$buildType\kernel64.elf.asm
 
-    $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\x86_64-unknown-none\release\kernel64.elf.asm")
+    $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\x86_64-unknown-none\$buildType\kernel64.elf.asm")
     if ($allLines[3] -ne "Disassembly of section .text:") {
         # Our custom linking script is suposed to put this first. Might not need this for much longer as we're finding better ways to load and jump to the .text section.
         Write-Error "Linking seems screwed up again. Text section isn't first. Found: $($allLines[3])"
@@ -31,14 +50,14 @@ try {
         Write-Error "Linking seems screwed up again. DanMain wasn't at the start. Found: $($allLines[5])"
     }
 
-    rust-objcopy.exe --only-keep-debug .\target\x86_64-unknown-none\release\kernel64.elf .\target\x86_64-unknown-none\release\kernel64.dbg
-    rust-objcopy.exe --strip-debug .\target\x86_64-unknown-none\release\kernel64.elf .\target\x86_64-unknown-none\release\kernel64.stripped
-    Copy-Item .\target\x86_64-unknown-none\release\kernel64.stripped .\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Force
-    rust-objcopy.exe --add-gnu-debuglink=.\target\x86_64-unknown-none\release\kernel64.dbg .\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink
-    rust-objdump.exe -M intel -d .\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink > .\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink.asm
+    rust-objcopy.exe --only-keep-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.dbg
+    rust-objcopy.exe --strip-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.stripped
+    Copy-Item .\target\x86_64-unknown-none\$buildType\kernel64.stripped .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink -Force
+    rust-objcopy.exe --add-gnu-debuglink=.\target\x86_64-unknown-none\$buildType\kernel64.dbg .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink
+    rust-objdump.exe -M intel -d .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink > .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink.asm
 
     # Make sure memory location is what previous stage expects it to be
-    $codeLine = rust-objdump.exe --headers .\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink | findstr .text
+    $codeLine = rust-objdump.exe --headers .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink | findstr .text
     $vma = $codeLine.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[3]
     $loadAddress = "0x" + [System.Convert]::ToInt32("0x$vma", 16).ToString("X")
     
@@ -50,8 +69,17 @@ try {
     # push	rbx
     # This sequence might appear multiple times in the output file, but since we've verified above
     # that our entry point is at the start, we know the first hit is ours.
-    [byte[]]$rawAssembly = 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x53
-    $allBytes = [System.IO.File]::ReadAllBytes("${PSScriptRoot}\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink")
+    
+    if ($debug) {
+        # Really need to get a tool for this. Debug is different instructions
+        [byte[]]$rawAssembly = 0x48, 0x81, 0xEC, 0xD8, 0x0A, 0x00, 0x00
+    }
+    else {
+        [byte[]]$rawAssembly = 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x53
+    }
+    
+    
+    $allBytes = [System.IO.File]::ReadAllBytes("${PSScriptRoot}\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink")
     $index = -1
 
     for ($x = 0; $x -lt $allBytes.Count; $x++) {
@@ -90,6 +118,8 @@ try {
 
     # Display sections and size
     # size -Ax kernel64.unstripped
+    # or even better
+    # readelf -SW kernel64.unstripped
 
     # Dump section
     # readelf -p .gnu_debuglink kernel64.unstripped
