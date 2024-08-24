@@ -87,7 +87,7 @@ impl DumbHeap {
                             };
 
                             let writePointer = nextEntryAddress as *mut HeapEntry;
-                            writePointer.write(nextEntry);
+                            writePointer.write_unaligned(nextEntry);
 
                             (*self.First).Size = ammount;
                             (*self.First).Next = writePointer;
@@ -115,7 +115,7 @@ impl DumbHeap {
         while current != null_mut() {
             unsafe {
                 let currentAddress = current as usize;
-                let currentItem = current.read();
+                let currentItem = current.read_unaligned();
                 let nextAddress = currentItem.Next as usize;
                 let free = currentItem.Free;
                 vgaWriteLine!(
