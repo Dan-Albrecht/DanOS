@@ -26,12 +26,12 @@ try {
 
     if ($debug) {
         $buildType = "debug"
+        cargo build
     }
     else {
         $buildType = "release"
+        cargo build --release
     }
-
-    cargo build --release
 
     # Call this an elf as that's what it is
     Copy-Item -Path .\target\x86_64-unknown-none\$buildType\kernel64 -Destination .\target\x86_64-unknown-none\$buildType\kernel64.elf -Force
