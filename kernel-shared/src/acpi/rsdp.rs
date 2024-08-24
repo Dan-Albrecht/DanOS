@@ -43,7 +43,6 @@ pub fn getRsdp() -> Option<*const PciGeneralDevice> {
     }
 }
 
-#[allow(arithmetic_overflow)]
 fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u8> {
     let expected = *b"RSD PTR ";
     unsafe {
@@ -56,7 +55,7 @@ fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u
             let asBytes = ptr as *const u8;
             for index in 0..20 {
                 let byte = *asBytes.offset(index);
-                calculated = calculated + byte;
+                calculated = calculated.wrapping_add(byte);
             }
 
             if calculated != 0 {
