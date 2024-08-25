@@ -113,64 +113,70 @@ impl PageBook {
         self.Entry
     }
 
+    unsafe fn initNewPageTable(pt: *mut PageTable, startAddress: usize) {
+        zeroMemory2(pt);
+        vgaWriteLine!("New PT @ 0x{:X}", pt as usize);
+
+        for index in 0..512 {
+            let page = (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
+            // Uncachable as we're going to map the hard drive in this space
+            (*pt).setEntry(index, page, true, true, false);
+        }
+    }
+
     pub fn identityMap(&self, requestedAddress: usize) {
         let startAddress = alignDown(requestedAddress, 0x1000);
+
+        let pageDirectoryPointerIndex = 0;
+        let pageDirectoryIndex = startAddress / 0x4000_0000;
+        let pageTableIndex = (startAddress % 0x4000_0000) / 0x20_0000;
+
         vgaWriteLine!(
-            "Requested 0x{:X} will use 0x{:X}",
+            "Requested 0x{:X} will use 0x{:X} and put it at 0x{:X},0x{:X},0x{:X}",
             requestedAddress,
-            startAddress
+            startAddress,
+            pageDirectoryPointerIndex,
+            pageDirectoryIndex,
+            pageTableIndex,
         );
 
+        if pageDirectoryPointerIndex != 0 {
+            vgaWriteLine!(
+                "Don't know how to do PDPT 0x{:X}",
+                pageDirectoryPointerIndex
+            );
+            haltLoop();
+        }
+
+        // BUGUBG: Allocate this
+        let pt: *mut PageTable;
+
+        if requestedAddress == 0x7E0_0000 {
+            pt = SECOND_PAGE_TABLE_LOCATION as *mut PageTable;
+        } else if requestedAddress == 0xB000_0000 {
+            pt = THIRD_PAGE_TABLE_LOCATION as *mut PageTable;
+        } else {
+            vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);
+            haltLoop();
+        }
+
         unsafe {
-            if requestedAddress == 0x7E0_0000 {
-                let pt = SECOND_PAGE_TABLE_LOCATION;
-                let pt = pt as *mut PageTable;
-                zeroMemory2(pt);
-                vgaWriteLine!("PageTable2 @ 0x{:X}", pt as usize);
+            Self::initNewPageTable(pt, startAddress);
+            let pml4 = self.getEntry();
+            let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
+            let pdt : *mut PageDirectoryTable;
 
-                for index in 0..512 {
-                    let page =
-                        (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
-                    // Uncachable as we're going to map the hard drive in this space
-                    (*pt).setEntry(index, page, true, true, false);
-                }
-
-                let pml4 = self.getEntry();
-                let pdpt = (*pml4).getAddressForEntry(0);
-                let pdt = (*pdpt).getAddressForEntry(0);
-                (*pdt).setEntry(0x3F, pt, true, true, false);
-            } else if requestedAddress == 0xB000_0000 {
-                let pt = THIRD_PAGE_TABLE_LOCATION;
-                let pt = pt as *mut PageTable;
-                zeroMemory2(pt);
-                vgaWriteLine!("PageTable3 @ 0x{:X}", pt as usize);
-
-                for index in 0..512 {
-                    let page =
-                        (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
-                    // Uncachable as we're going to map the hard drive in this space
-                    (*pt).setEntry(index, page, true, true, false);
-                }
-
-                let pml4 = self.getEntry();
-                let pdpt = (*pml4).getAddressForEntry(0);
-
-                let pdt = pt as usize + size_of::<PageTable>();
-                let pdt = alignUp(pdt, 0x1000) as *mut PageDirectoryTable;
-                zeroMemory2(pdt);
-                (*pdpt).setEntry(2, pdt, true, true, false);
-                
-
-                // 300 = A58
-                // 354 = AC4
-                // 400 = B20
-                // 100n = C8
-                // 64x = C8
-                (*pdt).setEntry(384, pt, true, true, false);
+            if pageDirectoryIndex == 0 {
+                // Can get existing
+                pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
             } else {
-                vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);
-                haltLoop();
+                let pdtAddress = pt as usize + size_of::<PageTable>();
+                pdt = alignUp(pdtAddress, 0x1000) as *mut PageDirectoryTable;
+                zeroMemory2(pdt);
+                (*pdpt).setEntry(pageDirectoryIndex, pdt, true, true, false);
             }
+
+            (*pdt).setEntry(pageTableIndex, pt, true, true, false);
         }
     }
 }
