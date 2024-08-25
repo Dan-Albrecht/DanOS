@@ -39,6 +39,16 @@ pub fn alignUp(address: usize, alignment: usize) -> usize {
     return high;
 }
 
+pub fn alignDown(address: usize, alignment: usize) -> usize {
+    let theMod = address % alignment;
+    if theMod == 0 {
+        return address;
+    }
+    let low = address - theMod;
+
+    return low;
+}
+
 pub(crate) fn setCommonBitAndValidate(
     msg: &'static str,
     address: usize,

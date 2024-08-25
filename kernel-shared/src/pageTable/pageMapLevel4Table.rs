@@ -22,10 +22,10 @@ impl PageMapLevel4Table {
         self.Entries[index] = address;
     }
 
-    pub fn getAddressForEntry(&self, index: usize) -> *const PageDirectoryPointerTable {
+    pub fn getAddressForEntry(&self, index: usize) -> *mut PageDirectoryPointerTable {
         let mut entry = self.Entries[index];
         entry = entry & 0xF_FFFF_FFFF_F000;
 
-        return entry as *const PageDirectoryPointerTable;
+        return entry as *mut PageDirectoryPointerTable;
     }
 }

@@ -5,6 +5,7 @@ use core::ptr::addr_of;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::magicConstants::IDT_ADDRESS;
 
+use crate::assemblyHelpers::getCR2;
 use crate::vgaWriteLine;
 
 use super::setup::SetupStuff;
@@ -108,6 +109,11 @@ pub fn InterruptHandlerWithCodeIntImpl(
         ss,
         sp,
     );
+
+    if vector == 0xE {
+        let address = getCR2();
+        vgaWriteLine!("Page Fault at virtual address: 0x{:X}", address);
+    }
 
     haltLoop();
 }

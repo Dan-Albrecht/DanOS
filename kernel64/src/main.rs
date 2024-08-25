@@ -7,11 +7,12 @@
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
 
+mod assemblyHelpers;
 mod interupts;
 mod memory;
 mod pic;
 
-use core::fmt::Write;
+use core::{arch::asm, fmt::Write};
 use core::panic::PanicInfo;
 
 use interupts::InteruptDescriptorTable::SetIDT;
@@ -19,7 +20,11 @@ use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
         misc::{Breakpoint, DivideByZero},
-    }, diskStuff::read::readBytes, magicConstants::MEMORY_MAP_LOCATION, pageTable::pageBook::PageBook, vgaWriteLine
+    },
+    diskStuff::read::readBytes,
+    magicConstants::MEMORY_MAP_LOCATION,
+    pageTable::pageBook::PageBook,
+    vgaWriteLine,
 };
 use memory::memoryMap::MemoryMap;
 
@@ -30,6 +35,16 @@ fn panic(info: &PanicInfo) -> ! {
     vgaWriteLine!("64-bit kernel panic!");
     vgaWriteLine!("{info}");
     haltLoop();
+}
+
+fn reloadCR3() {
+    unsafe {
+        asm!(
+            "mov rax, cr3",
+            "mov cr3, rax",
+            out("rax") _,
+        );
+    }
 }
 
 #[no_mangle]
@@ -61,6 +76,18 @@ pub extern "C" fn DanMain() -> ! {
 
     heap.DumpHeap();
 
+    // BUGBUG: We're cheating that we know where the disk will be so just page it in
+    // Need to handle this for real
+    // 000 = 0        .. 01F_FFFF
+    // 001 = 0020_FFFF .. 03F_FFFF
+    // 00F = 01E0_0000 .. 21E_FFFF
+    // 020 = 0400_0000 .. 41F_0000
+    // 03F = 07E0_0000 .. 7FF_FFFF
+    // 1FF = 3FE0_0000 .. 3FFF_FFFF
+    // B000_0000
+    pageBook.identityMap(0x7E0_0000);
+    pageBook.identityMap(0xB000_0000);
+    reloadCR3();
     readBytes();
 
     vgaWriteLine!("Now let's divide by 0...");

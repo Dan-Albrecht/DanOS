@@ -1,8 +1,13 @@
-use core::mem::size_of;
 use core::fmt::Write;
+use core::{arch::asm, mem::size_of};
 
+use crate::assemblyStuff::halt::haltLoop;
+use crate::magicConstants::{SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION};
+use crate::memoryHelpers::alignDown;
 use crate::{
-    magicConstants::PAGE_TABLE_LOCATION, memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2}, vgaWriteLine
+    magicConstants::PAGE_TABLE_LOCATION,
+    memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
+    vgaWriteLine,
 };
 
 use super::{
@@ -74,7 +79,7 @@ impl PageBook {
     pub unsafe fn fromExisting64() -> PageBook {
         let cr3: u64;
 
-        core::arch::asm!(
+        asm!(
             "mov rax, cr3",
             out("rax") cr3,
         );
@@ -106,5 +111,66 @@ impl PageBook {
 
     pub fn getCR3Value(&self) -> u64 {
         self.Entry
+    }
+
+    pub fn identityMap(&self, requestedAddress: usize) {
+        let startAddress = alignDown(requestedAddress, 0x1000);
+        vgaWriteLine!(
+            "Requested 0x{:X} will use 0x{:X}",
+            requestedAddress,
+            startAddress
+        );
+
+        unsafe {
+            if requestedAddress == 0x7E0_0000 {
+                let pt = SECOND_PAGE_TABLE_LOCATION;
+                let pt = pt as *mut PageTable;
+                zeroMemory2(pt);
+                vgaWriteLine!("PageTable2 @ 0x{:X}", pt as usize);
+
+                for index in 0..512 {
+                    let page =
+                        (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
+                    // Uncachable as we're going to map the hard drive in this space
+                    (*pt).setEntry(index, page, true, true, false);
+                }
+
+                let pml4 = self.getEntry();
+                let pdpt = (*pml4).getAddressForEntry(0);
+                let pdt = (*pdpt).getAddressForEntry(0);
+                (*pdt).setEntry(0x3F, pt, true, true, false);
+            } else if requestedAddress == 0xB000_0000 {
+                let pt = THIRD_PAGE_TABLE_LOCATION;
+                let pt = pt as *mut PageTable;
+                zeroMemory2(pt);
+                vgaWriteLine!("PageTable3 @ 0x{:X}", pt as usize);
+
+                for index in 0..512 {
+                    let page =
+                        (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
+                    // Uncachable as we're going to map the hard drive in this space
+                    (*pt).setEntry(index, page, true, true, false);
+                }
+
+                let pml4 = self.getEntry();
+                let pdpt = (*pml4).getAddressForEntry(0);
+
+                let pdt = pt as usize + size_of::<PageTable>();
+                let pdt = alignUp(pdt, 0x1000) as *mut PageDirectoryTable;
+                zeroMemory2(pdt);
+                (*pdpt).setEntry(2, pdt, true, true, false);
+                
+
+                // 300 = A58
+                // 354 = AC4
+                // 400 = B20
+                // 100n = C8
+                // 64x = C8
+                (*pdt).setEntry(384, pt, true, true, false);
+            } else {
+                vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);
+                haltLoop();
+            }
+        }
     }
 }
