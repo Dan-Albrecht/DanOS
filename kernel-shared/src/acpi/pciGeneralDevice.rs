@@ -78,6 +78,7 @@ impl PciGeneralDevice {
             let memoryType = (barValue >> 1) & 0x3;
             if memoryType != 0 {
                 // BUGBUG: Only supporting 32-bit for now
+                vgaWriteLine!("Ignoring {}", memoryType);
                 return None;
             }
 

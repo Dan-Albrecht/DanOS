@@ -13,6 +13,7 @@ pub enum MemoryMapEntryType {
     OemDefined,
 }
 
+#[derive(Copy, Clone)]
 pub struct MemoryMap {
     // BUGBUG: Figure out how to cojule this without hardcoding a waste
     pub Entries: [MemoryMapEntry; 32],
@@ -20,7 +21,7 @@ pub struct MemoryMap {
 }
 
 #[repr(C, packed)]
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct MemoryMapEntry {
     // https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/int-15h-e820h---query-system-address-map.html
     pub BaseAddr: u64,

@@ -72,12 +72,11 @@ try {
     
     if ($debug) {
         # Really need to get a tool for this. Debug is different instructions
-        [byte[]]$rawAssembly = 0x48, 0x81, 0xEC, 0xD8, 0x0A, 0x00, 0x00
+        [byte[]]$rawAssembly = 0x48, 0x81, 0xEC
     }
     else {
         [byte[]]$rawAssembly = 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x53
     }
-    
     
     $allBytes = [System.IO.File]::ReadAllBytes("${PSScriptRoot}\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink")
     $index = -1

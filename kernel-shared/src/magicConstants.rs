@@ -13,6 +13,8 @@ pub static RANDOM_EVEN_MEGABYTE: usize = 0x01_2345;
 
 pub static IDT_ADDRESS: usize = 0x9_0000;
 
+pub const ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP: usize = 0x1B_0000;
 pub static PAGE_TABLE_LOCATION: usize = 0x1D_0000;
 pub static SECOND_PAGE_TABLE_LOCATION: usize = 0x1E_0000;
 pub static THIRD_PAGE_TABLE_LOCATION: usize = 0x1F_0000;
+pub static FOURTH_PAGE_TABLE_LOCATION: usize = 0x1C_0000;

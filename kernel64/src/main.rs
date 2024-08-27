@@ -12,8 +12,8 @@ mod interupts;
 mod memory;
 mod pic;
 
-use core::{arch::asm, fmt::Write};
 use core::panic::PanicInfo;
+use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
 use kernel_shared::{
@@ -27,6 +27,7 @@ use kernel_shared::{
     vgaWriteLine,
 };
 use memory::memoryMap::MemoryMap;
+use memory::physicalMemory::PhysicalMemoryManager;
 
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 
@@ -52,6 +53,11 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Welcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+    let physicalMemoryManager = PhysicalMemoryManager::Init(memoryMap);
+
+    // BUGBUG: What are the side effects of changing this to a ref, we're not holding the pointer anymore...
+    let physicalMemoryManager = unsafe { &mut *physicalMemoryManager };
+
     let pageBook: PageBook;
     unsafe {
         pageBook = PageBook::fromExisting64();
@@ -63,18 +69,18 @@ pub extern "C" fn DanMain() -> ! {
     disablePic();
 
     vgaWriteLine!("Installing interrupt table...");
-    SetIDT();
+    SetIDT(physicalMemoryManager);
     vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
     vgaWriteLine!("We handled the breakpoint!");
 
-    vgaWriteLine!("Seting up heap...");
+    /*vgaWriteLine!("Seting up heap...");
     let mut heap = DumbHeap::new(memoryMap);
     let count = 100;
     let myAlloc = heap.DoSomething(count);
     vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
 
-    heap.DumpHeap();
+    heap.DumpHeap();*/
 
     // BUGBUG: We're cheating that we know where the disk will be so just page it in
     // Need to handle this for real
@@ -87,6 +93,7 @@ pub extern "C" fn DanMain() -> ! {
     // B000_0000
     pageBook.identityMap(0x7E0_0000);
     pageBook.identityMap(0xB000_0000);
+    pageBook.identityMap(0xFEBD_500C);
     reloadCR3();
     readBytes();
 

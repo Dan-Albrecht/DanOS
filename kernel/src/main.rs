@@ -61,6 +61,7 @@ pub extern "C" fn DanMain() -> ! {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
         //kernel_shared::diskStuff::read::readBytes();
+        //haltLoop();
 
         if IsTheA20LineEnabled() {
             if Is64BitModeSupported() {

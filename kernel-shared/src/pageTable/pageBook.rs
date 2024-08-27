@@ -2,7 +2,7 @@ use core::fmt::Write;
 use core::{arch::asm, mem::size_of};
 
 use crate::assemblyStuff::halt::haltLoop;
-use crate::magicConstants::{SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION};
+use crate::magicConstants::{FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION};
 use crate::memoryHelpers::alignDown;
 use crate::{
     magicConstants::PAGE_TABLE_LOCATION,
@@ -155,6 +155,8 @@ impl PageBook {
             pt = SECOND_PAGE_TABLE_LOCATION as *mut PageTable;
         } else if requestedAddress == 0xB000_0000 {
             pt = THIRD_PAGE_TABLE_LOCATION as *mut PageTable;
+        } else if requestedAddress == 0xFEBD_500C {
+            pt = FOURTH_PAGE_TABLE_LOCATION as *mut PageTable;
         } else {
             vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);
             haltLoop();
