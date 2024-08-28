@@ -44,15 +44,24 @@ impl PhysicalMemoryManager {
     }
 
     pub(crate) fn Reserve(&mut self, requestLocation: usize, requestAmmount: usize) {
-        // BUGBUG: Decide what size type we're going to use for memory
-        let requestLocation = requestLocation as u64;
-        let requestAmmount = requestAmmount as u64;
+        let requestLocation = requestLocation;
+        let requestAmmount = requestAmmount;
 
         for index in 0..(self.MemoryMap.Count as usize) {
             if let MemoryMapEntryType::AddressRangeMemory = self.MemoryMap.Entries[index].GetType()
             {
                 let memoryMapBase = self.MemoryMap.Entries[index].BaseAddr;
+                let memoryMapBase : Result<usize, _> = memoryMapBase.try_into();
+
                 let memoryMapLength = self.MemoryMap.Entries[index].Length;
+                let memoryMapLength : Result<usize, _> = memoryMapLength.try_into();
+
+                if matches!(memoryMapBase, Err(_)) || matches!(memoryMapLength, Err(_)) {
+                    continue;
+                }
+
+                let memoryMapBase = memoryMapBase.unwrap();
+                let memoryMapLength = memoryMapLength.unwrap();
 
                 // Does this request to reserve fit in this memroy range?
                 if (memoryMapBase <= requestLocation)
@@ -74,8 +83,8 @@ impl PhysicalMemoryManager {
                             }
 
                             // Is this request to reserved already reserved by something else?
-                            if requestLocation < (blobAddress + blobLength) as u64
-                                && (blobAddress as u64) < (requestLocation + requestAmmount)
+                            if requestLocation < (blobAddress + blobLength)
+                                && (blobAddress) < (requestLocation + requestAmmount)
                             {
                                 vgaWriteLine!(
                                     "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
@@ -89,8 +98,8 @@ impl PhysicalMemoryManager {
                             }
                         }
 
-                        blobs.read_unaligned()[nextIndex].Address = requestLocation as usize;
-                        blobs.read_unaligned()[nextIndex].Length = requestAmmount as usize;
+                        blobs.read_unaligned()[nextIndex].Address = requestLocation;
+                        blobs.read_unaligned()[nextIndex].Length = requestAmmount;
                     }
 
                     vgaWriteLine!(

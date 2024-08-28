@@ -28,6 +28,7 @@ use kernel_shared::{
 };
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::PhysicalMemoryManager;
+use memory::virtualMemory::VirtualMemoryManager;
 
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 
@@ -55,21 +56,21 @@ pub extern "C" fn DanMain() -> ! {
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     let physicalMemoryManager = PhysicalMemoryManager::Init(memoryMap);
 
-    // BUGBUG: What are the side effects of changing this to a ref, we're not holding the pointer anymore...
-    let physicalMemoryManager = unsafe { &mut *physicalMemoryManager };
-
     let pageBook: PageBook;
     unsafe {
         pageBook = PageBook::fromExisting64();
     }
 
     vgaWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
+    let virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook);
 
     vgaWriteLine!("Configuring PIC...");
     disablePic();
 
     vgaWriteLine!("Installing interrupt table...");
-    SetIDT(physicalMemoryManager);
+    unsafe {
+        SetIDT(physicalMemoryManager);
+    }
     vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
     vgaWriteLine!("We handled the breakpoint!");
@@ -91,9 +92,9 @@ pub extern "C" fn DanMain() -> ! {
     // 03F = 07E0_0000 .. 7FF_FFFF
     // 1FF = 3FE0_0000 .. 3FFF_FFFF
     // B000_0000
-    pageBook.identityMap(0x7E0_0000);
-    pageBook.identityMap(0xB000_0000);
-    pageBook.identityMap(0xFEBD_500C);
+    virtualMemoryManager.identityMap(0x7E0_0000);
+    virtualMemoryManager.identityMap(0xB000_0000);
+    virtualMemoryManager.identityMap(0xFEBD_500C);
     reloadCR3();
     readBytes();
 

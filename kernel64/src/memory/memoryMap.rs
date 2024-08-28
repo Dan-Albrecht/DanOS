@@ -13,6 +13,7 @@ pub enum MemoryMapEntryType {
     OemDefined,
 }
 
+// MemoryMap tells us about the physical memory avilable on the machine
 #[derive(Copy, Clone)]
 pub struct MemoryMap {
     // BUGBUG: Figure out how to cojule this without hardcoding a waste
@@ -69,15 +70,6 @@ impl MemoryMap {
 
             let entryType = entry.Type;
             result.Entries[index].Type = entryType;
-
-            /*vgaWriteLine!(
-                "{}: Base - 0x{:X} Length - 0x{:X} Type: 0x{:X} Attributes: 0x{:X}",
-                index,
-                addr,
-                length,
-                entryType,
-                at
-            );*/
 
             entryAddress += size_of::<MemoryMapEntry>();
         }
