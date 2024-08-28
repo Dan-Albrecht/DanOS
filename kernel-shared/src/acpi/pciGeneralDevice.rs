@@ -1,5 +1,5 @@
-use crate::{vgaWrite, vgaWriteLine};
-use core::{fmt::Write, ptr::addr_of};
+use crate::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
+use core::{fmt::Write, ptr::{addr_of, read_volatile}};
 
 use super::{
     bar::Bar,
@@ -65,7 +65,7 @@ impl PciGeneralDevice {
         let barAddress = barAddress as *mut u32;
 
         unsafe {
-            let barValue = *barAddress;
+            let barValue = read_volatile(barAddress);
             if barValue == 0 {
                 return None;
             }
@@ -78,8 +78,8 @@ impl PciGeneralDevice {
             let memoryType = (barValue >> 1) & 0x3;
             if memoryType != 0 {
                 // BUGBUG: Only supporting 32-bit for now
-                vgaWriteLine!("Ignoring {}", memoryType);
-                return None;
+                vgaWriteLine!("Don't know how to handle memory type {}", memoryType);
+                haltLoop();
             }
 
             let address = barValue & 0xFFFFFFF0;
@@ -103,9 +103,9 @@ impl PciGeneralDevice {
                     1 => {
                         vgaWriteLine!(" (reserved-type)");
                     }
-                    // BUGBUG: Implment fully, needs two entries to get full address
                     2 => {
-                        vgaWriteLine!(" 64-bit memory");
+                        vgaWriteLine!(" 64-bit memory; dunno how to handle that...");
+                        haltLoop();
                     }
                     _ => {
                         vgaWriteLine!(" ({}-type memory)", memoryType);

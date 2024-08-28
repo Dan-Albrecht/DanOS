@@ -10,7 +10,7 @@ use crate::{
 
 // Same no UEFI docs story as MCFG
 // https://wiki.osdev.org/PCI_Express#Enhanced_Configuration_Mechanism
-// Also useful https://wiki.qemu.org/images/f/f6/PCIvsPCIe.pdf
+// Also useful https://wiki.qemu.org/images/f/f6/PCIvsPCIe.pdf.
 #[repr(C, packed)]
 pub struct McfgEntry {
     pub BaseAddress: u64,

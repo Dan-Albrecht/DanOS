@@ -34,7 +34,8 @@ impl Controller {
 
     pub fn enumeratePorts(&self) -> Option<u8> {
         unsafe {
-            let mut pi = (*self.ABar.HBA).GHC.PI;
+            let hba = &*self.ABar.HBA;
+            let mut pi = hba.GHC.PI;
             for index in 0..32 {
                 if (pi & 1) != 0 {
                     vgaWriteLine!("Something at port {index}");

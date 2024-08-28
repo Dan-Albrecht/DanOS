@@ -125,7 +125,7 @@ impl PageBook {
     }
 
     pub fn identityMap(&self, requestedAddress: usize) {
-        let startAddress = alignDown(requestedAddress, 0x1000);
+        let startAddress = alignDown(requestedAddress, 0x20_0000);
 
         let pageDirectoryPointerIndex = 0;
         let pageDirectoryIndex = startAddress / 0x4000_0000;

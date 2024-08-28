@@ -7,6 +7,7 @@ use super::pciGeneralDevice::PciGeneralDevice;
 // UEFI doesn't doc this and links to something you need to register for, so OSDev it is
 // https://wiki.osdev.org/PCI_Express#Enhanced_Configuration_Mechanism
 // Memory-mapped ConFiGuration space
+// Totally not sketchy site: https://www.ufoit.com/thread-7-1-1.html
 #[repr(C, packed)]
 pub struct MCFG {
     Signature: [u8; 4],
