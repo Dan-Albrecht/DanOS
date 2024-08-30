@@ -10,3 +10,11 @@ pub fn haltLoop() -> ! {
         }
     }
 }
+
+#[macro_export]
+macro_rules! haltLoopWithMessage {
+    ($($args:tt)*) => {
+        $crate::vgaWriteLine!($($args)*);
+        haltLoop();
+    };
+}

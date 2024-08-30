@@ -1,28 +1,35 @@
 use core::fmt::Write;
-use kernel_shared::{assemblyStuff::halt::haltLoop, magicConstants::{FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION}, memoryHelpers::{alignDown, alignUp, zeroMemory2}, pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, vgaWriteLine};
+use kernel_shared::{
+    assemblyStuff::halt::haltLoop,
+    magicConstants::{
+        FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_TABLE, THIRD_PAGE_TABLE_LOCATION
+    },
+    memoryHelpers::{alignDown, alignUp, zeroMemory2},
+    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
+    vgaWriteLine,
+};
 
 use super::physicalMemory::PhysicalMemoryManager;
 
 pub struct VirtualMemoryManager {
-    physical : *mut PhysicalMemoryManager,
-    pageBook : PageBook,
+    physical: *mut PhysicalMemoryManager,
+    pageBook: PageBook,
 }
 
-
 impl VirtualMemoryManager {
-    pub fn new(physical : *mut PhysicalMemoryManager, pageBook : PageBook) -> Self {
-        VirtualMemoryManager{
-            pageBook,
-            physical
-        }   
+    pub fn new(physical: *mut PhysicalMemoryManager, pageBook: PageBook) -> Self {
+        VirtualMemoryManager { pageBook, physical }
     }
 
-    pub fn identityMap(&self, requestedAddress: usize) {
-        let startAddress = alignDown(requestedAddress, 0x20_0000);
+    pub fn identityMap(&self, requestedAddress: usize, allowReserved: bool) {
+        let startAddress = alignDown(requestedAddress, SIZE_OF_PAGE);
+        unsafe {
+            (*self.physical).Reserve(startAddress, SIZE_OF_PAGE, allowReserved);
+        }
 
         let pageDirectoryPointerIndex = 0;
-        let pageDirectoryIndex = startAddress / 0x4000_0000;
-        let pageTableIndex = (startAddress % 0x4000_0000) / 0x20_0000;
+        let pageDirectoryIndex = startAddress / SIZE_OF_PAGE_DIRECTORY;
+        let pageTableIndex = (startAddress % SIZE_OF_PAGE_DIRECTORY) / SIZE_OF_PAGE_TABLE;
 
         vgaWriteLine!(
             "Requested 0x{:X} will use 0x{:X} and put it at 0x{:X},0x{:X},0x{:X}",
@@ -59,7 +66,7 @@ impl VirtualMemoryManager {
             PageBook::initNewPageTable(pt, startAddress);
             let pml4 = self.pageBook.getEntry();
             let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
-            let pdt : *mut PageDirectoryTable;
+            let pdt: *mut PageDirectoryTable;
 
             if pageDirectoryIndex == 0 {
                 // Can get existing

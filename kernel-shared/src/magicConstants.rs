@@ -18,3 +18,7 @@ pub static PAGE_TABLE_LOCATION: usize = 0x1D_0000;
 pub static SECOND_PAGE_TABLE_LOCATION: usize = 0x1E_0000;
 pub static THIRD_PAGE_TABLE_LOCATION: usize = 0x1F_0000;
 pub static FOURTH_PAGE_TABLE_LOCATION: usize = 0x1C_0000;
+
+pub static SIZE_OF_PAGE: usize = 0x1000;
+pub static SIZE_OF_PAGE_TABLE: usize = 0x20_0000;
+pub static SIZE_OF_PAGE_DIRECTORY: usize = 0x4000_0000;

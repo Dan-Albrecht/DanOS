@@ -1,6 +1,7 @@
 use crate::vgaWriteLine;
 use core::{fmt::Write, mem::size_of};
 
+#[derive(Debug)]
 pub enum MemoryMapEntryType {
     AddressRangeMemory,
     AddressRangeReserved,
@@ -78,6 +79,7 @@ impl MemoryMap {
     }
 }
 
+// https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/15_System_Address_Map_Interfaces/Sys_Address_Map_Interfaces.html#address-range-types
 impl MemoryMapEntry {
     pub fn GetType(&self) -> MemoryMapEntryType {
         match self.Type {

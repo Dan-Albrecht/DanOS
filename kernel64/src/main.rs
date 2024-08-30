@@ -92,9 +92,9 @@ pub extern "C" fn DanMain() -> ! {
     // 03F = 07E0_0000 .. 7FF_FFFF
     // 1FF = 3FE0_0000 .. 3FFF_FFFF
     // B000_0000
-    virtualMemoryManager.identityMap(0x7E0_0000);
-    virtualMemoryManager.identityMap(0xB000_0000);
-    virtualMemoryManager.identityMap(0xFEBD_500C);
+    virtualMemoryManager.identityMap(0x7E0_0000, false);
+    virtualMemoryManager.identityMap(0xB000_0000, true);
+    //virtualMemoryManager.identityMap(0xFEBD_500C);
     reloadCR3();
     readBytes();
 
