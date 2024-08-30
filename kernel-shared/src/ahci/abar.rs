@@ -3,7 +3,7 @@ use crate::{
     assemblyStuff::halt::haltLoop,
     vgaWriteLine,
 };
-use core::fmt::Write;
+use core::{fmt::Write, ptr::read_volatile};
 
 // AHCI Base Address Register
 pub struct ABar {
@@ -111,11 +111,11 @@ impl ABar {
     pub fn tryGet(device: &PciGeneralDevice) -> Option<ABar> {
         // Docs say BAR 5 is always the one we need
         if let Some(bar) = device.tryGetBarAddress(5) {
-            vgaWriteLine!("Got BAR 5");
-            let data = bar.BarTarget as *const HbaData;
+            let addr = bar.BarTarget as *const HbaData;
+            vgaWriteLine!("Got BAR 5 @ 0x{:X}", addr as usize);
             return Some(ABar {
                 _Bar: bar,
-                HBA: data,
+                HBA: addr as *const HbaData,
             });
         }
 

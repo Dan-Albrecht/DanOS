@@ -7,6 +7,7 @@ use kernel_shared::magicConstants::IDT_ADDRESS;
 
 use crate::assemblyHelpers::getCR2;
 use crate::memory::physicalMemory::PhysicalMemoryManager;
+use crate::memory::virtualMemory::WhatDo;
 use crate::vgaWriteLine;
 
 use super::setup::SetupStuff;
@@ -120,7 +121,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: *mut PhysicalMemoryManager) {
-    (*memoryManager).Reserve(IDT_ADDRESS, size_of::<Table>(), false);
+    (*memoryManager).Reserve(IDT_ADDRESS, size_of::<Table>(), WhatDo::Normal);
     let idt = IDT_ADDRESS as *mut Table;
 
     // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,

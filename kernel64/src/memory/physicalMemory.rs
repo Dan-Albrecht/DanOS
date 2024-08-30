@@ -4,7 +4,10 @@ use kernel_shared::{
     magicConstants::ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP, vgaWriteLine,
 };
 
-use super::memoryMap::{MemoryMap, MemoryMapEntryType};
+use super::{
+    memoryMap::{MemoryMap, MemoryMapEntryType},
+    virtualMemory::WhatDo,
+};
 
 pub struct PhysicalMemoryManager {
     MemoryMap: MemoryMap,
@@ -37,7 +40,7 @@ impl PhysicalMemoryManager {
             (*result).Reserve(
                 ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP,
                 size_of::<PhysicalMemoryManager>(),
-                false,
+                WhatDo::Normal,
             );
 
             result
@@ -48,72 +51,84 @@ impl PhysicalMemoryManager {
         &mut self,
         requestLocation: usize,
         requestAmmount: usize,
-        allowReserved: bool,
+        whatDo: WhatDo,
     ) {
         let requestLocation = requestLocation;
         let requestAmmount = requestAmmount;
 
-        for index in 0..(self.MemoryMap.Count as usize) {
-            let memoryType = self.MemoryMap.Entries[index].GetType();
+        if let WhatDo::YoLo = whatDo {
+            self.ReserveInternal(
+                requestLocation,
+                requestAmmount,
+                requestLocation,
+                requestAmmount,
+            );
+            return;
+        } else {
+            for index in 0..(self.MemoryMap.Count as usize) {
+                let memoryType = self.MemoryMap.Entries[index].GetType();
 
-            let memoryMapBase = self.MemoryMap.Entries[index].BaseAddr;
-            let memoryMapBase: Result<usize, _> = memoryMapBase.try_into();
+                let memoryMapBase = self.MemoryMap.Entries[index].BaseAddr;
+                let memoryMapBase: Result<usize, _> = memoryMapBase.try_into();
 
-            let memoryMapLength = self.MemoryMap.Entries[index].Length;
-            let memoryMapLength: Result<usize, _> = memoryMapLength.try_into();
+                let memoryMapLength = self.MemoryMap.Entries[index].Length;
+                let memoryMapLength: Result<usize, _> = memoryMapLength.try_into();
 
-            if matches!(memoryMapBase, Err(_)) || matches!(memoryMapLength, Err(_)) {
-                continue;
-            }
+                if matches!(memoryMapBase, Err(_)) || matches!(memoryMapLength, Err(_)) {
+                    continue;
+                }
 
-            let memoryMapBase = memoryMapBase.unwrap();
-            let memoryMapLength = memoryMapLength.unwrap();
+                let memoryMapBase = memoryMapBase.unwrap();
+                let memoryMapLength = memoryMapLength.unwrap();
 
-            // Does this request to reserve fit in this memroy range?
-            if (memoryMapBase <= requestLocation)
-                && ((requestLocation + requestAmmount) <= (memoryMapBase + memoryMapLength))
-            {
-                match memoryType {
-                    MemoryMapEntryType::AddressRangeMemory => {
-                        self.ReserveInternal(
-                            requestLocation,
-                            requestAmmount,
-                            memoryMapBase,
-                            memoryMapLength,
-                        );
-                        return;
-                    }
-                    MemoryMapEntryType::AddressRangeReserved if allowReserved => {
-                        self.ReserveInternal(
-                            requestLocation,
-                            requestAmmount,
-                            memoryMapBase,
-                            memoryMapLength,
-                        );
-                        return;
-                    }
-                    _ => {
-                        self.Dump();
-                        haltLoopWithMessage!(
-                            "0x{:X} is in a {:?} region. Cannot use.",
-                            requestLocation,
-                            memoryType
-                        );
+                // Does this request to reserve fit in this memroy range?
+                if (memoryMapBase <= requestLocation)
+                    && ((requestLocation + requestAmmount) <= (memoryMapBase + memoryMapLength))
+                {
+                    match memoryType {
+                        MemoryMapEntryType::AddressRangeMemory => {
+                            self.ReserveInternal(
+                                requestLocation,
+                                requestAmmount,
+                                memoryMapBase,
+                                memoryMapLength,
+                            );
+                            return;
+                        }
+                        MemoryMapEntryType::AddressRangeReserved
+                            if let WhatDo::UseReserved = whatDo =>
+                        {
+                            self.ReserveInternal(
+                                requestLocation,
+                                requestAmmount,
+                                memoryMapBase,
+                                memoryMapLength,
+                            );
+                            return;
+                        }
+                        _ => {
+                            self.Dump();
+                            haltLoopWithMessage!(
+                                "0x{:X} is in a {:?} region. Cannot use.",
+                                requestLocation,
+                                memoryType
+                            );
+                        }
                     }
                 }
             }
+
+            let end = requestLocation + requestAmmount;
+            vgaWriteLine!(
+                "0x{:X}..0x{:X} for 0x{:X} not in memory range (of any type)",
+                requestLocation,
+                end,
+                requestAmmount
+            );
+
+            self.Dump();
+            haltLoop();
         }
-
-        let end = requestLocation + requestAmmount;
-        vgaWriteLine!(
-            "0x{:X}..0x{:X} for 0x{:X} not in memory range (of any type)",
-            requestLocation,
-            end,
-            requestAmmount
-        );
-
-        self.Dump();
-        haltLoop();
     }
 
     fn ReserveInternal(

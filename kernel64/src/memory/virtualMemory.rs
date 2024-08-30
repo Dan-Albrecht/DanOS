@@ -16,15 +16,22 @@ pub struct VirtualMemoryManager {
     pageBook: PageBook,
 }
 
+// BUGUBG: Come up with a better name
+pub enum WhatDo {
+    Normal,
+    UseReserved,
+    YoLo, // Allocate even if it isn't in the map. Seeing this for hardware IO.
+}
+
 impl VirtualMemoryManager {
     pub fn new(physical: *mut PhysicalMemoryManager, pageBook: PageBook) -> Self {
         VirtualMemoryManager { pageBook, physical }
     }
 
-    pub fn identityMap(&self, requestedAddress: usize, allowReserved: bool) {
+    pub fn identityMap(&self, requestedAddress: usize, whatDo: WhatDo) {
         let startAddress = alignDown(requestedAddress, SIZE_OF_PAGE);
         unsafe {
-            (*self.physical).Reserve(startAddress, SIZE_OF_PAGE, allowReserved);
+            (*self.physical).Reserve(startAddress, SIZE_OF_PAGE, whatDo);
         }
 
         let pageDirectoryPointerIndex = 0;
@@ -55,7 +62,7 @@ impl VirtualMemoryManager {
             pt = SECOND_PAGE_TABLE_LOCATION as *mut PageTable;
         } else if requestedAddress == 0xB000_0000 {
             pt = THIRD_PAGE_TABLE_LOCATION as *mut PageTable;
-        } else if requestedAddress == 0xFEBD_500C {
+        } else if requestedAddress == 0xFEBD_500C || requestedAddress == 0xFEA0_0000 {
             pt = FOURTH_PAGE_TABLE_LOCATION as *mut PageTable;
         } else {
             vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);

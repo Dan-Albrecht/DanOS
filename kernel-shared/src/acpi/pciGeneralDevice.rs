@@ -6,6 +6,7 @@ use super::{
     pciCommonHeader::{PciCommonHeader, PciHeaderType},
 };
 
+// https://wiki.osdev.org/PCI#Header_Type_0x0
 #[repr(C, packed)]
 pub struct PciGeneralDevice {
     PciCommonHeader: PciCommonHeader,

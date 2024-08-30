@@ -34,7 +34,7 @@ impl Controller {
 
     pub fn enumeratePorts(&self) -> Option<u8> {
         unsafe {
-            let hba = &*self.ABar.HBA;
+            let hba = read_volatile(self.ABar.HBA);
             let mut pi = hba.GHC.PI;
             for index in 0..32 {
                 if (pi & 1) != 0 {

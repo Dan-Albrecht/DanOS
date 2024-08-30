@@ -6,6 +6,7 @@
 #![feature(used_with_arg)]
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
+#![feature(if_let_guard)]
 
 mod assemblyHelpers;
 mod interupts;
@@ -28,7 +29,7 @@ use kernel_shared::{
 };
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::PhysicalMemoryManager;
-use memory::virtualMemory::VirtualMemoryManager;
+use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
 
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
 
@@ -92,9 +93,14 @@ pub extern "C" fn DanMain() -> ! {
     // 03F = 07E0_0000 .. 7FF_FFFF
     // 1FF = 3FE0_0000 .. 3FFF_FFFF
     // B000_0000
-    virtualMemoryManager.identityMap(0x7E0_0000, false);
-    virtualMemoryManager.identityMap(0xB000_0000, true);
-    //virtualMemoryManager.identityMap(0xFEBD_500C);
+    virtualMemoryManager.identityMap(0x7E0_0000, WhatDo::Normal);
+    virtualMemoryManager.identityMap(0xB000_0000, WhatDo::UseReserved);
+    
+    // BUGBUG: We're only able to allocate entire page tables, fix that so following line works
+    //virtualMemoryManager.identityMap(0xFEBD_500C, WhatDo::YoLo);
+    // instead of this:
+    virtualMemoryManager.identityMap(0xFEA0_0000, WhatDo::YoLo);
+
     reloadCR3();
     readBytes();
 
