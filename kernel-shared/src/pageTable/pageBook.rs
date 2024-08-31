@@ -2,7 +2,9 @@ use core::fmt::Write;
 use core::{arch::asm, mem::size_of};
 
 use crate::assemblyStuff::halt::haltLoop;
-use crate::magicConstants::{FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION};
+use crate::magicConstants::{
+    FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION,
+};
 use crate::memoryHelpers::alignDown;
 use crate::{
     magicConstants::PAGE_TABLE_LOCATION,
@@ -21,7 +23,6 @@ pub struct PageBook {
     // This could be a PML5 if we ever wanted to support the extra bits of addressing
     // Assuming CR4.PCIDE=0
     Entry: u64,
-
 }
 
 impl PageBook {
@@ -114,14 +115,25 @@ impl PageBook {
         self.Entry
     }
 
-    pub unsafe fn initNewPageTable(pt: *mut PageTable, startAddress: usize) {
+    pub unsafe fn initNewPageTable(
+        pt: *mut PageTable,
+        startAddress: usize,
+        pageIndex: usize,
+        numberOfPages: usize,
+    ) {
         zeroMemory2(pt);
-        vgaWriteLine!("New PT @ 0x{:X}", pt as usize);
+        vgaWriteLine!(
+            "New PT @ 0x{:X} settings index {} to 0x{:X}",
+            pt as usize,
+            pageIndex,
+            startAddress
+        );
 
-        for index in 0..512 {
-            let page = (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
-            // Uncachable as we're going to map the hard drive in this space
-            (*pt).setEntry(index, page, true, true, false);
+        for index in 0..numberOfPages {
+            let page: *mut PhysicalPage = (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
+            
+            // BUGBUG: Expose flags to upstream
+            (*pt).setEntry(index + pageIndex, page, true, true, false);
         }
     }
 }

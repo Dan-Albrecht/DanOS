@@ -14,9 +14,11 @@ mod memory;
 mod pic;
 
 use core::panic::PanicInfo;
+use core::ptr::read_volatile;
 use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
+use kernel_shared::magicConstants::PAGES_PER_TABLE;
 use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
@@ -85,22 +87,9 @@ pub extern "C" fn DanMain() -> ! {
     heap.DumpHeap();*/
 
     // BUGBUG: We're cheating that we know where the disk will be so just page it in
-    // Need to handle this for real
-    // 000 = 0        .. 01F_FFFF
-    // 001 = 0020_FFFF .. 03F_FFFF
-    // 00F = 01E0_0000 .. 21E_FFFF
-    // 020 = 0400_0000 .. 41F_0000
-    // 03F = 07E0_0000 .. 7FF_FFFF
-    // 1FF = 3FE0_0000 .. 3FFF_FFFF
-    // B000_0000
-    virtualMemoryManager.identityMap(0x7E0_0000, WhatDo::Normal);
-    virtualMemoryManager.identityMap(0xB000_0000, WhatDo::UseReserved);
-    
-    // BUGBUG: We're only able to allocate entire page tables, fix that so following line works
-    //virtualMemoryManager.identityMap(0xFEBD_500C, WhatDo::YoLo);
-    // instead of this:
-    virtualMemoryManager.identityMap(0xFEA0_0000, WhatDo::YoLo);
-
+    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::Normal);
+    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::UseReserved);
+    virtualMemoryManager.identityMap(0xFEBD_500C, 1, WhatDo::YoLo);
     reloadCR3();
     readBytes();
 

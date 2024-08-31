@@ -22,3 +22,9 @@ pub static FOURTH_PAGE_TABLE_LOCATION: usize = 0x1C_0000;
 pub static SIZE_OF_PAGE: usize = 0x1000;
 pub static SIZE_OF_PAGE_TABLE: usize = 0x20_0000;
 pub static SIZE_OF_PAGE_DIRECTORY: usize = 0x4000_0000;
+
+// BUGBUG: Can we compile time ensure this is mod-0?
+pub static PAGES_PER_TABLE: usize = SIZE_OF_PAGE_TABLE / SIZE_OF_PAGE;
+
+#[cfg(target_pointer_width = "64")]
+pub static SIZE_OF_PAGE_DIRECTORY_POINTER: usize = 0x80_0000_0000;

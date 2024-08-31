@@ -6,7 +6,7 @@ use super::physicalPage::PhysicalPage;
 pub struct PageTable {
     // PTE
     // The actual physical page address with some extra metadata bits or'd in
-    Entries: [u64; 512],
+    pub Entries: [u64; 512],
 }
 
 impl PageTable {

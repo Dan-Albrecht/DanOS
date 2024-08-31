@@ -1,12 +1,8 @@
 use core::fmt::Write;
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop,
-    magicConstants::{
-        FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_TABLE, THIRD_PAGE_TABLE_LOCATION
-    },
-    memoryHelpers::{alignDown, alignUp, zeroMemory2},
-    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
-    vgaWriteLine,
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, magicConstants::{
+        FOURTH_PAGE_TABLE_LOCATION, PAGES_PER_TABLE, SECOND_PAGE_TABLE_LOCATION, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER, SIZE_OF_PAGE_TABLE, THIRD_PAGE_TABLE_LOCATION
+    }, memoryHelpers::{alignDown, alignUp, zeroMemory2}, pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, vgaWriteLine
 };
 
 use super::physicalMemory::PhysicalMemoryManager;
@@ -28,23 +24,33 @@ impl VirtualMemoryManager {
         VirtualMemoryManager { pageBook, physical }
     }
 
-    pub fn identityMap(&self, requestedAddress: usize, whatDo: WhatDo) {
+    pub fn identityMap(&self, requestedAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
+        // BUGBUG: Because we're rounding down, it is possible we won't end up mapping all memory the request in
+        // we either need to have code to increase numberOfPages, or just rejected non-aligned requests
         let startAddress = alignDown(requestedAddress, SIZE_OF_PAGE);
         unsafe {
             (*self.physical).Reserve(startAddress, SIZE_OF_PAGE, whatDo);
         }
 
-        let pageDirectoryPointerIndex = 0;
-        let pageDirectoryIndex = startAddress / SIZE_OF_PAGE_DIRECTORY;
+        let pageDirectoryPointerIndex = startAddress / SIZE_OF_PAGE_DIRECTORY_POINTER;
+        let pageDirectoryIndex =
+            (startAddress % SIZE_OF_PAGE_DIRECTORY_POINTER) / SIZE_OF_PAGE_DIRECTORY;
         let pageTableIndex = (startAddress % SIZE_OF_PAGE_DIRECTORY) / SIZE_OF_PAGE_TABLE;
+        let pageIndex = (startAddress % SIZE_OF_PAGE_TABLE) / SIZE_OF_PAGE;
+
+        if pageIndex + numberOfPages > PAGES_PER_TABLE {
+            // BUGUBG: Handle it
+            haltLoopWithMessage!("Request crosses page directoris and we cannot handle that yet");
+        }
 
         vgaWriteLine!(
-            "Requested 0x{:X} will use 0x{:X} and put it at 0x{:X},0x{:X},0x{:X}",
+            "Requested 0x{:X} will start at 0x{:X} and live at {}, {}, {}, {}",
             requestedAddress,
             startAddress,
             pageDirectoryPointerIndex,
             pageDirectoryIndex,
             pageTableIndex,
+            pageIndex,
         );
 
         if pageDirectoryPointerIndex != 0 {
@@ -65,12 +71,13 @@ impl VirtualMemoryManager {
         } else if requestedAddress == 0xFEBD_500C || requestedAddress == 0xFEA0_0000 {
             pt = FOURTH_PAGE_TABLE_LOCATION as *mut PageTable;
         } else {
-            vgaWriteLine!("Don't know how to 0x{:X}", requestedAddress);
+            vgaWriteLine!("Hardcode more tables for 0x{:X}", requestedAddress);
             haltLoop();
         }
 
         unsafe {
-            PageBook::initNewPageTable(pt, startAddress);
+            // BUGBUG: Page table could already exist and we need to modify
+            PageBook::initNewPageTable(pt, startAddress, pageIndex, numberOfPages);
             let pml4 = self.pageBook.getEntry();
             let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
             let pdt: *mut PageDirectoryTable;
