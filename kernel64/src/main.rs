@@ -109,40 +109,25 @@ pub extern "C" fn DanMain() -> ! {
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
 
     // BUGBUG: We're cheating that we know where the disk will be so just page it in
-    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::Normal);
+    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::UseReserved);
     virtualMemoryManager.identityMap(0xFEBD_5000, 1, WhatDo::YoLo);
     virtualMemoryManager.identityMap(
         SATA_DRIVE_BASE_CMD_BASE_ADDRESS as usize,
         0x10,
-        WhatDo::YoLo,
+        WhatDo::Normal,
     );
     virtualMemoryManager.identityMap(
         SATA_DRIVE_BASE_FIS_BASE_ADDRESS as usize,
         0x10,
-        WhatDo::YoLo,
+        WhatDo::Normal,
     );
     virtualMemoryManager.identityMap(
         SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS,
         0x10,
-        WhatDo::YoLo,
+        WhatDo::Normal,
     );
-    /*virtualMemoryManager.identityMap(
-        0x7FE_0000,
-        0x20,
-        WhatDo::YoLo,
-    );
-    virtualMemoryManager.identityMap(
-        0x7FE_2000,
-        0x10,
-        WhatDo::YoLo,
-    );*/
     virtualMemoryManager.identityMap(0x800_0000, PAGES_PER_TABLE, WhatDo::YoLo);
-    /*virtualMemoryManager.identityMap(
-        0x800_0000,
-        PAGES_PER_TABLE,
-        WhatDo::UseReserved,
-    );*/
 
     reloadCR3();
     readBytes();
