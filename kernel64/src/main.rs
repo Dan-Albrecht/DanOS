@@ -12,6 +12,7 @@ mod assemblyHelpers;
 mod interupts;
 mod memory;
 mod pic;
+mod serial;
 
 use core::array::from_fn;
 use core::panic::PanicInfo;
@@ -19,6 +20,7 @@ use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
 
+use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
     SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
@@ -37,6 +39,7 @@ use memory::dumbHeap::BootstrapDumbHeap;
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
 use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
+use serial::serialPort::{COMPort, SerialPort};
 
 use crate::pic::picStuff::disablePic;
 
@@ -60,6 +63,12 @@ fn reloadCR3() {
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Welcome to 64-bit Rust!");
+    let serial = SerialPort::tryGet(COMPort::COM1);
+    if let Some(thePort) = serial {
+        thePort.SendLine(b"Hello, Serial Port!!!");
+    } else {
+        haltLoopWithMessage!("Failed to get the port");
+    }
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     let mut physicalMemoryManager = PhysicalMemoryManager {
@@ -128,17 +137,13 @@ pub extern "C" fn DanMain() -> ! {
         0x10,
         WhatDo::YoLo,
     );*/
-    virtualMemoryManager.identityMap(
-        0x800_0000,
-        PAGES_PER_TABLE,
-        WhatDo::YoLo,
-    );
+    virtualMemoryManager.identityMap(0x800_0000, PAGES_PER_TABLE, WhatDo::YoLo);
     /*virtualMemoryManager.identityMap(
         0x800_0000,
         PAGES_PER_TABLE,
         WhatDo::UseReserved,
     );*/
-    
+
     reloadCR3();
     readBytes();
 
