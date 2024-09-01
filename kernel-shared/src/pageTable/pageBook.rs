@@ -1,13 +1,10 @@
 use core::fmt::Write;
 use core::{arch::asm, mem::size_of};
 
+
 use crate::assemblyStuff::halt::haltLoop;
-use crate::magicConstants::{
-    FOURTH_PAGE_TABLE_LOCATION, SECOND_PAGE_TABLE_LOCATION, THIRD_PAGE_TABLE_LOCATION,
-};
-use crate::memoryHelpers::alignDown;
+use crate::magicConstants::{ENTRIES_PER_PAGE_TABLE, FIRST_PD, FIRST_PDPT, FIRST_PML4, FIRST_PT};
 use crate::{
-    magicConstants::PAGE_TABLE_LOCATION,
     memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
     vgaWriteLine,
 };
@@ -26,53 +23,54 @@ pub struct PageBook {
 }
 
 impl PageBook {
+
+    fn new() -> PageBook{
+        PageBook{
+            Entry:0,
+        }
+    }
+
     // This will create and initalize
-    pub fn fromScratch() -> *const PageBook {
+    pub fn fromScratch() -> PageBook {
         unsafe {
-            //let pt = size_of::<PhysicalPage>() * 512;
-            // BUGBUG: We want all the paging structure within paged memory, I think
-            let pt = PAGE_TABLE_LOCATION;
 
-            // BUGBUG: Make this compile time
-            haltOnMisaligned("The page table", pt, 0x1000);
-            let pt = pt as *mut PageTable;
+            let pt = FIRST_PT as * mut PageTable;
+            // BUGBUG: Make these compile time, we have consts
+            // Also the spacing of subsequent addresses should be validated to make sure the size of the struct doesn't overlap
+            haltOnMisaligned("PT", pt as usize, 0x1000);
+            vgaWriteLine!("PT @ 0x{:X}", pt as usize);
             zeroMemory2(pt);
-            vgaWriteLine!("PageTable @ 0x{:X}", pt as usize);
 
-            for index in 0..512 {
-                let page = (index * size_of::<PhysicalPage>()) as *mut PhysicalPage;
-                // BUGBUG: Cannot zero all these because this contains the code we're actually running at right now
-                //zeroMemory2(page);
-                // BUGBUG: Setting this uncachable for now as we're going to map the hard drive in this space
-                // Need to get it, its own page
+            let pdt = FIRST_PD as * mut PageDirectoryTable;
+            haltOnMisaligned("PDT", pdt as usize, 0x1000);
+            vgaWriteLine!("PDT @ 0x{:X}", pdt as usize);
+            zeroMemory2(pdt);
+
+            let pdpt = FIRST_PDPT as * mut PageDirectoryPointerTable;
+            haltOnMisaligned("PDPT", pdpt as usize, 0x1000);
+            vgaWriteLine!("PDPT @ 0x{:X}", pdpt as usize);
+            zeroMemory2(pdpt);
+
+            let pml4 = FIRST_PML4 as *mut PageMapLevel4Table;
+            haltOnMisaligned("PML4", pml4 as usize, 0x1000);
+            vgaWriteLine!("PML4 @ 0x{:X}", pml4 as usize);
+            zeroMemory2(pml4);
+
+            // BUGUBG: This thing is given way to much space
+            let mut pb = PageBook::new();
+
+            for index in 0..ENTRIES_PER_PAGE_TABLE {
+                let page = index * size_of::<PhysicalPage>();
+                // BUGUBG: We're setting these uncachable for now just to be extra safe, but shouldn't be needed anymore...
                 (*pt).setEntry(index, page, true, true, false);
             }
 
-            let pdt = pt as usize + size_of::<PageTable>();
-            let pdt = alignUp(pdt, 0x1000) as *mut PageDirectoryTable;
-            zeroMemory2(pdt);
-            vgaWriteLine!("PDT @ 0x{:X}", pdt as usize);
             (*pdt).setEntry(0, pt, true, true, false);
-
-            let pdpt = pdt as usize + size_of::<PageDirectoryTable>();
-            let pdpt = alignUp(pdpt, 0x1000) as *mut PageDirectoryPointerTable;
-            zeroMemory2(pdpt);
-            vgaWriteLine!("PDPT @ 0x{:X}", pdpt as usize);
             (*pdpt).setEntry(0, pdt, true, true, false);
-
-            let pml4 = pdpt as usize + size_of::<PageDirectoryPointerTable>();
-            let pml4 = alignUp(pml4, 0x1000) as *mut PageMapLevel4Table;
-            zeroMemory2(pml4);
-            vgaWriteLine!("PML4 @ 0x{:X}", pml4 as usize);
             (*pml4).setEntry(0, pdpt, true, true, false);
+            pb.setEntry(pml4, false, false);
 
-            let pageBook = pml4 as usize + size_of::<PageMapLevel4Table>();
-            let pageBook = alignUp(pageBook, 0x1000) as *mut PageBook;
-            zeroMemory2(pageBook);
-            vgaWriteLine!("PageBook @ 0x{:X}", pageBook as usize);
-            (*pageBook).setEntry(pml4, false, false);
-
-            return pageBook;
+            return pb;
         }
     }
 
@@ -130,7 +128,7 @@ impl PageBook {
         );
 
         for index in 0..numberOfPages {
-            let page: *mut PhysicalPage = (startAddress + (index * size_of::<PhysicalPage>())) as *mut PhysicalPage;
+            let page = startAddress + (index * size_of::<PhysicalPage>());
             
             // BUGBUG: Expose flags to upstream
             (*pt).setEntry(index + pageIndex, page, true, true, false);

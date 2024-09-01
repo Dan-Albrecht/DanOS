@@ -120,8 +120,8 @@ pub fn InterruptHandlerWithCodeIntImpl(
     haltLoop();
 }
 
-pub unsafe fn SetIDT(memoryManager: *mut PhysicalMemoryManager) {
-    (*memoryManager).Reserve(IDT_ADDRESS, size_of::<Table>(), WhatDo::Normal);
+pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
+    memoryManager.Reserve(IDT_ADDRESS, size_of::<Table>(), WhatDo::Normal);
     let idt = IDT_ADDRESS as *mut Table;
 
     // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,

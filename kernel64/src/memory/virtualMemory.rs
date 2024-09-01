@@ -1,8 +1,14 @@
 use core::fmt::Write;
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, magicConstants::{
-        FOURTH_PAGE_TABLE_LOCATION, PAGES_PER_TABLE, SECOND_PAGE_TABLE_LOCATION, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER, SIZE_OF_PAGE_TABLE, THIRD_PAGE_TABLE_LOCATION
-    }, memoryHelpers::{alignDown, alignUp, zeroMemory2}, pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, vgaWriteLine
+    assemblyStuff::halt::haltLoop,
+    haltLoopWithMessage,
+    magicConstants::{
+        PAGES_PER_TABLE, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER,
+        SIZE_OF_PAGE_TABLE,
+    },
+    memoryHelpers::{alignDown, alignUp, zeroMemory2},
+    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
+    vgaWriteLine,
 };
 
 use super::physicalMemory::PhysicalMemoryManager;
@@ -21,10 +27,13 @@ pub enum WhatDo {
 
 impl VirtualMemoryManager {
     pub fn new(physical: *mut PhysicalMemoryManager, pageBook: PageBook) -> Self {
-        VirtualMemoryManager { pageBook, physical }
+        VirtualMemoryManager {
+            pageBook: pageBook,
+            physical: physical,
+        }
     }
 
-    pub fn identityMap(&self, requestedAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
+    pub fn identityMap(&mut self, requestedAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
         // BUGBUG: Because we're rounding down, it is possible we won't end up mapping all memory the request in
         // we either need to have code to increase numberOfPages, or just rejected non-aligned requests
         let startAddress = alignDown(requestedAddress, SIZE_OF_PAGE);
@@ -53,6 +62,7 @@ impl VirtualMemoryManager {
             pageIndex,
         );
 
+        // BUGUBG: Don't be lazy
         if pageDirectoryPointerIndex != 0 {
             vgaWriteLine!(
                 "Don't know how to do PDPT 0x{:X}",
@@ -61,38 +71,24 @@ impl VirtualMemoryManager {
             haltLoop();
         }
 
-        // BUGUBG: Allocate this
-        let pt: *mut PageTable;
-
-        if requestedAddress == 0x7E0_0000 {
-            pt = SECOND_PAGE_TABLE_LOCATION as *mut PageTable;
-        } else if requestedAddress == 0xB000_0000 {
-            pt = THIRD_PAGE_TABLE_LOCATION as *mut PageTable;
-        } else if requestedAddress == 0xFEBD_500C || requestedAddress == 0xFEA0_0000 {
-            pt = FOURTH_PAGE_TABLE_LOCATION as *mut PageTable;
-        } else {
-            vgaWriteLine!("Hardcode more tables for 0x{:X}", requestedAddress);
-            haltLoop();
-        }
-
         unsafe {
-            // BUGBUG: Page table could already exist and we need to modify
-            PageBook::initNewPageTable(pt, startAddress, pageIndex, numberOfPages);
             let pml4 = self.pageBook.getEntry();
             let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
-            let pdt: *mut PageDirectoryTable;
 
-            if pageDirectoryIndex == 0 {
-                // Can get existing
-                pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
-            } else {
-                let pdtAddress = pt as usize + size_of::<PageTable>();
-                pdt = alignUp(pdtAddress, 0x1000) as *mut PageDirectoryTable;
-                zeroMemory2(pdt);
-                (*pdpt).setEntry(pageDirectoryIndex, pdt, true, true, false);
+            let pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
+            if pdt as usize == 0 {
+                vgaWriteLine!("Need to allocate a new PDT");
+                haltLoop();
             }
 
-            (*pdt).setEntry(pageTableIndex, pt, true, true, false);
+            let mut pt = (*pdt).getAddressForEntry(pageTableIndex);
+            if pt as usize == 0 {
+                vgaWriteLine!("Need to allocate a new PT");
+                haltLoop();
+            }
+
+            // BUGBUG: Figure out cachable story
+            (*pt).setEntry(pageIndex, startAddress, true, true, false);
         }
     }
 }

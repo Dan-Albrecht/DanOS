@@ -1,8 +1,5 @@
 use core::{array::from_fn, fmt::Write, ptr::addr_of_mut};
-use kernel_shared::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage,
-    magicConstants::ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP, vgaWriteLine,
-};
+use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 
 use super::{
     memoryMap::{MemoryMap, MemoryMapEntryType},
@@ -10,11 +7,11 @@ use super::{
 };
 
 pub struct PhysicalMemoryManager {
-    MemoryMap: MemoryMap,
-    Blobs: [MemoryBlob; 100],
+    pub MemoryMap: MemoryMap,
+    pub Blobs: [MemoryBlob; 100],
 }
 
-struct MemoryBlob {
+pub struct MemoryBlob {
     Address: usize,
     Length: usize,
 }
@@ -29,24 +26,6 @@ impl Default for MemoryBlob {
 }
 
 impl PhysicalMemoryManager {
-    pub fn Init(memoryMap: MemoryMap) -> *mut PhysicalMemoryManager {
-        unsafe {
-            let result = ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP as *mut PhysicalMemoryManager;
-            (*result) = PhysicalMemoryManager {
-                MemoryMap: memoryMap,
-                Blobs: from_fn(|_| MemoryBlob::default()),
-            };
-
-            (*result).Reserve(
-                ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP,
-                size_of::<PhysicalMemoryManager>(),
-                WhatDo::Normal,
-            );
-
-            result
-        }
-    }
-
     pub(crate) fn Reserve(
         &mut self,
         requestLocation: usize,
@@ -138,40 +117,37 @@ impl PhysicalMemoryManager {
         memoryMapBase: usize,
         memoryMapLength: usize,
     ) {
-        let blobs = addr_of_mut!(self.Blobs);
         let mut nextIndex = 0;
 
-        unsafe {
-            for blobIndex in 0..(blobs.read_unaligned().len()) {
-                nextIndex = blobIndex;
-                let blobAddress = blobs.read_unaligned()[blobIndex].Address;
-                let blobLength = blobs.read_unaligned()[blobIndex].Length;
+        for blobIndex in 0..(self.Blobs.len()) {
+            nextIndex = blobIndex;
+            let blobAddress = self.Blobs[blobIndex].Address;
+            let blobLength = self.Blobs[blobIndex].Length;
 
-                if blobLength == 0 {
-                    // Can't reserve 0 bytes, so use that as the marker of used or not
-                    // We've made it to the end without finding it is already being used
-                    break;
-                }
-
-                // Is this request to reserved already reserved by something else?
-                if requestLocation < (blobAddress + blobLength)
-                    && (blobAddress) < (requestLocation + requestAmmount)
-                {
-                    vgaWriteLine!(
-                        "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
-                        requestLocation,
-                        requestAmmount,
-                        blobIndex,
-                        blobAddress,
-                        blobLength,
-                    );
-                    haltLoop();
-                }
+            if blobLength == 0 {
+                // Can't reserve 0 bytes, so use that as the marker of used or not
+                // We've made it to the end without finding it is already being used
+                break;
             }
 
-            blobs.read_unaligned()[nextIndex].Address = requestLocation;
-            blobs.read_unaligned()[nextIndex].Length = requestAmmount;
+            // Is this request to reserved already reserved by something else?
+            if requestLocation < (blobAddress + blobLength)
+                && (blobAddress) < (requestLocation + requestAmmount)
+            {
+                vgaWriteLine!(
+                    "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
+                    requestLocation,
+                    requestAmmount,
+                    blobIndex,
+                    blobAddress,
+                    blobLength,
+                );
+                haltLoop();
+            }
         }
+
+        self.Blobs[nextIndex].Address = requestLocation;
+        self.Blobs[nextIndex].Length = requestAmmount;
 
         vgaWriteLine!(
             "Reserved 0x{:X} bytes @ 0x{:X} within 0x{:X}..0x{:X} index {}",
@@ -208,5 +184,28 @@ impl PhysicalMemoryManager {
                 memoryType
             );
         }
+    }
+
+    // BUGBUG: This is very dumb and inefficent
+    pub(crate) fn ReserveWherever<T>(&mut self, sizeInBytes: usize) -> *mut T {
+        let mut start = 0;
+        let len = self.Blobs.len();
+
+        for blobIndex in 0..len {
+            let x = self.Blobs[blobIndex].Address;
+            let y = self.Blobs[blobIndex].Length;
+
+            if y == 0 {
+                // 0 length is our current 'not used' marker
+                break;
+            }
+
+            let z = x + y;
+            start = z;
+        }
+
+        self.Reserve(start, sizeInBytes, WhatDo::Normal);
+
+        return start as *mut T;
     }
 }

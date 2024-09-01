@@ -45,12 +45,13 @@ unsafe fn enableLongMode() {
 unsafe fn setPageData() {
     vgaWriteLine!("Getting book");
     let book = PageBook::fromScratch();
-    let cr3 = (*book).getCR3Value();
+    let cr3 = book.getCR3Value();
     if cr3 > u32::MAX as u64 {
-        vgaWriteLine!("Page table structs in 64-bit space, but we're still in 32");
+        vgaWriteLine!("Page table structs are in 64-bit space, but we're still in 32");
         haltLoop();
     }
-    vgaWriteLine!("Registering book at 0x{:X}", cr3);
+
+    vgaWriteLine!("Restier cr3 to 0x{:X}", cr3);
     asm!(
         "mov cr3, eax",
         in("eax") cr3 as u32,

@@ -22,10 +22,10 @@ impl PageDirectoryTable {
         self.Entries[index] = address;
     }
 
-    pub fn getAddressForEntry(&self, index: usize) -> *const PageTable {
+    pub fn getAddressForEntry(&self, index: usize) -> *mut PageTable {
         let mut entry = self.Entries[index];
         entry = entry & 0xF_FFFF_FFFF_F000;
 
-        return entry as *const PageTable;
+        return entry as *mut PageTable;
     }
 }

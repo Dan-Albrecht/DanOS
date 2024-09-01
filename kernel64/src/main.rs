@@ -13,12 +13,13 @@ mod interupts;
 mod memory;
 mod pic;
 
+use core::array::from_fn;
 use core::panic::PanicInfo;
 use core::ptr::read_volatile;
 use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
-use kernel_shared::magicConstants::PAGES_PER_TABLE;
+use kernel_shared::magicConstants::{PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS};
 use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
@@ -30,7 +31,7 @@ use kernel_shared::{
     vgaWriteLine,
 };
 use memory::memoryMap::MemoryMap;
-use memory::physicalMemory::PhysicalMemoryManager;
+use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
 use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
 
 use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
@@ -57,7 +58,10 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Welcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
-    let physicalMemoryManager = PhysicalMemoryManager::Init(memoryMap);
+    let mut physicalMemoryManager = PhysicalMemoryManager {
+        MemoryMap : memoryMap,
+        Blobs: from_fn(|_| MemoryBlob::default()),
+    };
 
     let pageBook: PageBook;
     unsafe {
@@ -65,14 +69,12 @@ pub extern "C" fn DanMain() -> ! {
     }
 
     vgaWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
-    let virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook);
-
     vgaWriteLine!("Configuring PIC...");
     disablePic();
 
     vgaWriteLine!("Installing interrupt table...");
     unsafe {
-        SetIDT(physicalMemoryManager);
+        SetIDT(&mut physicalMemoryManager);
     }
     vgaWriteLine!("Sending a breakpoint...");
     Breakpoint();
@@ -85,12 +87,20 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
 
     heap.DumpHeap();*/
+    // BUGBUG: Having trouble transfering this to the virtual memory manager
+    let pp = &mut physicalMemoryManager as *mut PhysicalMemoryManager;
+
+    let mut virtualMemoryManager = VirtualMemoryManager::new(pp, pageBook);
 
     // BUGBUG: We're cheating that we know where the disk will be so just page it in
-    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::Normal);
-    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::UseReserved);
+    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::YoLo);
     virtualMemoryManager.identityMap(0xFEBD_500C, 1, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_CMD_BASE_ADDRESS as usize, 0x10, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_FIS_BASE_ADDRESS as usize, 0x10, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, 0x10, WhatDo::YoLo);
     reloadCR3();
+    haltLoop();
     readBytes();
 
     vgaWriteLine!("Now let's divide by 0...");

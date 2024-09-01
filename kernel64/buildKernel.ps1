@@ -7,7 +7,7 @@ True to build debug, false to build release
 #>
 
 param (
-    [int]$debug = $false
+    [bool]$debug = $false
 )   
 
 $ErrorActionPreference = 'Stop'
@@ -72,7 +72,10 @@ try {
     
     if ($debug) {
         # Really need to get a tool for this. Debug is different instructions
-        [byte[]]$rawAssembly = 0x48, 0x81, 0xEC
+        #[byte[]]$rawAssembly = 0xB8, 0x98, 0x29, 0x0, 0x0
+        [byte[]]$rawAssembly = 0xB8, 0x18, 0x17, 0x0, 0x0
+        #[byte[]]$rawAssembly = 0xB8, 0xD8, 0x16, 0x0, 0x0
+        #[byte[]]$rawAssembly = 0x48, 0x81, 0xEC, 0xA8, 0x03
     }
     else {
         [byte[]]$rawAssembly = 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x53

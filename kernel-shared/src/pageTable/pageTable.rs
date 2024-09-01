@@ -1,4 +1,4 @@
-use crate::memoryHelpers::setCommonBitAndValidate;
+use crate::{magicConstants::ENTRIES_PER_PAGE_TABLE, memoryHelpers::setCommonBitAndValidate};
 
 use super::physicalPage::PhysicalPage;
 
@@ -6,19 +6,19 @@ use super::physicalPage::PhysicalPage;
 pub struct PageTable {
     // PTE
     // The actual physical page address with some extra metadata bits or'd in
-    pub Entries: [u64; 512],
+    Entries: [u64; ENTRIES_PER_PAGE_TABLE],
 }
 
 impl PageTable {
     pub fn setEntry(
         &mut self,
         index: usize,
-        entry: *const PhysicalPage,
+        address: usize,
         present: bool,
         writable: bool,
         cachable: bool,
     ) {
-        let address = setCommonBitAndValidate("PTE", entry as usize, present, writable, cachable);
+        let address = setCommonBitAndValidate("PTE", address, present, writable, cachable);
 
         self.Entries[index] = address;
     }

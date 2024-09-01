@@ -11,20 +11,25 @@ pub static MEMORY_MAP_LOCATION: usize = 0x1000;
 pub static RANDOM_ODD_MEGABYTE: usize = 0x11_2345;
 pub static RANDOM_EVEN_MEGABYTE: usize = 0x01_2345;
 
+// BUGBUG: We should just do this on the stack, but this simplifies passing off from 32-bit to 64-bit for now
+// We'll also verify in the build scripts we won't overrun this area
+// This does mean XXX needs to keep in sync with the lowest of these addresses
+pub const FIRST_PML4: usize = 0x1F_C000;
+pub const FIRST_PDPT: usize = 0x1F_D000;
+pub const FIRST_PD: usize = 0x1F_E000;
+pub const FIRST_PT: usize = 0x1F_F000;
+
 pub static IDT_ADDRESS: usize = 0x9_0000;
 
-pub const ADDRESS_OF_MEMORY_MANAGER_BEFORE_HEAP: usize = 0x1B_0000;
-pub static PAGE_TABLE_LOCATION: usize = 0x1D_0000;
-pub static SECOND_PAGE_TABLE_LOCATION: usize = 0x1E_0000;
-pub static THIRD_PAGE_TABLE_LOCATION: usize = 0x1F_0000;
-pub static FOURTH_PAGE_TABLE_LOCATION: usize = 0x1C_0000;
-
+// BUGBUG: These, especially the last two should be 'address range of' or something like that, the objects themselves are way smaller
 pub static SIZE_OF_PAGE: usize = 0x1000;
 pub static SIZE_OF_PAGE_TABLE: usize = 0x20_0000;
 pub static SIZE_OF_PAGE_DIRECTORY: usize = 0x4000_0000;
 
 // BUGBUG: Can we compile time ensure this is mod-0?
 pub static PAGES_PER_TABLE: usize = SIZE_OF_PAGE_TABLE / SIZE_OF_PAGE;
+
+pub const ENTRIES_PER_PAGE_TABLE: usize = 512;
 
 #[cfg(target_pointer_width = "64")]
 pub static SIZE_OF_PAGE_DIRECTORY_POINTER: usize = 0x80_0000_0000;
