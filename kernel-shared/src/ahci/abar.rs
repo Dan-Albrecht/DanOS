@@ -3,7 +3,7 @@ use crate::{
     assemblyStuff::halt::haltLoop,
     vgaWriteLine,
 };
-use core::{fmt::Write, ptr::read_volatile};
+use core::fmt::Write;
 
 // AHCI Base Address Register
 pub struct ABar {

@@ -1,11 +1,9 @@
 use core::fmt::Write;
 use core::{arch::asm, mem::size_of};
 
-
-use crate::assemblyStuff::halt::haltLoop;
 use crate::magicConstants::{ENTRIES_PER_PAGE_TABLE, FIRST_PD, FIRST_PDPT, FIRST_PML4, FIRST_PT};
 use crate::{
-    memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
+    memoryHelpers::{haltOnMisaligned, zeroMemory2},
     vgaWriteLine,
 };
 

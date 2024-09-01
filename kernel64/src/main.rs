@@ -15,11 +15,10 @@ mod pic;
 
 use core::array::from_fn;
 use core::panic::PanicInfo;
-use core::ptr::read_volatile;
 use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
-use kernel_shared::haltLoopWithMessage;
+
 use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
     SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
@@ -39,7 +38,7 @@ use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
 use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
 
-use crate::{memory::dumbHeap::DumbHeap, pic::picStuff::disablePic};
+use crate::pic::picStuff::disablePic;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

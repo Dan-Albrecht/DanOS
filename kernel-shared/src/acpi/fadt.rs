@@ -1,4 +1,4 @@
-use crate::{acpi::dsdt::DSDT, vgaWrite, vgaWriteLine};
+use crate::{acpi::dsdt::DSDT, vgaWriteLine};
 use core::{fmt::Write, ptr::addr_of};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#fixed-acpi-description-table-fadt

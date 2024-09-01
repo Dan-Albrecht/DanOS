@@ -1,9 +1,8 @@
 use crate::{
     magicConstants::{ENTRIES_PER_PAGE_TABLE, SIZE_OF_PAGE},
-    memoryHelpers::setCommonBitAndValidate, vgaWriteLine,
+    memoryHelpers::setCommonBitAndValidate,
 };
 
-use core::fmt::Write;
 use super::physicalPage::PhysicalPage;
 
 #[repr(C, packed)]

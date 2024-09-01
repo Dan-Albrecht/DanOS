@@ -1,4 +1,4 @@
-use core::{array::from_fn, fmt::Write, ptr::addr_of_mut};
+use core::fmt::Write;
 use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 
 use super::{
