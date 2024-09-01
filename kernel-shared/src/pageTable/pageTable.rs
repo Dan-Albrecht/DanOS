@@ -1,5 +1,9 @@
-use crate::{magicConstants::ENTRIES_PER_PAGE_TABLE, memoryHelpers::setCommonBitAndValidate};
+use crate::{
+    magicConstants::{ENTRIES_PER_PAGE_TABLE, SIZE_OF_PAGE},
+    memoryHelpers::setCommonBitAndValidate, vgaWriteLine,
+};
 
+use core::fmt::Write;
 use super::physicalPage::PhysicalPage;
 
 #[repr(C, packed)]
@@ -12,15 +16,22 @@ pub struct PageTable {
 impl PageTable {
     pub fn setEntry(
         &mut self,
-        index: usize,
-        address: usize,
+        startIndex: usize,
+        numberOfPages: usize,
+        startAddress: usize,
         present: bool,
         writable: bool,
         cachable: bool,
     ) {
-        let address = setCommonBitAndValidate("PTE", address, present, writable, cachable);
+        vgaWriteLine!("SA: 0x{:X} SI: {} NP: {}", startAddress, startIndex, numberOfPages);
 
-        self.Entries[index] = address;
+        for relativeIndex in 0..numberOfPages {
+            let actualIndex = relativeIndex + startIndex;
+            let actualAddress = startAddress + (relativeIndex * SIZE_OF_PAGE);
+            //vgaWriteLine!("SA: 0x{:X} SI: {} AA: 0x{:X} AI: {}", startAddress, startIndex, actualAddress, actualIndex);
+            let entry = setCommonBitAndValidate("PTE", actualAddress, present, writable, cachable);
+            self.Entries[actualIndex] = entry;
+        }
     }
 
     pub fn getAddressForEntry(&self, index: usize) -> *const PhysicalPage {

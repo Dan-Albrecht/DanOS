@@ -19,7 +19,11 @@ use core::ptr::read_volatile;
 use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::SetIDT;
-use kernel_shared::magicConstants::{PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS};
+use kernel_shared::haltLoopWithMessage;
+use kernel_shared::magicConstants::{
+    DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
+    SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
+};
 use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
@@ -30,6 +34,7 @@ use kernel_shared::{
     pageTable::pageBook::PageBook,
     vgaWriteLine,
 };
+use memory::dumbHeap::BootstrapDumbHeap;
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
 use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
@@ -59,7 +64,7 @@ pub extern "C" fn DanMain() -> ! {
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     let mut physicalMemoryManager = PhysicalMemoryManager {
-        MemoryMap : memoryMap,
+        MemoryMap: memoryMap,
         Blobs: from_fn(|_| MemoryBlob::default()),
     };
 
@@ -68,7 +73,9 @@ pub extern "C" fn DanMain() -> ! {
         pageBook = PageBook::fromExisting64();
     }
 
+    let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
     vgaWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
+
     vgaWriteLine!("Configuring PIC...");
     disablePic();
 
@@ -87,20 +94,53 @@ pub extern "C" fn DanMain() -> ! {
     vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
 
     heap.DumpHeap();*/
-    // BUGBUG: Having trouble transfering this to the virtual memory manager
-    let pp = &mut physicalMemoryManager as *mut PhysicalMemoryManager;
 
-    let mut virtualMemoryManager = VirtualMemoryManager::new(pp, pageBook);
+    // BUGBUG: Having trouble transfering this to the virtual memory manager
+    //let pp = &mut physicalMemoryManager as *mut PhysicalMemoryManager;
+
+    let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
 
     // BUGBUG: We're cheating that we know where the disk will be so just page it in
     virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::YoLo);
     virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(0xFEBD_500C, 1, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_CMD_BASE_ADDRESS as usize, 0x10, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_FIS_BASE_ADDRESS as usize, 0x10, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, 0x10, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(0xFEBD_5000, 1, WhatDo::YoLo);
+    virtualMemoryManager.identityMap(
+        SATA_DRIVE_BASE_CMD_BASE_ADDRESS as usize,
+        0x10,
+        WhatDo::YoLo,
+    );
+    virtualMemoryManager.identityMap(
+        SATA_DRIVE_BASE_FIS_BASE_ADDRESS as usize,
+        0x10,
+        WhatDo::YoLo,
+    );
+    virtualMemoryManager.identityMap(
+        SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS,
+        0x10,
+        WhatDo::YoLo,
+    );
+    /*virtualMemoryManager.identityMap(
+        0x7FE_0000,
+        0x20,
+        WhatDo::YoLo,
+    );
+    virtualMemoryManager.identityMap(
+        0x7FE_2000,
+        0x10,
+        WhatDo::YoLo,
+    );*/
+    virtualMemoryManager.identityMap(
+        0x800_0000,
+        PAGES_PER_TABLE,
+        WhatDo::YoLo,
+    );
+    /*virtualMemoryManager.identityMap(
+        0x800_0000,
+        PAGES_PER_TABLE,
+        WhatDo::UseReserved,
+    );*/
+    
     reloadCR3();
-    haltLoop();
     readBytes();
 
     vgaWriteLine!("Now let's divide by 0...");

@@ -62,7 +62,8 @@ impl PageBook {
             for index in 0..ENTRIES_PER_PAGE_TABLE {
                 let page = index * size_of::<PhysicalPage>();
                 // BUGUBG: We're setting these uncachable for now just to be extra safe, but shouldn't be needed anymore...
-                (*pt).setEntry(index, page, true, true, false);
+                // BUGBUG: This method now allows bulk setting of pages...
+                (*pt).setEntry(index, 1, page, true, true, false);
             }
 
             (*pdt).setEntry(0, pt, true, true, false);
@@ -131,7 +132,8 @@ impl PageBook {
             let page = startAddress + (index * size_of::<PhysicalPage>());
             
             // BUGBUG: Expose flags to upstream
-            (*pt).setEntry(index + pageIndex, page, true, true, false);
+            // BUGBUG: This method now supports bulk setting of pages
+            (*pt).setEntry(index + pageIndex, 1, page, true, true, false);
         }
     }
 }

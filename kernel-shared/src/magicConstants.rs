@@ -19,6 +19,9 @@ pub const FIRST_PDPT: usize = 0x1F_D000;
 pub const FIRST_PD: usize = 0x1F_E000;
 pub const FIRST_PT: usize = 0x1F_F000;
 
+pub const DUMB_HEAP: usize = 0x1F_0000;
+pub const DUMB_HEAP_LENGTH: usize = 0xC000;
+
 pub static IDT_ADDRESS: usize = 0x9_0000;
 
 // BUGBUG: These, especially the last two should be 'address range of' or something like that, the objects themselves are way smaller

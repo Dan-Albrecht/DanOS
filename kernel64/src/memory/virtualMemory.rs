@@ -6,16 +6,17 @@ use kernel_shared::{
         PAGES_PER_TABLE, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER,
         SIZE_OF_PAGE_TABLE,
     },
-    memoryHelpers::{alignDown, alignUp, zeroMemory2},
+    memoryHelpers::{alignDown, alignUp, haltOnMisaligned, zeroMemory2},
     pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
     vgaWriteLine,
 };
 
-use super::physicalMemory::PhysicalMemoryManager;
+use super::{dumbHeap::BootstrapDumbHeap, physicalMemory::PhysicalMemoryManager};
 
 pub struct VirtualMemoryManager {
-    physical: *mut PhysicalMemoryManager,
+    physical: PhysicalMemoryManager,
     pageBook: PageBook,
+    bdh: BootstrapDumbHeap,
 }
 
 // BUGUBG: Come up with a better name
@@ -26,20 +27,42 @@ pub enum WhatDo {
 }
 
 impl VirtualMemoryManager {
-    pub fn new(physical: *mut PhysicalMemoryManager, pageBook: PageBook) -> Self {
+    pub fn new(
+        physical: PhysicalMemoryManager,
+        pageBook: PageBook,
+        bdh: BootstrapDumbHeap,
+    ) -> Self {
         VirtualMemoryManager {
             pageBook: pageBook,
             physical: physical,
+            bdh: bdh,
         }
     }
 
-    pub fn identityMap(&mut self, requestedAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
-        // BUGBUG: Because we're rounding down, it is possible we won't end up mapping all memory the request in
-        // we either need to have code to increase numberOfPages, or just rejected non-aligned requests
-        let startAddress = alignDown(requestedAddress, SIZE_OF_PAGE);
-        unsafe {
-            (*self.physical).Reserve(startAddress, SIZE_OF_PAGE, whatDo);
+    fn is_canonical_address(virtual_address: usize) -> bool {
+        let upper_bits = virtual_address >> 48;
+        upper_bits == 0 || upper_bits == 0xFFFF
+    }
+
+    fn get_page_table_indexes(
+        address: usize,
+    )  {
+        if !Self::is_canonical_address(address) {
+            haltLoopWithMessage!("0x{:X} is not canonical", address);
         }
+
+        let pml4_index = ((address >> 39) & 0x1FF) as usize;
+        let pdpt_index = ((address >> 30) & 0x1FF) as usize;
+        let pd_index = ((address >> 21) & 0x1FF) as usize;
+        let pt_index = ((address >> 12) & 0x1FF) as usize;
+
+        vgaWriteLine!("--> {} {} {} {}", pml4_index, pdpt_index, pd_index, pt_index);
+    }
+
+    pub fn identityMap(&mut self, startAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
+        haltOnMisaligned("Identity map", startAddress, SIZE_OF_PAGE);
+
+        self.physical.Reserve(startAddress, SIZE_OF_PAGE, whatDo);
 
         let pageDirectoryPointerIndex = startAddress / SIZE_OF_PAGE_DIRECTORY_POINTER;
         let pageDirectoryIndex =
@@ -53,14 +76,15 @@ impl VirtualMemoryManager {
         }
 
         vgaWriteLine!(
-            "Requested 0x{:X} will start at 0x{:X} and live at {}, {}, {}, {}",
-            requestedAddress,
+            "Requested 0x{:X} will live at {}, {}, {}, {}",
             startAddress,
             pageDirectoryPointerIndex,
             pageDirectoryIndex,
             pageTableIndex,
             pageIndex,
         );
+
+        Self::get_page_table_indexes(startAddress);
 
         // BUGUBG: Don't be lazy
         if pageDirectoryPointerIndex != 0 {
@@ -75,20 +99,34 @@ impl VirtualMemoryManager {
             let pml4 = self.pageBook.getEntry();
             let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
 
-            let pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
+            let mut pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
             if pdt as usize == 0 {
                 vgaWriteLine!("Need to allocate a new PDT");
-                haltLoop();
+                let addr =
+                    self.bdh.allocate(size_of::<PageDirectoryTable>()) as *mut PageDirectoryTable;
+                vgaWriteLine!("...and did that @ 0x{:X}", addr as usize);
+                zeroMemory2(addr);
+                pdt = addr;
+
+                // BUGBUG: Figure out cachable story
+                (*pdpt).setEntry(pageDirectoryIndex, pdt, true, false, false);
             }
 
             let mut pt = (*pdt).getAddressForEntry(pageTableIndex);
+
             if pt as usize == 0 {
-                vgaWriteLine!("Need to allocate a new PT");
-                haltLoop();
+                vgaWriteLine!("Need to allocate a new PT...");
+                let addr = self.bdh.allocate(size_of::<PageTable>()) as *mut PageTable;
+                vgaWriteLine!("...and did that @ 0x{:X}", addr as usize);
+                zeroMemory2(addr);
+                pt = addr;
+
+                // BUGBUG: Figure out cachable story
+                (*pdt).setEntry(pageTableIndex, pt, true, false, false);
             }
 
             // BUGBUG: Figure out cachable story
-            (*pt).setEntry(pageIndex, startAddress, true, true, false);
+            (*pt).setEntry(pageIndex, numberOfPages, startAddress, true, true, false);
         }
     }
 }

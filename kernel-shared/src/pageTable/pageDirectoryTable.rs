@@ -1,4 +1,5 @@
-use crate::memoryHelpers::setCommonBitAndValidate;
+use core::fmt::Write;
+use crate::{memoryHelpers::setCommonBitAndValidate, vgaWriteLine};
 
 use super::pageTable::PageTable;
 
@@ -20,6 +21,7 @@ impl PageDirectoryTable {
         let address = setCommonBitAndValidate("PDE", entry as usize, present, writable, cachable);
 
         self.Entries[index] = address;
+        vgaWriteLine!("Index {} to 0x{:X}", index, entry as usize);
     }
 
     pub fn getAddressForEntry(&self, index: usize) -> *mut PageTable {

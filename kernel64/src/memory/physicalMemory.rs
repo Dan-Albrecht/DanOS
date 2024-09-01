@@ -8,7 +8,7 @@ use super::{
 
 pub struct PhysicalMemoryManager {
     pub MemoryMap: MemoryMap,
-    pub Blobs: [MemoryBlob; 100],
+    pub Blobs: [MemoryBlob; 0xF],
 }
 
 pub struct MemoryBlob {
@@ -119,6 +119,7 @@ impl PhysicalMemoryManager {
     ) {
         let mut nextIndex = 0;
 
+        // BUGBUG: This code doesn't correctly handle when the array is full
         for blobIndex in 0..(self.Blobs.len()) {
             nextIndex = blobIndex;
             let blobAddress = self.Blobs[blobIndex].Address;

@@ -1,8 +1,95 @@
-use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
 use super::memoryMap::{MemoryMap, MemoryMapEntryType};
 use crate::vgaWriteLine;
-use core::{fmt::Write, mem::size_of, ptr::null_mut};
+use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
+
+const DUMB_ENTRIES: usize = 10;
+
+pub struct BootstrapDumbHeap {
+    Entries: [BootstrapDumbHeapEntry; DUMB_ENTRIES],
+    StartAddress: usize,
+    Length: usize,
+}
+
+struct BootstrapDumbHeapEntry {
+    Address: usize,
+    Length: usize,
+}
+
+impl Default for BootstrapDumbHeapEntry {
+    fn default() -> Self {
+        BootstrapDumbHeapEntry {
+            Address: 0,
+            Length: 0,
+        }
+    }
+}
+
+impl BootstrapDumbHeap {
+    pub fn new(address: usize, length: usize) -> BootstrapDumbHeap {
+        BootstrapDumbHeap {
+            StartAddress: address,
+            Length: length,
+            Entries: from_fn(|_| BootstrapDumbHeapEntry::default()),
+        }
+    }
+
+    pub fn allocate(&mut self, length: usize) -> usize {
+        if length > self.Length {
+            haltLoopWithMessage!(
+                "Requested length of 0x{:X} is bigger than the entire heap of 0x{:X}",
+                length,
+                self.Length
+            );
+        }
+
+        if length == 0 {
+            haltLoopWithMessage!("Allocating 0 doesn't make sense...");
+        }
+
+        let mut firstFree = DUMB_ENTRIES;
+
+        for index in 0..DUMB_ENTRIES {
+            firstFree = index;
+
+            // 0 length entries are not allowed, so that's how we indicate free instead of having another bool
+            if self.Entries[index].Length == 0 {
+                break;
+            }
+        }
+
+        if firstFree == DUMB_ENTRIES - 1 {
+            haltLoopWithMessage!("All dumb entries already taken");
+        }
+
+        let startAddress;
+
+        if firstFree == 0 {
+            startAddress = self.StartAddress;
+        } else {
+            startAddress = self.Entries[firstFree - 1].Address + self.Entries[firstFree - 1].Length;
+        }
+
+        let endAddress = startAddress + length;
+        let heapLimit = self.StartAddress + self.Length;
+
+        if endAddress > heapLimit {
+            haltLoopWithMessage!(
+                "0x{:X}, 0x{:X} is out of range of 0x{:X}, 0x{:X}",
+                startAddress,
+                endAddress,
+                self.StartAddress,
+                self.StartAddress + self.Length
+            );
+        }
+
+        self.Entries[firstFree].Address = startAddress;
+        self.Entries[firstFree].Length = length;
+
+        startAddress
+    }
+}
 
 pub struct DumbHeap {
     First: *mut HeapEntry,
@@ -71,7 +158,7 @@ impl DumbHeap {
                         let headerSize = size_of::<HeapEntry>();
                         let totalNeeded = ammount + headerSize;
 
-                        if totalNeeded <= (*self.First).Size  {
+                        if totalNeeded <= (*self.First).Size {
                             let remainingAfterHeader = (*self.First).Size - totalNeeded;
                             vgaWriteLine!(
                                 "Enough for another 0x{:X} byte entry",
