@@ -60,62 +60,12 @@ try {
     $codeLine = rust-objdump.exe --headers .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink | findstr .text
     $vma = $codeLine.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[3]
     $loadAddress = "0x" + [System.Convert]::ToInt32("0x$vma", 16).ToString("X")
-    
-    # No good windows tools to find the offset of the .text section
-    # So hack city. We know the first instructions of our code will be:
-    # push	r15
-    # push	r14
-    # push	r12
-    # push	rbx
-    # This sequence might appear multiple times in the output file, but since we've verified above
-    # that our entry point is at the start, we know the first hit is ours.
-    
-    if ($debug) {
-        # Really need to get a tool for this. Debug is different instructions
-        #[byte[]]$rawAssembly = 0xB8, 0x98, 0x29, 0x0, 0x0
-        [byte[]]$rawAssembly = 0xB8, 0x18, 0x17, 0x0, 0x0
-        #[byte[]]$rawAssembly = 0xB8, 0xD8, 0x16, 0x0, 0x0
-        #[byte[]]$rawAssembly = 0x48, 0x81, 0xEC, 0xA8, 0x03
-    }
-    else {
-        [byte[]]$rawAssembly = 0x41, 0x57, 0x41, 0x56, 0x41, 0x54, 0x53
-    }
-    
-    $allBytes = [System.IO.File]::ReadAllBytes("${PSScriptRoot}\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink")
-    $index = -1
-
-    for ($x = 0; $x -lt $allBytes.Count; $x++) {
-        $found = $true
-
-        for ($y = 0; $y -lt $rawAssembly.Count; $y++) {
-            if ($allBytes[$x + $y] -ne $rawAssembly[$y]) {
-                $found = $false
-                break   
-            }
-        }
-
-        if ($found) {
-            $index = $x
-            break
-        }
-    }
-
-    if ($index -eq -1) {
-        Write-Error "Couldn't find the .text section"
-    }
-
-    $codeInHex = "0x$(([int]$index).ToString("X"))"
-    $imageInHex = $env:KERNEL64_IMAGE_START
-
-    $a = [Convert]::ToInt32($codeInHex, 16)
-    $b = [Convert]::ToInt32($imageInHex, 16)
-    $calculatedLocation = "0x$(($a + $b).ToString("X"))"
     $expectedLoadAddress = $env:KERNEL64_LOAD_TARGET
 
-    Write-Host "Code offset is $codeInHex and the image is loaded to $imageInHex. Therefore code should be @ $calculatedLocation"
+    Write-Host "We requested load at $expectedLoadAddress it is $loadAddress"
 
-    if ($calculatedLocation -ne $expectedLoadAddress) {
-        Write-Error "Calculated $calculatedLocation, expected $expectedLoadAddress"
+    if ($loadAddress -ne $expectedLoadAddress) {
+        Write-Error "And that doesn't match"
     }
 
     # Display sections and size
