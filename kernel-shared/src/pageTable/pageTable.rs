@@ -23,12 +23,10 @@ impl PageTable {
         writable: bool,
         cachable: bool,
     ) {
-        vgaWriteLine!("SA: 0x{:X} SI: {} NP: {}", startAddress, startIndex, numberOfPages);
 
         for relativeIndex in 0..numberOfPages {
             let actualIndex = relativeIndex + startIndex;
             let actualAddress = startAddress + (relativeIndex * SIZE_OF_PAGE);
-            //vgaWriteLine!("SA: 0x{:X} SI: {} AA: 0x{:X} AI: {}", startAddress, startIndex, actualAddress, actualIndex);
             let entry = setCommonBitAndValidate("PTE", actualAddress, present, writable, cachable);
             self.Entries[actualIndex] = entry;
         }
