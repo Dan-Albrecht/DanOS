@@ -12,7 +12,7 @@ const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 #[macro_export]
 macro_rules! vgaWrite {
     ($($args:tt)*) => {
-        if let Some(ssss) = format_args!($($args)*).as_str() {
+        if let Some(ssss) = core::format_args!($($args)*).as_str() {
             $crate::textMode::textMode::writeString(ssss.as_bytes());
         } else {
             let _ = write!($crate::textMode::writer::Writer::new(), $($args)*);

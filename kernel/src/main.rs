@@ -70,7 +70,7 @@ pub extern "C" fn DanMain() -> ! {
                 vgaWriteLine!("64-bit paging mode enabled...");
                 vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT();
-                vgaWriteLine!("The new GDT is in place");
+                vgaWriteLine!("The new GDT is in place. Jumping to 64-bit...");
                 asm!(
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel
                     adr = const { getKernel64Address() },

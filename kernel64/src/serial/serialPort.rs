@@ -26,16 +26,20 @@ impl SerialPort {
     }
 
     pub fn SendLine(&self, msg: &[u8]) {
-        for index in 0..msg.len() {
-            unsafe {
-                self.sendByte(msg[index]);
-            }
-        }
+        self.Send(msg);
 
         unsafe {
             // CR, LF
             self.sendByte(0xD);
             self.sendByte(0xA);
+        }
+    }
+
+    pub fn Send(&self, msg: &[u8]) {
+        for index in 0..msg.len() {
+            unsafe {
+                self.sendByte(msg[index]);
+            }
         }
     }
 

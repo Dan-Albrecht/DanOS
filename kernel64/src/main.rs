@@ -10,6 +10,7 @@
 
 mod assemblyHelpers;
 mod interupts;
+mod logging;
 mod memory;
 mod pic;
 mod serial;
@@ -35,6 +36,7 @@ use kernel_shared::{
     pageTable::pageBook::PageBook,
     vgaWriteLine,
 };
+use logging::logger::{Logger, SystemLogger};
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
@@ -62,13 +64,10 @@ fn reloadCR3() {
 
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
-    vgaWriteLine!("Welcome to 64-bit Rust!");
-    let serial = SerialPort::tryGet(COMPort::COM1);
-    if let Some(thePort) = serial {
-        thePort.SendLine(b"Hello, Serial Port!!!");
-    } else {
-        haltLoopWithMessage!("Failed to get the port");
-    }
+    loggerWriteLine!("Welcome to 64-bit Rust!");
+    loggerWrite!("One {} ", 1);
+    loggerWrite!("Two {} ", 2);
+    loggerWriteLine!("Three {}", 3);
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     let mut physicalMemoryManager = PhysicalMemoryManager {

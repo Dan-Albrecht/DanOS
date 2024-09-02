@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 kernel-shared = { path = "../kernel-shared" }
+lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 
 [profile.dev]
 panic = "abort"
