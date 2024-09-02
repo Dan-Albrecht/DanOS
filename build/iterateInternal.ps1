@@ -5,7 +5,7 @@ Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
     $loadMemoryTarget = 0x8000
-    $kernel64JumpAddress = 0x8100
+    $kernel64JumpAddress = 0x9100
     $memoryMapTarget = 0x1000
     $debug = $true
 

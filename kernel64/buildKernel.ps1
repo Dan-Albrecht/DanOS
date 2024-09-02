@@ -68,6 +68,22 @@ try {
         Write-Error "And that doesn't match"
     }
 
+    # More important we need to make sure the offset of the text section is where
+    # we'll ultimatley end up jumping to.
+    $textSection = wsl -- readelf -SW target/x86_64-unknown-none/$buildType/kernel64 | findstr .text
+    $textOffset = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[5]
+    $textOffset = [System.Convert]::ToInt32($textOffset, 16)
+
+    $loadTarget = [System.Convert]::ToInt32($env:KERNEL64_LOAD_TARGET, 16)
+    $imageStart = [System.Convert]::ToInt32($env:KERNEL64_IMAGE_START, 16)
+    $expectedOffset = $loadTarget - $imageStart
+
+    if ($textOffset -ne $expectedOffset) {
+        # For reasons I haven't figured out yet, the elf header somtimes changes sizes. Until we can control that, detect it and then just have upstream
+        # take into account the new jump target
+        Write-Error ".text section moved. Stat 0x$($imageStart.ToString("X")) Target 0x$($loadTarget.ToString("X")) Expected offset: 0x$($expectedOffset.ToString("X")) Actual offset: 0x$($textOffset.ToString("X"))"
+    }
+
     # Display sections and size
     # size -Ax kernel64.unstripped
     # or even better
