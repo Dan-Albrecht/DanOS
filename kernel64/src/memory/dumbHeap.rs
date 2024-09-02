@@ -1,7 +1,7 @@
 use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
 use super::memoryMap::{MemoryMap, MemoryMapEntryType};
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
 
 const DUMB_ENTRIES: usize = 10;
@@ -117,13 +117,13 @@ impl DumbHeap {
                 let stupidAddress = memoryMap.Entries[index].BaseAddr as usize;
                 let stupidSize = memoryMap.Entries[index].Length as usize;
                 if stupidSize < (1 * 1024 * 1024) {
-                    vgaWriteLine!(
+                    loggerWriteLine!(
                         "0x{:X} is too small at 0x{:X} bytes",
                         stupidAddress,
                         stupidSize
                     );
                 } else {
-                    vgaWriteLine!("0x{:X} wins at 0x{:X} bytes", stupidAddress, stupidSize);
+                    loggerWriteLine!("0x{:X} wins at 0x{:X} bytes", stupidAddress, stupidSize);
                     let heapEntryAddress = stupidAddress as *mut HeapEntry;
                     let entry = HeapEntry {
                         Free: true,
@@ -143,7 +143,7 @@ impl DumbHeap {
             }
         }
 
-        vgaWriteLine!("Couldn't find any useable memory!");
+        loggerWriteLine!("Couldn't find any useable memory!");
         haltLoop();
     }
 
@@ -152,7 +152,7 @@ impl DumbHeap {
             if (*self.First).Free {
                 if ammount <= (*self.First).Size {
                     if (*self.First).Next != null_mut() {
-                        vgaWriteLine!("Next poitner is already populated...");
+                        loggerWriteLine!("Next poitner is already populated...");
                         haltLoop();
                     } else {
                         let headerSize = size_of::<HeapEntry>();
@@ -160,7 +160,7 @@ impl DumbHeap {
 
                         if totalNeeded <= (*self.First).Size {
                             let remainingAfterHeader = (*self.First).Size - totalNeeded;
-                            vgaWriteLine!(
+                            loggerWriteLine!(
                                 "Enough for another 0x{:X} byte entry",
                                 remainingAfterHeader
                             );
@@ -182,16 +182,16 @@ impl DumbHeap {
 
                             return (*self.First).Address;
                         } else {
-                            vgaWriteLine!("Allocation wouldn't leave room for next pointer");
+                            loggerWriteLine!("Allocation wouldn't leave room for next pointer");
                             haltLoop();
                         }
                     }
                 } else {
-                    vgaWriteLine!("You want too much");
+                    loggerWriteLine!("You want too much");
                     haltLoop();
                 }
             } else {
-                vgaWriteLine!("Don't know how to grow mem list yet");
+                loggerWriteLine!("Don't know how to grow mem list yet");
                 haltLoop();
             }
         }
@@ -205,7 +205,7 @@ impl DumbHeap {
                 let currentItem = current.read_unaligned();
                 let nextAddress = currentItem.Next as usize;
                 let free = currentItem.Free;
-                vgaWriteLine!(
+                loggerWriteLine!(
                     "Entry: 0x{:X} Free: {} Points: 0x{:X} For: 0x{:X} Next: 0x{:X}",
                     currentAddress,
                     free,

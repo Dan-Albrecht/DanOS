@@ -11,6 +11,8 @@ use kernel_shared::{
     vgaWriteLine,
 };
 
+use crate::loggerWriteLine;
+
 use super::{dumbHeap::BootstrapDumbHeap, physicalMemory::PhysicalMemoryManager};
 
 pub struct VirtualMemoryManager {
@@ -56,7 +58,7 @@ impl VirtualMemoryManager {
         let pd_index = ((address >> 21) & 0x1FF) as usize;
         let pt_index = ((address >> 12) & 0x1FF) as usize;
 
-        vgaWriteLine!("--> {} {} {} {}", pml4_index, pdpt_index, pd_index, pt_index);
+        loggerWriteLine!("--> {} {} {} {}", pml4_index, pdpt_index, pd_index, pt_index);
     }
 
     pub fn identityMap(&mut self, startAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
@@ -75,7 +77,7 @@ impl VirtualMemoryManager {
             haltLoopWithMessage!("Request crosses page directoris and we cannot handle that yet");
         }
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "Requested 0x{:X} will live at {}, {}, {}, {}",
             startAddress,
             pageDirectoryPointerIndex,
@@ -88,7 +90,7 @@ impl VirtualMemoryManager {
 
         // BUGUBG: Don't be lazy
         if pageDirectoryPointerIndex != 0 {
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "Don't know how to do PDPT 0x{:X}",
                 pageDirectoryPointerIndex
             );
@@ -101,10 +103,10 @@ impl VirtualMemoryManager {
 
             let mut pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
             if pdt as usize == 0 {
-                vgaWriteLine!("Need to allocate a new PDT");
+                loggerWriteLine!("Need to allocate a new PDT");
                 let addr =
                     self.bdh.allocate(size_of::<PageDirectoryTable>()) as *mut PageDirectoryTable;
-                vgaWriteLine!("...and did that @ 0x{:X}", addr as usize);
+                loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
                 zeroMemory2(addr);
                 pdt = addr;
 
@@ -115,9 +117,9 @@ impl VirtualMemoryManager {
             let mut pt = (*pdt).getAddressForEntry(pageTableIndex);
 
             if pt as usize == 0 {
-                vgaWriteLine!("Need to allocate a new PT...");
+                loggerWriteLine!("Need to allocate a new PT...");
                 let addr = self.bdh.allocate(size_of::<PageTable>()) as *mut PageTable;
-                vgaWriteLine!("...and did that @ 0x{:X}", addr as usize);
+                loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
                 zeroMemory2(addr);
                 pt = addr;
 

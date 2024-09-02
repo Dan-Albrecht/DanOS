@@ -1,6 +1,8 @@
 use core::fmt::Write;
 use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 
+use crate::loggerWriteLine;
+
 use super::{
     memoryMap::{MemoryMap, MemoryMapEntryType},
     virtualMemory::WhatDo,
@@ -98,7 +100,7 @@ impl PhysicalMemoryManager {
             }
 
             let end = requestLocation + requestAmmount;
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "0x{:X}..0x{:X} for 0x{:X} not in memory range (of any type)",
                 requestLocation,
                 end,
@@ -135,7 +137,7 @@ impl PhysicalMemoryManager {
             if requestLocation < (blobAddress + blobLength)
                 && (blobAddress) < (requestLocation + requestAmmount)
             {
-                vgaWriteLine!(
+                loggerWriteLine!(
                     "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
                     requestLocation,
                     requestAmmount,
@@ -150,7 +152,7 @@ impl PhysicalMemoryManager {
         self.Blobs[nextIndex].Address = requestLocation;
         self.Blobs[nextIndex].Length = requestAmmount;
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "Reserved 0x{:X} bytes @ 0x{:X} within 0x{:X}..0x{:X} index {}",
             requestAmmount,
             requestLocation,
@@ -178,7 +180,7 @@ impl PhysicalMemoryManager {
             let memoryMapLength = memoryMapLength.unwrap();
             let memoryEnd = memoryMapBase + memoryMapLength;
 
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "0x{:X}..0x{:X} is {:?}",
                 memoryMapBase,
                 memoryEnd,

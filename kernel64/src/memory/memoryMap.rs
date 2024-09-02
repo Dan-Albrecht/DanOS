@@ -1,4 +1,4 @@
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 use core::{fmt::Write, mem::size_of};
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ impl MemoryMap {
 
         let mut entryAddress = address + 0x10;
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "We should read 0x{:X} entries from 0x{:X}",
             totalEntries,
             entryAddress

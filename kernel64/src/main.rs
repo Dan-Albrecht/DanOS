@@ -47,8 +47,8 @@ use crate::pic::picStuff::disablePic;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    vgaWriteLine!("64-bit kernel panic!");
-    vgaWriteLine!("{info}");
+    loggerWriteLine!("64-bit kernel panic!");
+    loggerWriteLine!("{info}");
     haltLoop();
 }
 
@@ -81,24 +81,24 @@ pub extern "C" fn DanMain() -> ! {
     }
 
     let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
-    vgaWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
+    loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
-    vgaWriteLine!("Configuring PIC...");
+    loggerWriteLine!("Configuring PIC...");
     disablePic();
 
-    vgaWriteLine!("Installing interrupt table...");
+    loggerWriteLine!("Installing interrupt table...");
     unsafe {
         SetIDT(&mut physicalMemoryManager);
     }
-    vgaWriteLine!("Sending a breakpoint...");
+    loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
-    vgaWriteLine!("We handled the breakpoint!");
+    loggerWriteLine!("We handled the breakpoint!");
 
-    /*vgaWriteLine!("Seting up heap...");
+    /*loggerWriteLine!("Seting up heap...");
     let mut heap = DumbHeap::new(memoryMap);
     let count = 100;
     let myAlloc = heap.DoSomething(count);
-    vgaWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
+    loggerWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
 
     heap.DumpHeap();*/
 
@@ -131,9 +131,9 @@ pub extern "C" fn DanMain() -> ! {
     reloadCR3();
     readBytes();
 
-    vgaWriteLine!("Now let's divide by 0...");
+    loggerWriteLine!("Now let's divide by 0...");
     DivideByZero();
 
-    vgaWriteLine!("!! We succesfuly divide by zero. We broke.");
+    loggerWriteLine!("!! We succesfuly divide by zero. We broke.");
     haltLoop();
 }

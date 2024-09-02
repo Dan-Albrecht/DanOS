@@ -2,6 +2,8 @@
 use core::fmt::Write;
 use kernel_shared::{assemblyStuff::ports::{inB, outB}, vgaWriteLine};
 
+use crate::loggerWriteLine;
+
 pub struct SerialPort {
     port: COMPort,
 }
@@ -84,7 +86,7 @@ impl SerialPort {
         let receivedByte = self.receiveByte();
 
         if testByte != receivedByte {
-            vgaWriteLine!("0x{:X} != 0x{:X}. Port {:?} is no good.", testByte, receivedByte, self.port);
+            loggerWriteLine!("0x{:X} != 0x{:X}. Port {:?} is no good.", testByte, receivedByte, self.port);
             return false;
         }
 

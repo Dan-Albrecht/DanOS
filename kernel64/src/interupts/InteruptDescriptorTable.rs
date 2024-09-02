@@ -8,7 +8,7 @@ use kernel_shared::magicConstants::IDT_ADDRESS;
 use crate::assemblyHelpers::getCR2;
 use crate::memory::physicalMemory::PhysicalMemoryManager;
 use crate::memory::virtualMemory::WhatDo;
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 
 use super::setup::SetupStuff;
 use core::fmt::Write;
@@ -73,7 +73,7 @@ pub fn InterruptHandlerIntImpl(vector: u8, stackFrame: ExceptionStackFrame) {
     let flags = stackFrame.CpuFlags;
     let ss = stackFrame.StackSegment;
     let sp = stackFrame.StackPointer;
-    vgaWriteLine!(
+    loggerWriteLine!(
         "Interrupt 0x{:X}. CS: 0x{:X} IP: 0x{:X} Flags: 0x{:X} SS: 0x{:X} SP: 0x{:X}",
         vector,
         cs,
@@ -101,7 +101,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
     let flags = stackFrame.CpuFlags;
     let ss = stackFrame.StackSegment;
     let sp = stackFrame.StackPointer;
-    vgaWriteLine!(
+    loggerWriteLine!(
         "Ex 0x{:X} with code 0x{:X}. CS: 0x{:X} IP: 0x{:X} Flags: 0x{:X} SS: 0x{:X} SP: 0x{:X}",
         vector,
         errorCode,
@@ -114,7 +114,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
 
     if vector == 0xE {
         let address = getCR2();
-        vgaWriteLine!("Page Fault at virtual address: 0x{:X}", address);
+        loggerWriteLine!("Page Fault at virtual address: 0x{:X}", address);
     }
 
     haltLoop();
@@ -142,7 +142,7 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
 
         // The last byte of the table
         limit = (size * length - 1) as u16;
-        vgaWriteLine!(
+        loggerWriteLine!(
             "IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.",
             idt as usize,
             size,
