@@ -2,6 +2,8 @@ use core::{fmt::Write, ptr::{addr_of, read_volatile}};
 
 use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
 
+use crate::{loggerWrite, loggerWriteLine};
+
 use super::{
     bar::Bar,
     pciCommonHeader::{PciCommonHeader, PciHeaderType},
@@ -80,7 +82,7 @@ impl PciGeneralDevice {
             let memoryType = (barValue >> 1) & 0x3;
             if memoryType != 0 {
                 // BUGBUG: Only supporting 32-bit for now
-                vgaWriteLine!("Don't know how to handle memory type {}", memoryType);
+                loggerWriteLine!("Don't know how to handle memory type {}", memoryType);
                 haltLoop();
             }
 
@@ -93,24 +95,24 @@ impl PciGeneralDevice {
 
     fn printBarDetails(barNumber: u8, barValue: u32) {
         if barValue != 0 {
-            vgaWrite!("      BAR{}: 0x{:X}", barNumber, barValue);
+            loggerWrite!("      BAR{}: 0x{:X}", barNumber, barValue);
             if barValue & 1 == 1 {
-                vgaWriteLine!(" I/O @ 0x{:X}", barValue & 0xFFFFFFFC);
+                loggerWriteLine!(" I/O @ 0x{:X}", barValue & 0xFFFFFFFC);
             } else {
                 let memoryType = (barValue >> 1) & 0x3;
                 match memoryType {
                     0 => {
-                        vgaWriteLine!(" 32-bit memory @ 0x{:X}", barValue & 0xFFFFFFF0);
+                        loggerWriteLine!(" 32-bit memory @ 0x{:X}", barValue & 0xFFFFFFF0);
                     }
                     1 => {
-                        vgaWriteLine!(" (reserved-type)");
+                        loggerWriteLine!(" (reserved-type)");
                     }
                     2 => {
-                        vgaWriteLine!(" 64-bit memory; dunno how to handle that...");
+                        loggerWriteLine!(" 64-bit memory; dunno how to handle that...");
                         haltLoop();
                     }
                     _ => {
-                        vgaWriteLine!(" ({}-type memory)", memoryType);
+                        loggerWriteLine!(" ({}-type memory)", memoryType);
                     }
                 }
             }

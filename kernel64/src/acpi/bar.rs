@@ -1,4 +1,4 @@
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 use core::{
     fmt::Write,
     ptr::{read_volatile, write_volatile},
@@ -21,7 +21,7 @@ impl Bar {
             // Since this is a memory address, clear the last 3 bits (the 'info bits')
             let size = (!(readBack & 0xFFFFFFF8)) + 1;
 
-            vgaWriteLine!("Readback was 0x{:X} size is 0x{:X}", readBack, size);
+            loggerWriteLine!("Readback was 0x{:X} size is 0x{:X}", readBack, size);
 
             return Bar {
                 BarTarget: address,

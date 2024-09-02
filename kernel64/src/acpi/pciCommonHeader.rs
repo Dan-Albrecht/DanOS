@@ -1,6 +1,6 @@
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 
 use super::mcfgEntry::McfgEntry;
 use core::fmt::Write;
@@ -64,19 +64,19 @@ impl PciCommonHeader {
 
     fn calculateAddress(entry: &McfgEntry, bus: u8, device: u8, function: u8) -> usize {
         if device >= 32 {
-            vgaWriteLine!("Device # {} >= 32", device);
+            loggerWriteLine!("Device # {} >= 32", device);
             haltLoop();
         }
 
         if function >= 8 {
-            vgaWriteLine!("Function # {} >= 8", function);
+            loggerWriteLine!("Function # {} >= 8", function);
             haltLoop();
         }
 
         let base = entry.BaseAddress;
 
         if base > usize::MAX as u64 {
-            vgaWriteLine!("    Base is too big for this platform");
+            loggerWriteLine!("    Base is too big for this platform");
             haltLoop();
         }
 
@@ -92,7 +92,7 @@ impl PciCommonHeader {
         let e = base + d;
 
         if e > usize::MAX as u64 {
-            vgaWriteLine!("    Calculated is too big for this platform");
+            loggerWriteLine!("    Calculated is too big for this platform");
             haltLoop();
         }
 

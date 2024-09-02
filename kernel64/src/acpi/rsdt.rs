@@ -1,7 +1,7 @@
 use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
 
 use crate::{
-    acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG},
+    acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG}, loggerWrite, loggerWriteLine
 };
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
@@ -32,7 +32,7 @@ impl RSDT {
         let extraLength = length - size_of::<RsdtImpl>();
         let remainder = extraLength % 4;
         if remainder != 0 {
-            vgaWriteLine!("Remaining space is not a multiple of 4");
+            loggerWriteLine!("Remaining space is not a multiple of 4");
             haltLoop();
         }
 
@@ -40,7 +40,7 @@ impl RSDT {
 
         // You get one entry for free in the size of the struct
         totalEntries = totalEntries + 1;
-        vgaWriteLine!(
+        loggerWriteLine!(
             "Length of {} implies there's {} toal entries",
             length,
             totalEntries
@@ -54,7 +54,7 @@ impl RSDT {
             
             unsafe {
                 let ptr = address as *const u32;
-                vgaWrite!("Entry {} @ 0x{:X} is a ", x, *ptr);
+                loggerWrite!("Entry {} @ 0x{:X} is a ", x, *ptr);
                 let ptr = *ptr as *const DescriptionTable;
                 (*ptr).printSignature();
 

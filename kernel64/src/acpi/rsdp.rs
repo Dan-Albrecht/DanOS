@@ -2,6 +2,8 @@ use core::{fmt::Write, str::from_utf8};
 
 use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
+use crate::loggerWriteLine;
+
 use super::{pciGeneralDevice::PciGeneralDevice, rsdt::RSDT};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-pointer-rsdp-structure
@@ -45,7 +47,7 @@ pub fn getRsdp() -> Option<*const PciGeneralDevice> {
 
         address = address + 16;
         if address > 0x0FFFFF {
-            vgaWriteLine!("Didn't find RSDP. Halting.");
+            loggerWriteLine!("Didn't find RSDP. Halting.");
             haltLoop();
         }
     }
@@ -57,7 +59,7 @@ fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u
         let toCheck = (*ptr).Field.Signature;
 
         if toCheck == expected {
-            vgaWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
+            loggerWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
 
             let mut calculated: u8 = 0;
             let asBytes = ptr as *const u8;
@@ -67,19 +69,19 @@ fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u
             }
 
             if calculated != 0 {
-                vgaWriteLine!("Checksum fail (should be 0): {calculated}");
+                loggerWriteLine!("Checksum fail (should be 0): {calculated}");
                 return Err(1);
             }
 
             match from_utf8(&(*ptr).Field.OEMID) {
                 Ok(theString) => {
-                    vgaWriteLine!("ACPI by {}", theString);
+                    loggerWriteLine!("ACPI by {}", theString);
 
                     // Spec says this is always a 32 bit address
-                    vgaWriteLine!("RSDT is at 0x{:X}", (*ptr).Field.RsdtAddress as u32);
+                    loggerWriteLine!("RSDT is at 0x{:X}", (*ptr).Field.RsdtAddress as u32);
                 }
                 _ => {
-                    vgaWriteLine!("Couldn't read ACPI OEM: {:?}", (*ptr).Field.OEMID);
+                    loggerWriteLine!("Couldn't read ACPI OEM: {:?}", (*ptr).Field.OEMID);
                 }
             };
 

@@ -1,7 +1,7 @@
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{
-    acpi::pciGeneralDevice::PciGeneralDevice, vgaWriteLine,
+    acpi::pciGeneralDevice::PciGeneralDevice, loggerWriteLine, vgaWriteLine
 };
 use core::{
     fmt::Write,
@@ -24,11 +24,11 @@ impl Controller {
 
                     return Some(drive);
                 } else {
-                    vgaWriteLine!("Didn't find a SATA port");
+                    loggerWriteLine!("Didn't find a SATA port");
                     return None;
                 }
             } else {
-                vgaWriteLine!("ABar returned None");
+                loggerWriteLine!("ABar returned None");
                 return None;
             }
         }
@@ -40,7 +40,7 @@ impl Controller {
             let mut pi = hba.GHC.PI;
             for index in 0..32 {
                 if (pi & 1) != 0 {
-                    vgaWriteLine!("Something at port {index}");
+                    loggerWriteLine!("Something at port {index}");
                     if self.isSATA(index) == Some(true) {
                         return Some(index);
                     }
@@ -88,7 +88,7 @@ impl Controller {
                 30 => &(*(self.ABar.HBA)).Port30,
                 31 => &(*(self.ABar.HBA)).Port31,
                 _ => {
-                    vgaWriteLine!("Port index {index} is bogus!");
+                    loggerWriteLine!("Port index {index} is bogus!");
                     haltLoop();
                 }
             };
@@ -106,7 +106,7 @@ impl Controller {
         let portAddr = port as *const _ as usize;
         let statusAddr = addr_of!((*port).SSTS);
         let status = read_volatile(statusAddr);
-        vgaWriteLine!(
+        loggerWriteLine!(
             "Port {} is @ 0x{:X}, status @ 0x{:X} with status 0x{:X}",
             index,
             portAddr as usize,
@@ -118,12 +118,12 @@ impl Controller {
         let det = Self::praseDET(status & 0xF);
 
         if det != DET::DetectedAndEstablished {
-            vgaWriteLine!("DET is {:?} so can't use it", det);
+            loggerWriteLine!("DET is {:?} so can't use it", det);
             return None;
         }
 
         if ipm != IPM::Active {
-            vgaWriteLine!("IPM is {:?} so can't use it", ipm);
+            loggerWriteLine!("IPM is {:?} so can't use it", ipm);
             return None;
         }
 
@@ -132,20 +132,20 @@ impl Controller {
         let sig = (*port).SIG;
         match sig {
             0x00000101 => {
-                vgaWriteLine!("SATA");
+                loggerWriteLine!("SATA");
                 return Some(true);
             }
             0xEB140101 => {
-                vgaWriteLine!("SATAPI");
+                loggerWriteLine!("SATAPI");
             }
             0xC33C0101 => {
-                vgaWriteLine!("Enclosure management bridge");
+                loggerWriteLine!("Enclosure management bridge");
             }
             0x96690101 => {
-                vgaWriteLine!("Port multiplier");
+                loggerWriteLine!("Port multiplier");
             }
             _ => {
-                vgaWriteLine!("Dunno what 0x{:X} is", sig);
+                loggerWriteLine!("Dunno what 0x{:X} is", sig);
             }
         }
 

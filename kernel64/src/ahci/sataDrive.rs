@@ -1,7 +1,7 @@
 use kernel_shared::{assemblyStuff::halt::haltLoop, magicConstants::{SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS}, memoryHelpers::zeroMemory2};
 
 use crate::{
-    vgaWriteLine,
+    loggerWriteLine, vgaWriteLine
 };
 
 use super::controller::Controller;
@@ -24,7 +24,7 @@ impl SataDrive {
 
             let mask = CMD_FR_MASK | CMD_CR_MASK;
 
-            vgaWriteLine!("Stopping commands...");
+            loggerWriteLine!("Stopping commands...");
 
             loop {
                 let value = read_volatile(addr_of!((*port).CMD));
@@ -33,14 +33,14 @@ impl SataDrive {
                 }
             }
 
-            vgaWriteLine!("Commands stopped");
+            loggerWriteLine!("Commands stopped");
         }
     }
 
     pub fn startCommands(&self) {
         let port = self.Controller.getPort(self.Port);
         unsafe {
-            vgaWriteLine!("Waiting to start...");
+            loggerWriteLine!("Waiting to start...");
 
             loop {
                 let value = read_volatile(addr_of!((*port).CMD));
@@ -52,7 +52,7 @@ impl SataDrive {
             (*port).CMD |= CMD_FRE_MASK;
             (*port).CMD |= CMD_START_MASK;
 
-            vgaWriteLine!("Commands started");
+            loggerWriteLine!("Commands started");
         }
     }
 
@@ -152,7 +152,7 @@ impl CommandList {
             30 => &self.C30,
             31 => &self.C31,
             _ => {
-                vgaWriteLine!("{number} is a bogus command header");
+                loggerWriteLine!("{number} is a bogus command header");
                 haltLoop();
             }
         };
@@ -174,12 +174,12 @@ impl CommandHeader {
 
     pub fn setCommandTable(&mut self, address: usize) {
         if address & 0b111_1111 != 0 {
-            vgaWriteLine!("0x{:X} is not 128-bit aligned", address);
+            loggerWriteLine!("0x{:X} is not 128-bit aligned", address);
             haltLoop();
         }
 
         if address > u32::MAX as usize {
-            vgaWriteLine!("Address it out of range");
+            loggerWriteLine!("Address it out of range");
             haltLoop();
         }
 

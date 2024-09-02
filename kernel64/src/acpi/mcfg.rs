@@ -2,7 +2,7 @@ use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
-use crate::{acpi::mcfgEntry::McfgEntry, vgaWriteLine};
+use crate::{acpi::mcfgEntry::McfgEntry, loggerWriteLine, vgaWriteLine};
 
 use super::pciGeneralDevice::PciGeneralDevice;
 
@@ -33,7 +33,7 @@ impl MCFG {
         let numOfEntries = lengthForEntries / size;
 
         if lengthForEntries % size != 0 {
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "  Remaining length ({}) isn't divisible by {}",
                 lengthForEntries,
                 size
@@ -42,7 +42,7 @@ impl MCFG {
         }
 
         let first = addr_of!(self.FirstConfigEntry) as usize;
-        vgaWriteLine!(
+        loggerWriteLine!(
             "  MCFG has {} entries, first is at 0x{:X}",
             numOfEntries,
             first

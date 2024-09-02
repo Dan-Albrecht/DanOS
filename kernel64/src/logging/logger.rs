@@ -50,7 +50,7 @@ impl Logger {
     fn new() -> Self {
         let serial = SerialPort::tryGet(COMPort::COM1);
         if serial.is_none() {
-            vgaWriteLine!("Failed to init serial port...");
+            loggerWriteLine!("Failed to init serial port...");
         }
 
         Logger { serial: serial }

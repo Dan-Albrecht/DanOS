@@ -4,8 +4,7 @@ use crate::{
     acpi::{
         pciCommonHeader::{PciCommonHeader, PciHeaderType},
         pciGeneralDevice::PciGeneralDevice,
-    },
-    vgaWriteLine,
+    }, loggerWriteLine, vgaWriteLine
 };
 
 // Same no UEFI docs story as MCFG
@@ -29,7 +28,7 @@ impl McfgEntry {
 
         let mut ahciController: Option<*const PciGeneralDevice> = None;
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "    Base 0x{:X} for group {} busses {}..={}",
             base,
             seg,
@@ -96,10 +95,10 @@ impl McfgEntry {
         let sc = (*header).Subclass;
 
         if *headerType == PciHeaderType::Dunno {
-            vgaWriteLine!("    Dunno is 0x{:X}", (*header).HeaderType);
+            loggerWriteLine!("    Dunno is 0x{:X}", (*header).HeaderType);
         }
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "    Device {} Function {} exists as a {:?} 0x{:X}:0x{:X}:0x{:X}",
             device,
             function,

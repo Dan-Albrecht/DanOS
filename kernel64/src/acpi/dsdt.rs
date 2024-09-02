@@ -1,5 +1,5 @@
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 
 //https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#differentiated-system-description-table-dsdt
 // Differentiated System Description Table
@@ -22,6 +22,6 @@ impl DSDT {
         let length = self.Length as usize;
         let blockLength = length - size_of::<DSDT>() + 1; // +1 because the first byte is defined in the struct
         let startAt = addr_of!(self.DefintionBlock);
-        vgaWriteLine!("    DSDT DefBlock has {} bytes to read starting at 0x{:X}", blockLength, startAt as usize);
+        loggerWriteLine!("    DSDT DefBlock has {} bytes to read starting at 0x{:X}", blockLength, startAt as usize);
     }
 }

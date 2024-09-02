@@ -1,4 +1,4 @@
-use crate::{acpi::dsdt::DSDT, vgaWriteLine};
+use crate::{acpi::dsdt::DSDT, loggerWriteLine, vgaWriteLine};
 use core::{fmt::Write, ptr::addr_of};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#fixed-acpi-description-table-fadt
@@ -50,7 +50,7 @@ impl FADT {
         let facs = self.FirmwareCtrl;
         let dsdt = self.DSDT;
         let length = self.Length;
-        vgaWriteLine!(
+        loggerWriteLine!(
             "  FADT is {} bytes long, FACS is @ 0x{:X}, DSDT is @ 0x{:X}",
             length,
             facs,
@@ -63,7 +63,7 @@ impl FADT {
 
         let pml = self.getPML1aBlock();
         let x = addr_of!(self.PM1a_EVT_BLK) as usize;
-        vgaWriteLine!("  PM1a_EVT_BLK @ 0x{:X} says look to 0x{:X}", x, pml);
+        loggerWriteLine!("  PM1a_EVT_BLK @ 0x{:X} says look to 0x{:X}", x, pml);
     }
 
     #[cfg(target_pointer_width = "32")]

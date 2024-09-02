@@ -1,8 +1,7 @@
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{
-    acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice},
-    vgaWriteLine,
+    acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice}, loggerWriteLine, vgaWriteLine
 };
 use core::fmt::Write;
 
@@ -97,7 +96,7 @@ pub struct PortRegister {
 impl PortRegister {
     pub fn setClb(&mut self, address: u32) {
         if address & 0b11_1111_1111 != 0 {
-            vgaWriteLine!("0x{:X} is not 1K-byte aligned", address);
+            loggerWriteLine!("0x{:X} is not 1K-byte aligned", address);
             haltLoop();
         }
 
@@ -113,7 +112,7 @@ impl ABar {
         // Docs say BAR 5 is always the one we need
         if let Some(bar) = device.tryGetBarAddress(5) {
             let addr = bar.BarTarget as *const HbaData;
-            vgaWriteLine!("Got BAR 5 @ 0x{:X}", addr as usize);
+            loggerWriteLine!("Got BAR 5 @ 0x{:X}", addr as usize);
             return Some(ABar {
                 _Bar: bar,
                 HBA: addr as *const HbaData,

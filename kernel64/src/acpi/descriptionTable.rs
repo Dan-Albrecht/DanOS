@@ -1,6 +1,6 @@
 use core::str::from_utf8;
 use core::fmt::Write;
-use crate::vgaWriteLine;
+use crate::{loggerWriteLine, vgaWriteLine};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#system-description-table-header
 #[repr(C, packed)]
@@ -21,10 +21,10 @@ impl DescriptionTable {
         match from_utf8(&self.Signature) {
             Ok(theString) => {
                 let length = self.Length;
-                vgaWriteLine!("{} byte long {}", length, theString);
+                loggerWriteLine!("{} byte long {}", length, theString);
             }
             _ => {
-                vgaWriteLine!("Couldn't read signature: {:?}", self.Signature);
+                loggerWriteLine!("Couldn't read signature: {:?}", self.Signature);
             }
         };
     }
