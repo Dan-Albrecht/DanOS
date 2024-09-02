@@ -1,6 +1,8 @@
 use core::fmt::Write;
 
-use crate::{acpi::rsdp::getRsdp, ahci::controller::Controller, assemblyStuff::halt::haltLoop, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
+use crate::{acpi::rsdp::getRsdp, ahci::controller::Controller, vgaWriteLine};
 
 pub fn readBytes() {
     let foo = getRsdp();

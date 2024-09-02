@@ -1,9 +1,11 @@
+use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
+
 use crate::{
-    acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG}, alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine
+    acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG},
 };
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
-use super::pciGeneralDevice::PciGeneralDevice;
+use super::{pciGeneralDevice::PciGeneralDevice, rsdp::Aligned16};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-table-rsdt
 #[repr(C, packed)]

@@ -1,6 +1,7 @@
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
 use crate::{
     acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice},
-    assemblyStuff::halt::haltLoop,
     vgaWriteLine,
 };
 use core::fmt::Write;

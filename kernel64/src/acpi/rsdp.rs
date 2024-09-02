@@ -1,5 +1,6 @@
-use crate::{alignment::Aligned16, assemblyStuff::halt::haltLoop, vgaWriteLine};
 use core::{fmt::Write, str::from_utf8};
+
+use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
 use super::{pciGeneralDevice::PciGeneralDevice, rsdt::RSDT};
 
@@ -13,6 +14,13 @@ pub struct RsdpImpl {
     Revision: u8,
     RsdtAddress: u32,
 }
+
+// BUGBUG: Deal with the copy/paste in shared
+#[repr(C, align(16))]
+pub struct Aligned16<T> {
+    pub Field: T,
+}
+
 
 // Root System Description Pointer
 pub type RSDP = Aligned16<RsdpImpl>;

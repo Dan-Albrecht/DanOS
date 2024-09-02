@@ -1,5 +1,5 @@
 use core::fmt::Write;
-use core::{arch::asm, mem::size_of};
+use core::mem::size_of;
 
 use crate::magicConstants::{ENTRIES_PER_PAGE_TABLE, FIRST_PD, FIRST_PDPT, FIRST_PML4, FIRST_PT};
 use crate::{
@@ -78,7 +78,7 @@ impl PageBook {
     pub unsafe fn fromExisting64() -> PageBook {
         let cr3: u64;
 
-        asm!(
+        core::arch::asm!(
             "mov rax, cr3",
             out("rax") cr3,
         );

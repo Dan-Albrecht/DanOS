@@ -1,6 +1,8 @@
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
-use crate::{acpi::mcfgEntry::McfgEntry, assemblyStuff::halt::haltLoop, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
+use crate::{acpi::mcfgEntry::McfgEntry, vgaWriteLine};
 
 use super::pciGeneralDevice::PciGeneralDevice;
 

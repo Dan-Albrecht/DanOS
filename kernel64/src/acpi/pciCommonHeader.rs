@@ -1,4 +1,6 @@
-use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
+
+use crate::vgaWriteLine;
 
 use super::mcfgEntry::McfgEntry;
 use core::fmt::Write;
