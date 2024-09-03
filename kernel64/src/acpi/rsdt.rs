@@ -5,11 +5,12 @@ use crate::{
 };
 use core::{fmt::Write, mem::size_of, ptr::{addr_of, read_unaligned}};
 
-use super::{pciGeneralDevice::PciGeneralDevice, rsdp::Aligned16};
+use super::pciGeneralDevice::PciGeneralDevice;
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-table-rsdt
+// Root System Description Table
 #[repr(C, packed)]
-pub struct RsdtImpl {
+pub struct RSDT {
     Signature: [u8; 4],
     Length: u32,
     Revision: u8,
@@ -22,21 +23,17 @@ pub struct RsdtImpl {
     FirstEntry: u32,
 }
 
-// BUGBUG: This one might not be aligned
-// Root System Description Table
-pub type RSDT = Aligned16<RsdtImpl>;
-
 impl RSDT {
     pub fn walkEntries(&self)-> Option<*const PciGeneralDevice> {
-        let length = self.Field.Length as usize;
-        let extraLength = length - size_of::<RsdtImpl>();
+        let length = self.Length as usize;
+        let extraLength = length - size_of::<RSDT>();
         let remainder = extraLength % 4;
         if remainder != 0 {
             loggerWriteLine!("Remaining space is not a multiple of 4");
             haltLoop();
         }
 
-        let firstEntryAddress = addr_of!(self.Field.FirstEntry);
+        let firstEntryAddress = addr_of!(self.FirstEntry);
         let mut totalEntries = extraLength / 4;
 
         // You get one entry for free in the size of the struct

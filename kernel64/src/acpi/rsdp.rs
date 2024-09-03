@@ -8,30 +8,14 @@ use super::{pciGeneralDevice::PciGeneralDevice, rsdt::RSDT};
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#root-system-description-pointer-rsdp-structure
 // Version 1 (Revsion 0) defintion
+// Root System Description Pointer
 #[repr(C, packed)]
-pub struct RsdpImpl {
+pub struct RSDP {
     Signature: [u8; 8],
     Checksum: u8,
     OEMID: [u8; 6],
     Revision: u8,
     RsdtAddress: u32,
-}
-
-// BUGBUG: Deal with the copy/paste in shared
-#[repr(C, align(16))]
-pub struct Aligned16<T> {
-    pub Field: T,
-}
-
-
-// Root System Description Pointer
-pub type RSDP = Aligned16<RsdpImpl>;
-
-impl RSDP {
-    pub fn getRsdt(&self) -> *const RSDT {
-        // BUGBUG: The theory here is this will properly 0-extend on 64 bit...
-        self.Field.RsdtAddress as *const RSDT
-    }
 }
 
 pub fn getRsdp() -> Option<*const PciGeneralDevice> {
@@ -56,7 +40,7 @@ pub fn getRsdp() -> Option<*const PciGeneralDevice> {
 fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u8> {
     let expected = *b"RSD PTR ";
     unsafe {
-        let toCheck = (*ptr).Field.Signature;
+        let toCheck = (*ptr).Signature;
 
         if toCheck == expected {
             loggerWriteLine!("Potential ACPI info at: 0x{:X}", ptr as usize);
@@ -73,20 +57,21 @@ fn checkSignature(ptr: *const RSDP) -> Result<Option<*const PciGeneralDevice>, u
                 return Err(1);
             }
 
-            match from_utf8(&(*ptr).Field.OEMID) {
+            match from_utf8(&(*ptr).OEMID) {
                 Ok(theString) => {
                     loggerWriteLine!("ACPI by {}", theString);
 
                     // Spec says this is always a 32 bit address
-                    loggerWriteLine!("RSDT is at 0x{:X}", (*ptr).Field.RsdtAddress as u32);
+                    loggerWriteLine!("RSDT is at 0x{:X}", (*ptr).RsdtAddress as u32);
                 }
                 _ => {
-                    loggerWriteLine!("Couldn't read ACPI OEM: {:?}", (*ptr).Field.OEMID);
+                    loggerWriteLine!("Couldn't read ACPI OEM: {:?}", (*ptr).OEMID);
                 }
             };
 
             // BUGBUG: Delete after debugging
-            let result = (*(*ptr).getRsdt()).walkEntries();
+            let rsdt = (*ptr).RsdtAddress as *const RSDT;
+            let result = (*rsdt).walkEntries();
             return Ok(result);
         }
     }
