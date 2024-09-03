@@ -49,6 +49,8 @@ use crate::pic::picStuff::disablePic;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    // We get called mid-line, so always move to a new one
+    loggerWriteLine!("");
     loggerWriteLine!("64-bit kernel panic!");
     loggerWriteLine!("{info}");
     haltLoop();
@@ -67,9 +69,6 @@ fn reloadCR3() {
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
-    loggerWrite!("One {} ", 1);
-    loggerWrite!("Two {} ", 2);
-    loggerWriteLine!("Three {}", 3);
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     let mut physicalMemoryManager = PhysicalMemoryManager {
