@@ -36,7 +36,6 @@ use kernel_shared::{
     },
     magicConstants::MEMORY_MAP_LOCATION,
     pageTable::pageBook::PageBook,
-    vgaWriteLine,
 };
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::memoryMap::MemoryMap;
