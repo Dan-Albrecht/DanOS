@@ -7,7 +7,7 @@ True to build debug, false to build release
 #>
 
 param (
-    [bool]$debug = $false
+    [bool]$debug = $true
 )   
 
 $ErrorActionPreference = 'Stop'
@@ -26,77 +26,72 @@ try {
 
     if ($debug) {
         $buildType = "debug"
-        cargo build
     }
     else {
         $buildType = "release"
-        cargo build --release
     }
 
-    # Call this an elf as that's what it is
-    Copy-Item -Path .\target\x86_64-unknown-none\$buildType\kernel64 -Destination .\target\x86_64-unknown-none\$buildType\kernel64.elf -Force
+    TimeCommand {
 
-    # For now, always handy to have the assembly around
-    rust-objdump.exe -M intel --disassemble-all .\target\x86_64-unknown-none\$buildType\kernel64.elf > .\target\x86_64-unknown-none\$buildType\kernel64.elf.asm
+        if ($debug) {
+            cargo build
+        }
+        else {
+            cargo build --release
+        }
+    } -message 'Kernel64 build'
 
-    $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\x86_64-unknown-none\$buildType\kernel64.elf.asm")
-    if ($allLines[3] -ne "Disassembly of section .text:") {
-        # Our custom linking script is suposed to put this first. Might not need this for much longer as we're finding better ways to load and jump to the .text section.
-        Write-Error "Linking seems screwed up again. Text section isn't first. Found: $($allLines[3])"
-    }
+    TimeCommand {
+        # Call this an elf as that's what it is
+        Copy-Item -Path .\target\x86_64-unknown-none\$buildType\kernel64 -Destination .\target\x86_64-unknown-none\$buildType\kernel64.elf -Force
 
-    # We might change the loader address, but we expect the symbol to be here
-    if (!$allLines[5].EndsWith(" <DanMain>:")) {
-        Write-Error "Linking seems screwed up again. DanMain wasn't at the start. Found: $($allLines[5])"
-    }
+        # Create our final target binary that'll link to debug file, but not contain extra junk
+        rust-objcopy.exe --only-keep-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.dbg
+        rust-objcopy.exe --strip-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.stripped
+        Copy-Item .\target\x86_64-unknown-none\$buildType\kernel64.stripped .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink -Force
+        rust-objcopy.exe --add-gnu-debuglink=.\target\x86_64-unknown-none\$buildType\kernel64.dbg .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink
 
-    rust-objcopy.exe --only-keep-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.dbg
-    rust-objcopy.exe --strip-debug .\target\x86_64-unknown-none\$buildType\kernel64.elf .\target\x86_64-unknown-none\$buildType\kernel64.stripped
-    Copy-Item .\target\x86_64-unknown-none\$buildType\kernel64.stripped .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink -Force
-    rust-objcopy.exe --add-gnu-debuglink=.\target\x86_64-unknown-none\$buildType\kernel64.dbg .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink
-    rust-objdump.exe -M intel -d .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink > .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink.asm
+        # Disassemble this so we can have a reference for debugging. This will reflect our offsets.
+        rust-objdump.exe -M intel --disassemble  .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink > .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink.asm
 
-    # Make sure memory location is what previous stage expects it to be
-    $codeLine = rust-objdump.exe --headers .\target\x86_64-unknown-none\$buildType\kernel64.strippedWithDebugLink | findstr .text
-    $vma = $codeLine.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[3]
-    $loadAddress = "0x" + [System.Convert]::ToInt32("0x$vma", 16).ToString("X")
-    $expectedLoadAddress = $env:KERNEL64_LOAD_TARGET
+        # Make sure our code is at the offset the calling code will expect and our memory load target is expected
+        # we'll ultimatley end up jumping to.
+        #
+        # WSL output will be somethin like:
+        #
+        # There are 16 section headers, starting at offset 0x2ae588:
+        #
+        #Section Headers:
+        #[Nr] Name              Type            Address          Off    Size   ES Flg Lk Inf Al
+        #[ 0]                   NULL            0000000000000000 000000 000000 00      0   0  0
+        #[ 1] .text             PROGBITS        0000000000009100 001100 03b1be 00  AX  0   0 16
+        # ...
+        $textSection = wsl -- readelf -SW target/x86_64-unknown-none/$buildType/kernel64.strippedWithDebugLink | findstr .text
 
-    Write-Host "We requested load at $expectedLoadAddress it is $loadAddress"
+        $textAddress = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[4]
+        $textAddress = [System.Convert]::ToInt32($textAddress, 16)
 
-    if ($loadAddress -ne $expectedLoadAddress) {
-        Write-Error "And that doesn't match"
-    }
+        $textOffset = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[5]
+        $textOffset = [System.Convert]::ToInt32($textOffset, 16)
 
-    # More important we need to make sure the offset of the text section is where
-    # we'll ultimatley end up jumping to.
-    $textSection = wsl -- readelf -SW target/x86_64-unknown-none/$buildType/kernel64 | findstr .text
-    $textOffset = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[5]
-    $textOffset = [System.Convert]::ToInt32($textOffset, 16)
+        $loadTarget = [System.Convert]::ToInt32($env:KERNEL64_LOAD_TARGET, 16)
+        $imageStart = [System.Convert]::ToInt32($env:KERNEL64_IMAGE_START, 16)
+        
+        $expectedOffset = $loadTarget - $imageStart
+        if ($textOffset -ne $expectedOffset) {
+            # For reasons I haven't figured out yet, the elf header somtimes changes sizes. Until we can control that, detect it and then just have upstream
+            # take into account the new jump target
+            Write-Error ".text section moved. Stat 0x$($imageStart.ToString("X")) Target 0x$($loadTarget.ToString("X")) Expected offset: 0x$($expectedOffset.ToString("X")) Actual offset: 0x$($textOffset.ToString("X"))"
+        }
 
-    $loadTarget = [System.Convert]::ToInt32($env:KERNEL64_LOAD_TARGET, 16)
-    $imageStart = [System.Convert]::ToInt32($env:KERNEL64_IMAGE_START, 16)
-    $expectedOffset = $loadTarget - $imageStart
+        $expectedLoadAddress = $env:KERNEL64_LOAD_TARGET
+        if ($textAddress -ne $expectedLoadAddress) {
+            Write-Error "We requested load at $expectedLoadAddress, but it is $textAddress"
+        }
 
-    if ($textOffset -ne $expectedOffset) {
-        # For reasons I haven't figured out yet, the elf header somtimes changes sizes. Until we can control that, detect it and then just have upstream
-        # take into account the new jump target
-        Write-Error ".text section moved. Stat 0x$($imageStart.ToString("X")) Target 0x$($loadTarget.ToString("X")) Expected offset: 0x$($expectedOffset.ToString("X")) Actual offset: 0x$($textOffset.ToString("X"))"
-    }
-
-    # Display sections and size
-    # size -Ax kernel64.unstripped
-    # or even better
-    # readelf -SW kernel64.unstripped
-
-    # Dump section
-    # readelf -p .gnu_debuglink kernel64.unstripped
-
-    # Add symbol
-    # target symbols add target/x86_64-unknown-none/release/kernel64.dbg
-
-    # Re-disassemble above to get a sense we still have what we want
-    # https://stackoverflow.com/a/58871420
+        # Re-disassemble above to get a sense we still have what we want
+        # https://stackoverflow.com/a/58871420
+    } -message 'Kernel64 post-build'
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
