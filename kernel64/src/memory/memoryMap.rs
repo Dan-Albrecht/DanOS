@@ -1,4 +1,4 @@
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 use core::{fmt::Write, mem::size_of};
 
 #[derive(Debug)]

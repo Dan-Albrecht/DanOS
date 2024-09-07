@@ -4,7 +4,7 @@ use crate::{
     acpi::{
         pciCommonHeader::{PciCommonHeader, PciHeaderType},
         pciGeneralDevice::PciGeneralDevice,
-    }, loggerWriteLine, vgaWriteLine
+    }, loggerWriteLine
 };
 
 // Same no UEFI docs story as MCFG

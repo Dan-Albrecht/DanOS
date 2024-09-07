@@ -2,7 +2,7 @@ use core::{fmt::Write, mem::size_of, ptr::addr_of};
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
-use crate::{acpi::mcfgEntry::McfgEntry, loggerWriteLine, vgaWriteLine};
+use crate::{acpi::mcfgEntry::McfgEntry, loggerWriteLine};
 
 use super::pciGeneralDevice::PciGeneralDevice;
 

@@ -1,6 +1,6 @@
 
 use core::fmt::Write;
-use kernel_shared::{assemblyStuff::ports::{inB, outB}, vgaWriteLine};
+use kernel_shared::assemblyStuff::ports::{inB, outB};
 
 use crate::loggerWriteLine;
 

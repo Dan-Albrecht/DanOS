@@ -1,6 +1,6 @@
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 
 use super::mcfgEntry::McfgEntry;
 use core::fmt::Write;

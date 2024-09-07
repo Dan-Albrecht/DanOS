@@ -1,6 +1,6 @@
 use core::{fmt::Write, ptr::{addr_of, read_volatile}};
 
-use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{loggerWrite, loggerWriteLine};
 

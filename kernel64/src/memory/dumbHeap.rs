@@ -1,7 +1,7 @@
 use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
 use super::memoryMap::{MemoryMap, MemoryMapEntryType};
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
 
 const DUMB_ENTRIES: usize = 10;

@@ -1,8 +1,6 @@
 use kernel_shared::{assemblyStuff::halt::haltLoop, magicConstants::{SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS}, memoryHelpers::zeroMemory2};
 
-use crate::{
-    loggerWriteLine, vgaWriteLine
-};
+use crate::loggerWriteLine;
 
 use super::controller::Controller;
 use core::{

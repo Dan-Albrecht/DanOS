@@ -8,7 +8,6 @@ use kernel_shared::{
     },
     memoryHelpers::{haltOnMisaligned, zeroMemory2},
     pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
-    vgaWriteLine,
 };
 
 use crate::loggerWriteLine;

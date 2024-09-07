@@ -1,5 +1,5 @@
 use core::fmt::Write;
-use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
+use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
 use crate::loggerWriteLine;
 

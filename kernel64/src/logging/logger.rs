@@ -1,5 +1,4 @@
 use core::fmt::Write;
-use kernel_shared::vgaWriteLine;
 use lazy_static::lazy_static;
 
 use crate::serial::serialPort::{COMPort, SerialPort};

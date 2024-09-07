@@ -1,5 +1,5 @@
 use core::{fmt::Write, mem::size_of, ptr::addr_of};
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 
 //https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#differentiated-system-description-table-dsdt
 // Differentiated System Description Table

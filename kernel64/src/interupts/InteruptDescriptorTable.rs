@@ -8,7 +8,7 @@ use kernel_shared::magicConstants::IDT_ADDRESS;
 use crate::assemblyHelpers::getCR2;
 use crate::memory::physicalMemory::PhysicalMemoryManager;
 use crate::memory::virtualMemory::WhatDo;
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 
 use super::setup::SetupStuff;
 use core::fmt::Write;

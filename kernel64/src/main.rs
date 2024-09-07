@@ -38,12 +38,10 @@ use kernel_shared::{
     pageTable::pageBook::PageBook,
     vgaWriteLine,
 };
-use logging::logger::{Logger, SystemLogger};
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::memoryMap::MemoryMap;
 use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
 use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
-use serial::serialPort::{COMPort, SerialPort};
 
 use crate::pic::picStuff::disablePic;
 

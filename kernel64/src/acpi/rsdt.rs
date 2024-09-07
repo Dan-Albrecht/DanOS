@@ -1,4 +1,4 @@
-use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWrite, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{
     acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG}, loggerWrite, loggerWriteLine

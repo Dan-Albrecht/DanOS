@@ -1,7 +1,7 @@
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{
-    acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice}, loggerWriteLine, vgaWriteLine
+    acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice}, loggerWriteLine
 };
 use core::fmt::Write;
 

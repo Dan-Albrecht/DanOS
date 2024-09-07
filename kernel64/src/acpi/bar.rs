@@ -1,4 +1,4 @@
-use crate::{loggerWriteLine, vgaWriteLine};
+use crate::loggerWriteLine;
 use core::{
     fmt::Write,
     ptr::{read_volatile, write_volatile},

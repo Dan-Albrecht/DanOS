@@ -1,6 +1,6 @@
 use core::{fmt::Write, str::from_utf8};
 
-use kernel_shared::{assemblyStuff::halt::haltLoop, vgaWriteLine};
+use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::loggerWriteLine;
 
