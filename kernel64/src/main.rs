@@ -25,6 +25,7 @@ use core::{arch::asm, fmt::Write};
 use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::SetIDT;
 
+use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
     SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
@@ -68,6 +69,8 @@ pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+    memoryMap.Dump();
+    haltLoopWithMessage!("Temp parking");
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
         Blobs: from_fn(|_| MemoryBlob::default()),

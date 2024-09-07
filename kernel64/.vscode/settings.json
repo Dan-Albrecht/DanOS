@@ -3,6 +3,9 @@
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.showUnlinkedFileNotification": false,
     "files.exclude": {
-        "target/**":true,
+        "target": true,
     },
+    "search.exclude": {
+        "target": true,
+    }
 }

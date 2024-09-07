@@ -46,7 +46,7 @@ impl MemoryMap {
             totalEntries,
             entryAddress
         );
-        
+
         let mut result = MemoryMap {
             Count: totalEntries as u8,
             Entries: Default::default(),
@@ -76,6 +76,22 @@ impl MemoryMap {
         }
 
         return result;
+    }
+
+    pub fn Dump(&self) {
+        for index in 0..self.Count.try_into().unwrap() {
+            let addr = self.Entries[index].BaseAddr;
+            let len = self.Entries[index].Length;
+
+            loggerWriteLine!(
+                "{}: {:?} 0x{:X} - 0x{:X} (0x{:X})",
+                index,
+                self.Entries[index].GetType(),
+                addr,
+                addr + len - 1,
+                len,
+            );
+        }
     }
 }
 
