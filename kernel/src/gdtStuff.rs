@@ -1,8 +1,14 @@
 // Global Descriptor Table
 
 use core::arch::asm;
+use core::fmt::Write;
+use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 
-use kernel_shared::{magicConstants::GDT_ADDRESS, memoryHelpers::zeroMemory2};
+use kernel_shared::memoryHelpers::{alignDown, zeroMemory2};
+
+use crate::haltLoop;
+
+const GDT_ALIGNMENT : usize = 0x10;
 
 #[repr(C, packed)]
 struct OurGdt {
@@ -13,9 +19,18 @@ struct OurGdt {
     selfPointer: u64,
 }
 
-pub unsafe fn Setup64BitGDT() {
+pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
 
-    let ourGdt = GDT_ADDRESS as *mut OurGdt;
+    let gdtAddress = alignDown(cantUseAbove - 1 - size_of::<OurGdt>(), GDT_ALIGNMENT);
+    let baseAddress = baseAddress as usize;
+
+    if gdtAddress < baseAddress {
+        haltLoopWithMessage!("Can't put GDT @ 0x{:X}", gdtAddress);
+    } else {
+        vgaWriteLine!("Putting GDT @ 0x{:X}", gdtAddress);
+    }
+
+    let ourGdt = gdtAddress as *mut OurGdt;
     zeroMemory2(ourGdt);
 
     (*ourGdt).codeSection = 

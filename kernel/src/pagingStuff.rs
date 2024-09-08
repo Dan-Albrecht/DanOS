@@ -1,18 +1,20 @@
 use core::arch::asm;
 use core::fmt::Write;
 
-use kernel_shared::{assemblyStuff::halt::haltLoop, pageTable::pageBook::PageBook, vgaWriteLine};
+use kernel_shared::{assemblyStuff::halt::haltLoop, memoryMap::MemoryMap, pageTable::pageBook::PageBook, vgaWriteLine};
 
-pub fn enablePaging() {
+pub fn enablePaging(memoryMap: &MemoryMap)->usize {
     unsafe {
         vgaWriteLine!("Enabling PAE");
         enablePae();
         vgaWriteLine!("Setting page data");
-        setPageData();
+        let cantUseAbove = setPageData(memoryMap);
         vgaWriteLine!("Enabling long mode");
         enableLongMode();
         vgaWriteLine!("Enabling paging");
         reallyEnablePaging();
+
+        return cantUseAbove;
     }
 }
 
@@ -42,20 +44,18 @@ unsafe fn enableLongMode() {
     );
 }
 
-unsafe fn setPageData() {
+unsafe fn setPageData(memoryMap: &MemoryMap) -> usize {
     vgaWriteLine!("Getting book");
-    let book = PageBook::fromScratch();
-    let cr3 = book.getCR3Value();
-    if cr3 > u32::MAX as u64 {
-        vgaWriteLine!("Page table structs are in 64-bit space, but we're still in 32");
-        haltLoop();
-    }
+    let result = PageBook::fromScratch(memoryMap);
+    let cr3 = result.Book.getCR3Value();
 
     vgaWriteLine!("Restier cr3 to 0x{:X}", cr3);
     asm!(
         "mov cr3, eax",
         in("eax") cr3 as u32,
     );
+
+    return result.LowestPhysicalAddressUsed;
 }
 
 unsafe fn reallyEnablePaging() {

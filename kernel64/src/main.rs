@@ -65,13 +65,10 @@ fn reloadCR3() {
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
-    loggerWriteLine!("Disabling PIC...");
-    disablePic();
-    haltLoop();
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     memoryMap.Dump();
-    haltLoopWithMessage!("Temp parking");
+
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
         Blobs: from_fn(|_| MemoryBlob::default()),
@@ -84,8 +81,6 @@ pub extern "C" fn DanMain() -> ! {
 
     let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
-
-    
 
     loggerWriteLine!("Installing interrupt table...");
     unsafe {

@@ -81,16 +81,16 @@ impl MemoryMap {
 
     pub fn Dump(&self) {
         // We do the loop backwards, because if there's a crash we'll hope the first few entries are on the screen (especially if we don't have serial hooked up)
-        let mut index = self.Count as usize;
+        let mut index = self.Count as usize - 1;
 
         loop {
-            let addr = self.Entries[index as usize].BaseAddr;
-            let len = self.Entries[index as usize].Length;
+            let addr = self.Entries[index].BaseAddr;
+            let len = self.Entries[index].Length;
 
             vgaWriteLine!(
                 "{}: {:?} 0x{:X} - 0x{:X} (0x{:X})",
                 index,
-                self.Entries[index as usize].GetType(),
+                self.Entries[index].GetType(),
                 addr,
                 addr + len - 1,
                 len,

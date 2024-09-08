@@ -1,4 +1,5 @@
 use core::fmt::Write;
+use kernel_shared::vgaWriteLine;
 use lazy_static::lazy_static;
 
 use crate::serial::serialPort::{COMPort, SerialPort};
@@ -47,9 +48,10 @@ macro_rules! loggerWriteLine {
 
 impl Logger {
     fn new() -> Self {
-        let serial = SerialPort::tryGet(COMPort::COM1);
+        //let serial = SerialPort::tryGet(COMPort::COM1);
+        let serial = None;
         if serial.is_none() {
-            loggerWriteLine!("Failed to init serial port...");
+            vgaWriteLine!("Failed to init serial port...");
         }
 
         Logger { serial: serial }

@@ -46,11 +46,13 @@ impl SerialPort {
     }
 
     unsafe fn sendByte(&self, b: u8) {
+        // BUGBUG: Timeout of this infinite loop
         while self.isTransmitNotEmpty() {}
         outB(self.port.getPortAddress() + 0, b);
     }
 
     unsafe fn receiveByte(&self) -> u8 {
+        // BUGBUG: Timeout of this infinite loop
         while !self.dataAvailable() {
             
         }

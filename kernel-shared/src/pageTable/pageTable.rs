@@ -1,9 +1,11 @@
 use crate::{
-    magicConstants::{ENTRIES_PER_PAGE_TABLE, SIZE_OF_PAGE},
+    magicConstants::SIZE_OF_PAGE,
     memoryHelpers::setCommonBitAndValidate,
 };
 
 use super::physicalPage::PhysicalPage;
+
+pub(crate) const ENTRIES_PER_PAGE_TABLE: usize = 512;
 
 #[repr(C, packed)]
 pub struct PageTable {
@@ -22,7 +24,6 @@ impl PageTable {
         writable: bool,
         cachable: bool,
     ) {
-
         for relativeIndex in 0..numberOfPages {
             let actualIndex = relativeIndex + startIndex;
             let actualAddress = startAddress + (relativeIndex * SIZE_OF_PAGE);

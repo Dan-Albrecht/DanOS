@@ -10,16 +10,18 @@ use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
-use kernel_shared::assemblyStuff::misc::disablePic;
 use core::fmt::Write;
 use gdtStuff::Setup64BitGDT;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::assemblyStuff::ports::outB;
 use kernel_shared::magicConstants::MEMORY_MAP_LOCATION;
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use pagingStuff::enablePaging;
+
+const KERNEL64_ADDRESS: u16 = getKernel64Address();
 
 const fn getKernel64Address() -> u16 {
     let bytes = core::env!("KERNEL64_LOAD_TARGET").as_bytes();
@@ -66,24 +68,25 @@ pub extern "C" fn DanMain() -> ! {
 
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
-        
+
         let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
         memoryMap.Dump();
 
         if IsTheA20LineEnabled(&memoryMap) {
-            haltLoopWithMessage!("temp stop");
             if Is64BitModeSupported() {
-                //vgaWriteLine!("64-bit mode is available");
-                enablePaging();
-                //vgaWriteLine!("64-bit paging mode enabled...");
-                //vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
-                Setup64BitGDT();
-                const KERNEL64_ADDRESS: u16 = getKernel64Address();
-                /*vgaWriteLine!(
+                vgaWriteLine!("64-bit mode is available");
+
+                let entry = memoryMap.Entries[0];
+                let cantUseAbove = enablePaging(&memoryMap);
+
+                vgaWriteLine!("64-bit paging mode enabled...");
+                vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
+                Setup64BitGDT(entry.BaseAddr, cantUseAbove);
+
+                vgaWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
                     KERNEL64_ADDRESS
-                );*/
-                haltLoop();
+                );
 
                 asm!(
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel

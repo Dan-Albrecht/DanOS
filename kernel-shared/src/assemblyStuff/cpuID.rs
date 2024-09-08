@@ -3,8 +3,8 @@
 
 use core::arch::asm;
 
-const MAXIMUM_EXTENDED_FUNCTION: u32 = 0x80000000;
-const SOME_EXTENDED_FUNCTION: u32 = 0x80000001;
+const EXTENDED_FUNCTION_INFORMATION: u32 = 0x80000000;
+const EXTENDED_PROCESSOR_INFO: u32 = 0x80000001;
 
 // BUGBUG: The loaded assembly is screwed up, its only because we run through a ton of 0x0 instructions
 // we even make it here.
@@ -44,10 +44,10 @@ unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
         return false;
     }
 
-    let cpuid = CpuId(MAXIMUM_EXTENDED_FUNCTION);
+    let cpuid = CpuId(EXTENDED_FUNCTION_INFORMATION);
 
     // If this is bigger than
-    if cpuid.eax > MAXIMUM_EXTENDED_FUNCTION {
+    if cpuid.eax > EXTENDED_FUNCTION_INFORMATION {
         true
     } else {
         false
@@ -59,7 +59,7 @@ pub unsafe fn Is64BitModeSupported() -> bool {
         return false;
     }
 
-    let cpuid = CpuId(SOME_EXTENDED_FUNCTION);
+    let cpuid = CpuId(EXTENDED_PROCESSOR_INFO);
 
     // 29th bit says if this is supported or not
     if (cpuid.edx & (1 << 29)) != 0 {
@@ -69,6 +69,7 @@ pub unsafe fn Is64BitModeSupported() -> bool {
     }
 }
 
+// NB: Clobbers vary by function. The clobbers below are just for the two functions I'm using here.
 fn CpuId(function: u32) -> CpuIdResult {
     unsafe {
         let (mut eax, mut ebx, mut ecx, mut edx): (u32, u32, u32, u32);
