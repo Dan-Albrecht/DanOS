@@ -3,15 +3,14 @@
 #![allow(non_snake_case)]
 
 mod a20Stuff;
-mod gdtStuff;
 mod pagingStuff;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
+use kernel_shared::gdtStuff::Setup64BitGDT;
 use core::fmt::Write;
-use gdtStuff::Setup64BitGDT;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::misc::disablePic;

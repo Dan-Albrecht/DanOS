@@ -212,4 +212,12 @@ impl PhysicalMemoryManager {
 
         return start as *mut T;
     }
+
+    pub fn ReserveKernel32(&mut self, address: u64) {
+        let firstEntry = self.MemoryMap.Entries[0];
+        let ammount = (firstEntry.BaseAddr + firstEntry.Length) - address;
+        let ammount: usize = ammount.try_into().unwrap();
+        let address: usize = address.try_into().unwrap();
+        self.Reserve(address, ammount, WhatDo::Normal);
+    }
 }

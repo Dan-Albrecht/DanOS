@@ -25,6 +25,7 @@ use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::SetIDT;
 
 use kernel_shared::assemblyStuff::misc::disablePic;
+use kernel_shared::gdtStuff::GetGdtr;
 use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
@@ -41,7 +42,7 @@ use kernel_shared::{
     pageTable::pageBook::PageBook,
 };
 use memory::dumbHeap::BootstrapDumbHeap;
-use memory::virtualMemory::{VirtualMemoryManager};
+use memory::virtualMemory::VirtualMemoryManager;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -67,17 +68,19 @@ pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
-    memoryMap.Dump();
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
         Blobs: from_fn(|_| MemoryBlob::default()),
     };
 
-    let pageBook: PageBook;
-    unsafe {
-        pageBook = PageBook::fromExisting64();
-    }
+    // NB: The current secret handshake with the 32-bit code is take the first
+    // entry from the memory map. The address of the GDT to the end of that entry
+    // has already been used.
+    let gdtBase = GetGdtr().BaseAddress;
+    physicalMemoryManager.ReserveKernel32(gdtBase);
+
+    let pageBook = PageBook::fromExisting();
 
     let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);

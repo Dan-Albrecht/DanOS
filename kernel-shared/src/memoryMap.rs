@@ -1,6 +1,6 @@
 use core::{fmt::Write, mem::size_of};
 
-use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
+use crate::vgaWriteLine;
 
 #[derive(Debug, PartialEq)]
 pub enum MemoryMapEntryType {

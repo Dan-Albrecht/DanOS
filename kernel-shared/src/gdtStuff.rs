@@ -2,11 +2,11 @@
 
 use core::arch::asm;
 use core::fmt::Write;
-use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 
-use kernel_shared::memoryHelpers::{alignDown, zeroMemory2};
+use crate::memoryHelpers::{alignDown, zeroMemory2};
+use crate::{haltLoopWithMessage, vgaWriteLine};
 
-use crate::haltLoop;
+use crate::assemblyStuff::halt::haltLoop;
 
 const GDT_ALIGNMENT : usize = 0x10;
 
@@ -59,4 +59,37 @@ pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
         "lgdt [eax]",
         in("eax") ourGdt
     );
+}
+
+#[repr(C, packed)]
+struct GdtrInternal {
+    Length: u16,
+    BaseAddress: u64,
+}
+
+pub struct Gdtr {
+    pub BaseAddress: u64,
+    pub Length: u16,
+}
+
+#[cfg(target_pointer_width = "64")]
+pub fn GetGdtr() -> Gdtr {
+    let gdtr = GdtrInternal{BaseAddress: 0,Length: 0};
+
+    unsafe {
+        // https://www.felixcloutier.com/x86/sgdt
+        asm!(
+            "sgdt [{}]",
+            in(reg) &gdtr,
+            options(nostack, preserves_flags),
+        );
+    }
+
+    let limit = gdtr.Length;
+    let base = gdtr.BaseAddress;
+
+    Gdtr{
+        BaseAddress :base,
+        Length:limit,
+    }
 }

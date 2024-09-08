@@ -102,24 +102,28 @@ impl PageBook {
             (*pml4).setEntry(0, pdpt, true, true, false);
             pb.setEntry(pml4, false, false);
 
-            return CreationResult{
+            return CreationResult {
                 Book: pb,
                 LowestPhysicalAddressUsed: pml4 as usize,
             };
         }
     }
 
-    // This will just blindly assume you've already created this
     #[cfg(target_pointer_width = "64")]
-    pub unsafe fn fromExisting64() -> PageBook {
-        let cr3: u64;
+    pub fn fromExisting() -> PageBook {
+        unsafe {
+            // This will just blindly assume you've already created this
+            // Given we've marked the funciton 64-bit only, seems reasonably safe
+            // to assume we have paging setup already.
+            let cr3: u64;
 
-        core::arch::asm!(
-            "mov rax, cr3",
-            out("rax") cr3,
-        );
+            core::arch::asm!(
+                "mov rax, cr3",
+                out("rax") cr3,
+            );
 
-        return PageBook { Entry: cr3 as u64 };
+            return PageBook { Entry: cr3 as u64 };
+        }
     }
 
     pub fn setEntry(&mut self, pml4: *const PageMapLevel4Table, pcd: bool, pwt: bool) {

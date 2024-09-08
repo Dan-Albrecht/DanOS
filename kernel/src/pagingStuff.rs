@@ -1,9 +1,12 @@
 use core::arch::asm;
 use core::fmt::Write;
 
-use kernel_shared::{assemblyStuff::halt::haltLoop, memoryMap::MemoryMap, pageTable::pageBook::PageBook, vgaWriteLine};
+use kernel_shared::{
+    assemblyStuff::halt::haltLoop, memoryMap::MemoryMap, pageTable::pageBook::PageBook,
+    vgaWriteLine,
+};
 
-pub fn enablePaging(memoryMap: &MemoryMap)->usize {
+pub fn enablePaging(memoryMap: &MemoryMap) -> usize {
     unsafe {
         vgaWriteLine!("Enabling PAE");
         enablePae();
@@ -67,5 +70,4 @@ unsafe fn reallyEnablePaging() {
         // Clobbers:
         out("eax") _,
     );
-
 }
