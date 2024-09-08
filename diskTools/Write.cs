@@ -16,6 +16,23 @@
 
     internal class Write : ICommandHandler
     {
+        private readonly string? classPath;
+        private string? binaryFile;
+
+        public Write() { }
+
+        public Write(string binaryFile, string classPath)
+        {
+            this.classPath = classPath;
+            this.binaryFile = binaryFile;
+        }
+
+        internal static void Dangerous(string binaryFile, string classPath)
+        {
+            var write = new Write(binaryFile, classPath);
+            write.Run();
+        }
+
         public int Invoke(InvocationContext context)
         {
             return InvokeAsync(context).ConfigureAwait(false).GetAwaiter().GetResult();
@@ -30,40 +47,64 @@
 
         private void Run()
         {
-            Console.WriteLine("Current drives:");
-            var devices = EnumerateDrives.Fetch();
-            EnumerateDrives.Display(devices);
+            string driveSelection;
+            byte[] bytesToWrite;
 
-            Console.WriteLine();
-            Console.WriteLine("Which class do you want to write to and LOSE ALL DATA?");
-            string choice = Console.ReadLine() ?? throw new InvalidDataException("How did you manage to submit a null string?!");
-
-            // Force selection by class name as that'll be safer to copy/paste as device numbers can change for many reasons
-            string driveSelection = devices.FirstOrDefault(device => device.classInfo == choice).deviceName;
-
-            if (string.IsNullOrEmpty(driveSelection))
+            if (string.IsNullOrWhiteSpace(this.binaryFile) || string.IsNullOrWhiteSpace(this.classPath))
             {
-                throw new InvalidDataException($"No such class '{choice}'. You must select by class name.");
+                Console.WriteLine("Current drives:");
+                var devices = EnumerateDrives.Fetch();
+                EnumerateDrives.Display(devices);
+
+                Console.WriteLine();
+                Console.WriteLine("Which class do you want to write to and LOSE ALL DATA?");
+                string choice = Console.ReadLine() ?? throw new InvalidDataException("How did you manage to submit a null string?!");
+
+                // Force selection by class name as that'll be safer to copy/paste as device numbers can change for many reasons
+                driveSelection = devices.FirstOrDefault(device => device.classInfo == choice).deviceName;
+
+                if (string.IsNullOrEmpty(driveSelection))
+                {
+                    throw new InvalidDataException($"No such class '{choice}'. You must select by class name.");
+                }
+
+                if (!choice.StartsWith(@"\\?\usbstor#disk&", StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException($"The choice of '{choice}' doesn't look like a USB disk. This is too risky you might wreck a real disk so you cannot do that. If you know better, update this code.");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("What's the file you want to write?");
+                string path = Console.ReadLine() ?? throw new InvalidDataException("Null from the console...");
+                // Just let this implictly do the path check
+                bytesToWrite = File.ReadAllBytes(path);
+
+                Console.WriteLine();
+                Console.WriteLine($"Last chance! Are you really sure you want to use {driveSelection} and LOSE ALL DATA? (y/n)");
+                var key = Console.ReadKey(true);
+
+                if (key.Key != ConsoleKey.Y)
+                {
+                    Console.WriteLine("Ok, doing nothing.");
+                }
             }
-
-            if (!choice.StartsWith(@"\\?\usbstor#disk&", StringComparison.Ordinal))
+            else
             {
-                throw new InvalidDataException($"The choice of '{choice}' doesn't look like a USB disk. This is too risky you might wreck a real disk so you cannot do that. If you know better, update this code.");
-            }
+                var devices = EnumerateDrives.Fetch();
+                var choice = this.classPath;
+                driveSelection = devices.FirstOrDefault(device => device.classInfo == choice).deviceName;
 
-            Console.WriteLine();
-            Console.WriteLine("What's the file you want to write?");
-            string path = Console.ReadLine() ?? throw new InvalidDataException("Null from the console...");
-            // Just let this implictly do the path check
-            var bytesToWrite = File.ReadAllBytes(path);
+                if (string.IsNullOrEmpty(driveSelection))
+                {
+                    throw new InvalidDataException($"No such class '{choice}'. You must select by class name.");
+                }
 
-            Console.WriteLine();
-            Console.WriteLine($"Last chance! Are you really sure you want to use {driveSelection} and LOSE ALL DATA? (y/n)");
-            var key = Console.ReadKey(true);
+                if (!choice.StartsWith(@"\\?\usbstor#disk&", StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException($"The choice of '{choice}' doesn't look like a USB disk. This is too risky you might wreck a real disk so you cannot do that. If you know better, update this code.");
+                }
 
-            if (key.Key != ConsoleKey.Y)
-            {
-                Console.WriteLine("Ok, doing nothing.");
+                bytesToWrite = File.ReadAllBytes(this.binaryFile);
             }
 
             WriteDrive(driveSelection, bytesToWrite);

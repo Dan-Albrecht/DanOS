@@ -18,10 +18,20 @@ var outputPath = new Argument<string>(
     description: "Path to the write output. Will be overwritten if exists."
     );
 
+var classPath = new Argument<string>(
+    name: "deviceClassName",
+    description: "Full device class path to write to. This will be overwritten!!"
+    );
+
 mergeCommand.AddArgument(bootloaderPath);
 mergeCommand.AddArgument(diskImagePath);
 mergeCommand.AddArgument(outputPath);
 mergeCommand.SetHandler(Merge.DoIt, bootloaderPath, diskImagePath, outputPath);
+
+var dangerousWrite = new Command("dangousWrite", "Non-interactive write to a disk. This is double-DANGEROUS.");
+dangerousWrite.AddArgument(diskImagePath);
+dangerousWrite.AddArgument(classPath);
+dangerousWrite.SetHandler(Write.Dangerous, diskImagePath, classPath);
 
 var root = new RootCommand("Various commands to operator on a disk at the raw level")
 {
@@ -38,6 +48,7 @@ var root = new RootCommand("Various commands to operator on a disk at the raw le
         Handler = new Write(),
     },
     mergeCommand,
+    dangerousWrite,
 };
 
 await root.InvokeAsync(args);

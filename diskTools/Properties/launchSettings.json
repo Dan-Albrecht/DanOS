@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "diskTools": {
-      "commandName": "Project",
-      "commandLineArgs": "write"
-    }
-  }
-}
