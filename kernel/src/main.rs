@@ -10,6 +10,7 @@ use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
+use kernel_shared::assemblyStuff::misc::disablePic;
 use core::fmt::Write;
 use gdtStuff::Setup64BitGDT;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
@@ -17,7 +18,7 @@ use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::ports::outB;
 use kernel_shared::magicConstants::MEMORY_MAP_LOCATION;
 use kernel_shared::memoryMap::MemoryMap;
-use kernel_shared::vgaWriteLine;
+use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use pagingStuff::enablePaging;
 
 const fn getKernel64Address() -> u16 {
@@ -54,8 +55,7 @@ const fn getKernel64Address() -> u16 {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     vgaWriteLine!("32-bit kernel panic!");
-    vgaWriteLine!("{info}");
-    haltLoop();
+    haltLoopWithMessage!("{info}");
 }
 
 #[no_mangle]
@@ -63,14 +63,15 @@ pub extern "C" fn DanMain() -> ! {
     unsafe {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
-        outB(0x21, 0xFF);
-        outB(0xA1, 0xFF);
+
+        // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
+        disablePic();
+        
         let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
         memoryMap.Dump();
 
-        
-
-        if IsTheA20LineEnabled() {
+        if IsTheA20LineEnabled(&memoryMap) {
+            haltLoopWithMessage!("temp stop");
             if Is64BitModeSupported() {
                 //vgaWriteLine!("64-bit mode is available");
                 enablePaging();

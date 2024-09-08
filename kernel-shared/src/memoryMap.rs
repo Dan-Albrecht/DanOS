@@ -2,7 +2,7 @@ use core::{fmt::Write, mem::size_of};
 
 use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum MemoryMapEntryType {
     AddressRangeMemory,
     AddressRangeReserved,
@@ -80,6 +80,7 @@ impl MemoryMap {
     }
 
     pub fn Dump(&self) {
+        // We do the loop backwards, because if there's a crash we'll hope the first few entries are on the screen (especially if we don't have serial hooked up)
         let mut index = self.Count as usize;
 
         loop {
@@ -103,7 +104,31 @@ impl MemoryMap {
         }
 
         vgaWriteLine!("size is {}", self.Count);
-        haltLoop();
+    }
+
+    pub fn IsValid(
+        &self,
+        requestedAddress: u64,
+        requestedLength: u64,
+        requestedType: MemoryMapEntryType,
+    ) -> bool {
+        for i in 0..self.Count as usize {
+            let base = self.Entries[i].BaseAddr;
+            let length = self.Entries[i].Length;
+            let memType = self.Entries[i].GetType();
+
+            if (base <= requestedAddress)
+                && ((requestedAddress + requestedLength) <= (base + length))
+            {
+                if memType == requestedType {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        return false;
     }
 }
 

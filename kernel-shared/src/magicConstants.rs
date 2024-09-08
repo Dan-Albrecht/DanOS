@@ -8,9 +8,6 @@ pub const PHYSICAL_ADDRESS_VIRTUAL_MEMORY_START: usize = 0x3000;
 // BUGBUG: This need to agree with STAGE_1_5_LOAD_TARGET
 pub static MEMORY_MAP_LOCATION: usize = 0x1000;
 
-pub static RANDOM_ODD_MEGABYTE: usize = 0x11_2345;
-pub static RANDOM_EVEN_MEGABYTE: usize = 0x01_2345;
-
 // BUGBUG: We should just do this on the stack, but this simplifies passing off from 32-bit to 64-bit for now
 // We'll also verify in the build scripts we won't overrun this area
 // This does mean XXX needs to keep in sync with the lowest of these addresses

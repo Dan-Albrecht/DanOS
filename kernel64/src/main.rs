@@ -15,7 +15,6 @@ mod diskStuff;
 mod interupts;
 mod logging;
 mod memory;
-mod pic;
 mod serial;
 
 use core::array::from_fn;
@@ -25,6 +24,7 @@ use core::{arch::asm, fmt::Write};
 use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::SetIDT;
 
+use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
@@ -42,8 +42,6 @@ use kernel_shared::{
 };
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::{VirtualMemoryManager};
-
-use crate::pic::picStuff::disablePic;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
