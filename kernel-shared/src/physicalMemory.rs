@@ -1,11 +1,10 @@
 use core::fmt::Write;
-use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
-use crate::loggerWriteLine;
-
-use super::{
+use crate::{
+    assemblyStuff::halt::haltLoop,
+    haltLoopWithMessage,
     memoryMap::{MemoryMap, MemoryMapEntryType},
-    virtualMemory::WhatDo,
+    vgaWriteLine,
 };
 
 pub struct PhysicalMemoryManager {
@@ -18,6 +17,13 @@ pub struct MemoryBlob {
     Length: usize,
 }
 
+// BUGUBG: Come up with a better name
+pub enum WhatDo {
+    Normal,
+    UseReserved,
+    YoLo, // Allocate even if it isn't in the map. Seeing this for hardware IO.
+}
+
 impl Default for MemoryBlob {
     fn default() -> Self {
         MemoryBlob {
@@ -28,12 +34,7 @@ impl Default for MemoryBlob {
 }
 
 impl PhysicalMemoryManager {
-    pub(crate) fn Reserve(
-        &mut self,
-        requestLocation: usize,
-        requestAmmount: usize,
-        whatDo: WhatDo,
-    ) {
+    pub fn Reserve(&mut self, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
         let requestLocation = requestLocation;
         let requestAmmount = requestAmmount;
 
@@ -100,7 +101,7 @@ impl PhysicalMemoryManager {
             }
 
             let end = requestLocation + requestAmmount;
-            loggerWriteLine!(
+            vgaWriteLine!(
                 "0x{:X}..0x{:X} for 0x{:X} not in memory range (of any type)",
                 requestLocation,
                 end,
@@ -137,7 +138,7 @@ impl PhysicalMemoryManager {
             if requestLocation < (blobAddress + blobLength)
                 && (blobAddress) < (requestLocation + requestAmmount)
             {
-                loggerWriteLine!(
+                vgaWriteLine!(
                     "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
                     requestLocation,
                     requestAmmount,
@@ -152,7 +153,7 @@ impl PhysicalMemoryManager {
         self.Blobs[nextIndex].Address = requestLocation;
         self.Blobs[nextIndex].Length = requestAmmount;
 
-        loggerWriteLine!(
+        vgaWriteLine!(
             "Reserved 0x{:X} bytes @ 0x{:X} within 0x{:X}..0x{:X} index {}",
             requestAmmount,
             requestLocation,
@@ -162,7 +163,7 @@ impl PhysicalMemoryManager {
         );
     }
 
-    pub(crate) fn Dump(&self) {
+    pub fn Dump(&self) {
         for index in 0..(self.MemoryMap.Count as usize) {
             let memoryType = self.MemoryMap.Entries[index].GetType();
 
@@ -180,7 +181,7 @@ impl PhysicalMemoryManager {
             let memoryMapLength = memoryMapLength.unwrap();
             let memoryEnd = memoryMapBase + memoryMapLength;
 
-            loggerWriteLine!(
+            vgaWriteLine!(
                 "0x{:X}..0x{:X} is {:?}",
                 memoryMapBase,
                 memoryEnd,
@@ -190,7 +191,7 @@ impl PhysicalMemoryManager {
     }
 
     // BUGBUG: This is very dumb and inefficent
-    pub(crate) fn ReserveWherever<T>(&mut self, sizeInBytes: usize) -> *mut T {
+    pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize) -> *mut T {
         let mut start = 0;
         let len = self.Blobs.len();
 

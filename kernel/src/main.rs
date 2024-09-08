@@ -14,6 +14,9 @@ use core::fmt::Write;
 use gdtStuff::Setup64BitGDT;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::assemblyStuff::ports::outB;
+use kernel_shared::magicConstants::MEMORY_MAP_LOCATION;
+use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::vgaWriteLine;
 use pagingStuff::enablePaging;
 
@@ -60,21 +63,27 @@ pub extern "C" fn DanMain() -> ! {
     unsafe {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
-        //kernel_shared::diskStuff::read::readBytes();
-        //haltLoop();
+        outB(0x21, 0xFF);
+        outB(0xA1, 0xFF);
+        let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+        memoryMap.Dump();
+
+        
 
         if IsTheA20LineEnabled() {
             if Is64BitModeSupported() {
-                vgaWriteLine!("64-bit mode is available");
+                //vgaWriteLine!("64-bit mode is available");
                 enablePaging();
-                vgaWriteLine!("64-bit paging mode enabled...");
-                vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
+                //vgaWriteLine!("64-bit paging mode enabled...");
+                //vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT();
                 const KERNEL64_ADDRESS: u16 = getKernel64Address();
-                vgaWriteLine!(
+                /*vgaWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
                     KERNEL64_ADDRESS
-                );
+                );*/
+                haltLoop();
+
                 asm!(
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel
                     adr = const { KERNEL64_ADDRESS },

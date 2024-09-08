@@ -30,6 +30,8 @@ use kernel_shared::magicConstants::{
     DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
     SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
 };
+use kernel_shared::memoryMap::MemoryMap;
+use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
 use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
@@ -39,9 +41,7 @@ use kernel_shared::{
     pageTable::pageBook::PageBook,
 };
 use memory::dumbHeap::BootstrapDumbHeap;
-use memory::memoryMap::MemoryMap;
-use memory::physicalMemory::{MemoryBlob, PhysicalMemoryManager};
-use memory::virtualMemory::{VirtualMemoryManager, WhatDo};
+use memory::virtualMemory::{VirtualMemoryManager};
 
 use crate::pic::picStuff::disablePic;
 
@@ -67,6 +67,9 @@ fn reloadCR3() {
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
+    loggerWriteLine!("Disabling PIC...");
+    disablePic();
+    haltLoop();
 
     let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
     memoryMap.Dump();
@@ -84,8 +87,7 @@ pub extern "C" fn DanMain() -> ! {
     let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
-    loggerWriteLine!("Configuring PIC...");
-    disablePic();
+    
 
     loggerWriteLine!("Installing interrupt table...");
     unsafe {

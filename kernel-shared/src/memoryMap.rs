@@ -1,5 +1,6 @@
-use crate::loggerWriteLine;
 use core::{fmt::Write, mem::size_of};
+
+use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
 #[derive(Debug)]
 pub enum MemoryMapEntryType {
@@ -41,7 +42,7 @@ impl MemoryMap {
 
         let mut entryAddress = address + 0x10;
 
-        loggerWriteLine!(
+        vgaWriteLine!(
             "We should read 0x{:X} entries from 0x{:X}",
             totalEntries,
             entryAddress
@@ -79,19 +80,30 @@ impl MemoryMap {
     }
 
     pub fn Dump(&self) {
-        for index in 0..self.Count.try_into().unwrap() {
-            let addr = self.Entries[index].BaseAddr;
-            let len = self.Entries[index].Length;
+        let mut index = self.Count as usize;
 
-            loggerWriteLine!(
+        loop {
+            let addr = self.Entries[index as usize].BaseAddr;
+            let len = self.Entries[index as usize].Length;
+
+            vgaWriteLine!(
                 "{}: {:?} 0x{:X} - 0x{:X} (0x{:X})",
                 index,
-                self.Entries[index].GetType(),
+                self.Entries[index as usize].GetType(),
                 addr,
                 addr + len - 1,
                 len,
             );
+
+            if index == 0 {
+                break;
+            }
+
+            index -= 1;
         }
+
+        vgaWriteLine!("size is {}", self.Count);
+        haltLoop();
     }
 }
 

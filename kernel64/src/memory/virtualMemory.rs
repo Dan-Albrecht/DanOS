@@ -7,24 +7,17 @@ use kernel_shared::{
         SIZE_OF_PAGE_TABLE,
     },
     memoryHelpers::{haltOnMisaligned, zeroMemory2},
-    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
+    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, physicalMemory::{PhysicalMemoryManager, WhatDo},
 };
 
 use crate::loggerWriteLine;
 
-use super::{dumbHeap::BootstrapDumbHeap, physicalMemory::PhysicalMemoryManager};
+use super::dumbHeap::BootstrapDumbHeap;
 
 pub struct VirtualMemoryManager {
     physical: PhysicalMemoryManager,
     pageBook: PageBook,
     bdh: BootstrapDumbHeap,
-}
-
-// BUGUBG: Come up with a better name
-pub enum WhatDo {
-    Normal,
-    UseReserved,
-    YoLo, // Allocate even if it isn't in the map. Seeing this for hardware IO.
 }
 
 impl VirtualMemoryManager {

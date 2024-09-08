@@ -1,6 +1,5 @@
-use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
+use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryMap::{MemoryMap, MemoryMapEntryType}};
 
-use super::memoryMap::{MemoryMap, MemoryMapEntryType};
 use crate::loggerWriteLine;
 use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
 
