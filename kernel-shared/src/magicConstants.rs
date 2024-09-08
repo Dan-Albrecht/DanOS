@@ -23,6 +23,7 @@ pub const DUMB_HEAP: usize = 0x1F_0000;
 pub const DUMB_HEAP_LENGTH: usize = 0xC000;
 
 pub static IDT_ADDRESS: usize = 0x9_0000;
+pub static GDT_ADDRESS: usize = 0x8_0000;
 
 // BUGBUG: These, especially the last two should be 'address range of' or something like that, the objects themselves are way smaller
 pub static SIZE_OF_PAGE: usize = 0x1000;

@@ -10,12 +10,12 @@ use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
+use core::fmt::Write;
 use gdtStuff::Setup64BitGDT;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::vgaWriteLine;
 use pagingStuff::enablePaging;
-use core::fmt::Write;
 
 const fn getKernel64Address() -> u16 {
     let bytes = core::env!("KERNEL64_LOAD_TARGET").as_bytes();
@@ -70,10 +70,14 @@ pub extern "C" fn DanMain() -> ! {
                 vgaWriteLine!("64-bit paging mode enabled...");
                 vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT();
-                vgaWriteLine!("The new GDT is in place. Jumping to 64-bit...");
+                const KERNEL64_ADDRESS: u16 = getKernel64Address();
+                vgaWriteLine!(
+                    "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
+                    KERNEL64_ADDRESS
+                );
                 asm!(
                     "jmp 0x8, {adr}", // Far jump to the 64bit kernel
-                    adr = const { getKernel64Address() },
+                    adr = const { KERNEL64_ADDRESS },
                 );
 
                 vgaWriteLine!("64-bit kernel returned!");
