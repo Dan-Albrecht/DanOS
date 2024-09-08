@@ -29,12 +29,7 @@ main:
     call STAGE1_5_TARGET_MEMORY_SEGMENT:0
 
     mov ax, 2
-    call STAGE1_5_TARGET_MEMORY_SEGMENT:0
-
-    ; Should never reach this
-    mov si, unexpectedReturn
-    call printString
-    jmp superHault
+    jmp STAGE1_5_TARGET_MEMORY_SEGMENT:0
 
 superHault:
     cli             ; Don't need to allow interupts anymore
@@ -48,7 +43,7 @@ superHault:
 DAPS:
                     db 0x10                         ; Size of packet
                     db 0x0                          ; Always 0
-    readCount:      dw 0x80                         ; Number of sectors to load, set to actual read after complete. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care.
+    readCount:      dw MAX_SECTOR_READ_COUNT        ; Number of disk sectors (512 (0x200) bytes) to load. BIOS updates with actual read after completion. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care, my ThinkPad 0x7F.
                     dw 0x0                          ; Target address offset
     targetSegment:  dw DISK_DATA_MEMORY_SEGMENT     ; Target address segment
     lba:            dd 0x1                          ; Lower 32-bits of LBA. Starts at 0. This code is in 0 and then the rest of the code is immediately next.
@@ -89,8 +84,12 @@ loadFullBlock:
     mov ah, 0x42    ; Extended read function
     int 0x13
     jc readFailed
-    add [targetSegment], word 0x1000
-    add [lba], dword 0x80
+    push si
+    mov si, readBlock
+    call printString
+    pop si
+    add [targetSegment], word (0x20 * MAX_SECTOR_READ_COUNT)
+    add [lba], dword MAX_SECTOR_READ_COUNT
     loop loadFullBlock
 
 loadPartialBlock:
@@ -179,15 +178,15 @@ printHex16:
     ret
 
 welcomeMsg          db `Welcome to DanOS!\r\n`, 0
-loadMsg1            db "Read drive ", 0
+loadMsg1            db "Read ", 0
 loadMsg2            db " for ", 0
 loadMsg2_5          db " blocks and ", 0
 loadMsg3            db ` sectors\r\n`, 0
-readFailedMsg       db "Read failed with: ", 0
+readBlock           db `Read block\r\n`, 0
+readFailedMsg       db "Read failed: ", 0
 readMismatchMsg     db "Wrong count of sectors read: ", 0
 to32BitMsg          db `Switching to 32bit...\r\n`, 0
 hexPrefix           db "0x", 0
-unexpectedReturn    db `Retruned to Stage1...\r\n`, 0
 haltMsg             db `\r\nEnd of line.`, 0
 
 times 440 - ($ - $$) db 0xDA ; Above can be a max of 440 bytes; add padding as needed so below will be at exact needed offsets
