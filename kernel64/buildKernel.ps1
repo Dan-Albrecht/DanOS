@@ -4,10 +4,14 @@ Builds the 64 bit kernel
 
 .PARAMETER debug
 True to build debug, false to build release
+
+.PARAMETER expectedOffset
+Where the upstream caller of us expected to jump to. If after building we find they're wrong we'll fail so they can update.
 #>
 
 param (
     [bool]$debug = $true
+    , [int]$expectedOffset = 0x1000
 )   
 
 $ErrorActionPreference = 'Stop'
@@ -68,25 +72,13 @@ try {
         # ...
         $textSection = wsl -- readelf -SW target/x86_64-unknown-none/$buildType/kernel64.strippedWithDebugLink | findstr .text
 
-        $textAddress = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[4]
-        $textAddress = [System.Convert]::ToInt32($textAddress, 16)
-
         $textOffset = $textSection.Split(' ', [StringSplitOptions]::RemoveEmptyEntries)[5]
         $textOffset = [System.Convert]::ToInt32($textOffset, 16)
-
-        $loadTarget = [System.Convert]::ToInt32($env:KERNEL64_LOAD_TARGET, 16)
-        $imageStart = [System.Convert]::ToInt32($env:KERNEL64_IMAGE_START, 16)
         
-        $expectedOffset = $loadTarget - $imageStart
         if ($textOffset -ne $expectedOffset) {
             # For reasons I haven't figured out yet, the elf header somtimes changes sizes. Until we can control that, detect it and then just have upstream
             # take into account the new jump target
-            Write-Error ".text section moved. Stat 0x$($imageStart.ToString("X")) Target 0x$($loadTarget.ToString("X")) Expected offset: 0x$($expectedOffset.ToString("X")) Actual offset: 0x$($textOffset.ToString("X"))"
-        }
-
-        $expectedLoadAddress = $env:KERNEL64_LOAD_TARGET
-        if ($textAddress -ne $expectedLoadAddress) {
-            Write-Error "We requested load at $expectedLoadAddress, but it is $textAddress"
+            Write-Error ".text section moved. Expected offset: 0x$($expectedOffset.ToString("X")) Actual offset: 0x$($textOffset.ToString("X"))"
         }
 
         # Re-disassemble above to get a sense we still have what we want

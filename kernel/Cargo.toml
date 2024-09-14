@@ -5,13 +5,10 @@ edition = "2021"
 
 [dependencies]
 kernel-shared = { path = "../kernel-shared" }
+elf = { version = "0.7.4", default-features = false }
 
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-#opt-level = 0
-#lto = true
-#codegen-units = 1
-#strip = "debuginfo"

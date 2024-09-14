@@ -10,13 +10,13 @@
     "llvm-target": "x86_64-unknown-none-elf",
     "max-atomic-width": 64,
     "panic-strategy": "abort",
-    "position-independent-executables": true,
     "relro-level": "off",
     "stack-probes": {
         "kind": "call"
     },
-    "static-position-independent-executables": true,
     "target-pointer-width": "64",
-    "relocation-model": "static",
+    "relocation-model": "pie",
+    "position-independent-executables": true,
+    "static-position-independent-executables": true,
     "os": "none"
 }

@@ -1,9 +1,24 @@
+<#
+.SYNOPSIS
+Builds the 32 bit kernel
+
+.PARAMETER kernel64Address
+Address where the 64-bit kernel is already loaded to and we'll jump to it.
+#>
+
+param (
+    [int]$kernel64Address = 0x1000
+)   
+
 $ErrorActionPreference = 'Stop'
 Push-Location ${PSScriptRoot}
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUserDeclaredVarsMoreThanAssignments', 'This is a global PS state variable')]
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
-    cargo build --release
+    $kernel64AddressString = "0x$(([int]$kernel64Address).ToString("X"))"
+
+    # Don't want environment variables leaking out, so do this in a subshell
+    pwsh -CommandWithArgs '$val=$args[0]; $env:KERNEL64_JUMP_ADDRESS=$val; cargo build --release ' "$kernel64AddressString"
 
     # For now, always handy to have the assembly around
     rust-objdump.exe -M intel --disassemble-all .\target\i686-unknown-none\release\kernel > .\target\i686-unknown-none\release\kernel.asm

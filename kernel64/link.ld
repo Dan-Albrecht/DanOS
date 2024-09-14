@@ -1,8 +1,7 @@
 ENTRY(DanMain)
 
 SECTIONS {
-    . = KERNEL64_LOAD_TARGET;
-
+    . = 0x9000;
     .text : {
         *(.text.DanMain);
         *(.text*);

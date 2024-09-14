@@ -4,26 +4,23 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 Push-Location ${PSScriptRoot}
 try {
     $PSNativeCommandUseErrorActionPreference = $true
-    $loadMemoryTarget = 0x8000
-    $kernel64JumpAddress = 0x9100
     $memoryMapTarget = 0x1000
     $debug = $true
+    
+    $kernel64LoadTarget = 0x8000
+    $kernel64TextSectionOffset = 0x1000
 
     # I really hate you PowerShell
     [System.Environment]::CurrentDirectory = ${PSScriptRoot}
 
-    $STAGE_4_LOAD_TARGET = $loadMemoryTarget
-
-    # Secret handshake to eventaully get this passed to the linker
-    $env:KERNEL64_LOAD_TARGET = "0x$($kernel64JumpAddress.ToString("X"))"
-    $env:KERNEL64_IMAGE_START = "0x$($loadMemoryTarget.ToString("X"))"
+    $STAGE_4_LOAD_TARGET = $kernel64LoadTarget
 
     if ($debug) {
-        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $true } -message 'Kernel64dbg'
+        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug -expectedOffset $kernel64TextSectionOffset } -message 'Kernel64dbg'
         $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\debug\kernel64.strippedWithDebugLink -Raw -AsByteStream
     }
     else {
-        TimeCommand { ..\kernel64\buildKernel.ps1 } -message 'Kernel64rel'
+        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug -expectedOffset $kernel64TextSectionOffset } -message 'Kernel64rel'
         $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
     }
     
@@ -31,7 +28,7 @@ try {
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
     $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
-    TimeCommand { ..\kernel\buildKernel.ps1 } -message 'Kernel32'
+    TimeCommand { ..\kernel\buildKernel.ps1 -kernel64Address ($kernel64LoadTarget + $kernel64TextSectionOffset) } -message 'Kernel32'
     $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
     $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
 
@@ -49,7 +46,7 @@ try {
     $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors + $stage1_5Sectors
 
     # Divide by 16 to get to segment
-    $diskDataSegment = $loadMemoryTarget -shr 4
+    $diskDataSegment = $kernel64LoadTarget -shr 4
 
     Write-Host "Stage 1 @ 0x7C00 (must be 1 sector)"
     Write-Host "Stage 1.5 @ 0x$(([int]$STAGE_1_5_LOAD_TARGET).ToString("X")) (for 0x$(([int]$stage1_5Sectors).ToString("X")) sectors)"

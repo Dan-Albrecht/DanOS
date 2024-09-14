@@ -2,7 +2,7 @@ use core::arch::asm;
 use core::fmt::Write;
 
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop, memoryMap::MemoryMap, pageTable::pageBook::PageBook,
+    memoryMap::MemoryMap, pageTable::pageBook::PageBook,
     vgaWriteLine,
 };
 

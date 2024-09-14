@@ -63,6 +63,7 @@ fn reloadCR3() {
     }
 }
 
+
 #[no_mangle]
 pub extern "C" fn DanMain() -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
@@ -81,7 +82,6 @@ pub extern "C" fn DanMain() -> ! {
     physicalMemoryManager.ReserveKernel32(gdtBase);
 
     let pageBook = PageBook::fromExisting();
-
     let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
