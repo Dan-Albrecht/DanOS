@@ -94,6 +94,8 @@ loadFullBlock:
 
 loadPartialBlock:
     mov [readCount], word REMAINING_SECTORS
+    cmp word [readCount], 0
+    jz noPartial
     mov ah, 0x42    ; Extended read function
     int 0x13
     jc readFailed
@@ -102,6 +104,7 @@ loadPartialBlock:
     cmp al, REMAINING_SECTORS
     jne readMismatch
 
+noPartial:
     popa
     ret
 
