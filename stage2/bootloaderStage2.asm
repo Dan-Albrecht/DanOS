@@ -13,6 +13,8 @@ entry:
 
     mov esi, welcomeMsg32
     call printVgaStringLastLine32
+    mov ecx, KERNEL64_ADDRESS    
+    mov edx,  KERNEL64_LENGTH
     jmp KERNEL32_JUMP_TARGET
 
 ; We seem to be running in 80x25

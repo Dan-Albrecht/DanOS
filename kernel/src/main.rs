@@ -24,49 +24,10 @@ use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use pagingStuff::enablePaging;
 
-const BOGUS_KERNEL_ADDRESS: u32 = 0x1_2345;
-const KERNEL64_JUMP_ADDRESS: u32 = getKernel64Address();
-
-const fn getKernel64Address() -> u32 {
-    let value = core::option_env!("KERNEL64_JUMP_ADDRESS");
-    let mut result: u32 = 0;
-
-    if let Some(theString) = value {
-        let bytes = theString.as_bytes();
-        let len = bytes.len();
-
-        if len < 3 || bytes[0] != b'0' || bytes[1] != b'x' {
-            assert!(
-                false,
-                "Load address string must be at least 3 characters and start with a 0x prefix"
-            );
-        }
-
-        let mut pos = 2;
-
-        while pos < len {
-            let byte = bytes[pos];
-            result <<= 4;
-
-            if byte >= b'0' && byte <= b'9' {
-                result += (byte as u32) - (b'0' as u32);
-            } else if byte >= b'A' && byte <= b'F' {
-                result += 10 + (byte as u32) - (b'A' as u32);
-            } else {
-                assert!(false, "Invalid character in address string. Hex characters must be in uppercase if you're using them.");
-            }
-            pos += 1;
-        }
-    } else {
-        // Hardcoding a default so we can compile without having to worry to set this
-        // Build scripts will always set this, we'll panic if we see the default value
-        result = BOGUS_KERNEL_ADDRESS;
-    }
-
-    result
-}
-
-unsafe fn relocateKernel64(baseAddress: usize, length: usize) {
+// Returns the offset (relative to base address) of where the .text section is
+unsafe fn relocateKernel64(baseAddress: u32, length: u32) -> u32 {
+    let length: usize = length.try_into().unwrap();
+    vgaWriteLine!("Parsing ELF @ 0x{:X} for 0x:{:X}", baseAddress, length);
     let data = slice_from_raw_parts(baseAddress as *const u8, length);
     let elf = ElfBytes::<NativeEndian>::minimal_parse(&*data).expect("ELF parse failed");
     if elf.ehdr.class != Class::ELF64 {
@@ -89,32 +50,38 @@ unsafe fn relocateKernel64(baseAddress: usize, length: usize) {
         }
     }
 
-    vgaWriteLine!("Relocated {} entries", relocationCount);
+    let textSection = elf
+        .section_header_by_name(".text")
+        .expect("Couldn't parse section table")
+        .expect("Couldn't find .text section");
+    let offset = textSection.sh_offset;
+
+    vgaWriteLine!(
+        "Relocated {} entries. .text offset is 0x{:X}",
+        relocationCount,
+        offset
+    );
+    return offset.try_into().expect("Kernel64 .text offset");
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     vgaWriteLine!("32-bit kernel panic!");
-    haltLoopWithMessage!("{info}");
+    vgaWriteLine!("{}", info.message());
+    haltLoopWithMessage!("{}", info);
 }
 
 #[no_mangle]
-pub extern "C" fn DanMain() -> ! {
+pub extern "fastcall" fn DanMain(kernel64Address: u32, kernel64Length: u32) -> ! {
     unsafe {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
-
-        if KERNEL64_JUMP_ADDRESS == BOGUS_KERNEL_ADDRESS {
-            // BUGBUG: I don't think I still fuly understand const. When coding in VSCode and the env variable
-            // is unset, we should be getting flagged about unrearchable code as the else will never hit...
-            haltLoopWithMessage!("KERNEL64_JUMP_ADDRESS wasn't set at build time");
-        }
 
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
 
         vgaWriteLine!("Relocating 64-bit kernel...");
-        relocateKernel64(0x8000, 0x5_F5A0);
+        let textOffset = relocateKernel64(kernel64Address, kernel64Length);
 
         let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
         memoryMap.Dump();
@@ -130,14 +97,20 @@ pub extern "C" fn DanMain() -> ! {
                 vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT(entry.BaseAddr, cantUseAbove);
 
+                let jumpTarget = kernel64Address + textOffset;
+
                 vgaWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
-                    KERNEL64_JUMP_ADDRESS
+                    jumpTarget
                 );
 
+                // Cannot figure out how to get Rust to emit a long jump with a variable as the address
+                // ChatGPT said do a retf instead and that seems to work
                 asm!(
-                    "jmp 0x8, {adr}", // Far jump to the 64bit kernel
-                    adr = const { KERNEL64_JUMP_ADDRESS },
+                    "push 0x8",       // Code segment
+                    "push {0}",       // Address in that segment
+                    "retf",
+                    in(reg) jumpTarget,
                 );
 
                 vgaWriteLine!("64-bit kernel returned!");
