@@ -2,14 +2,6 @@ pub const SATA_DRIVE_BASE_CMD_BASE_ADDRESS: u32 = 0x50_0000;
 pub const SATA_DRIVE_BASE_FIS_BASE_ADDRESS: u32 = 0x60_0000;
 pub const SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS: usize = 0x70_0000;
 
-pub const PHYSICAL_ADDRESS_OF_PAGE_BOOK: usize = 0x1000;
-pub const PHYSICAL_ADDRESS_VIRTUAL_MEMORY_START: usize = 0x3000;
-
-// BUGBUG: This need to agree with STAGE_1_5_LOAD_TARGET
-pub static MEMORY_MAP_LOCATION: usize = 0x1000;
-
-
-
 pub const DUMB_HEAP: usize = 0x1F_0000;
 pub const DUMB_HEAP_LENGTH: usize = 0xC000;
 

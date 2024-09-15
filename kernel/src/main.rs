@@ -19,7 +19,6 @@ use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::gdtStuff::Setup64BitGDT;
-use kernel_shared::magicConstants::MEMORY_MAP_LOCATION;
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use pagingStuff::enablePaging;
@@ -71,19 +70,22 @@ fn panic(info: &PanicInfo) -> ! {
     haltLoopWithMessage!("{}", info);
 }
 
+// Arguments are 32-bit since we know the bootloader code is operating in that mode
+// Args in ECX, EDX, then stack
 #[no_mangle]
-pub extern "fastcall" fn DanMain(kernel64Address: u32, kernel64Length: u32) -> ! {
+pub extern "fastcall" fn DanMain(kernel64Address: u32, kernel64Length: u32, memoryMapLocation: u32) -> ! {
     unsafe {
         // Previous stage didn't newline after its last message
         vgaWriteLine!("\r\nWe've made it to Rust!");
-
+        
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
 
         vgaWriteLine!("Relocating 64-bit kernel...");
         let textOffset = relocateKernel64(kernel64Address, kernel64Length);
 
-        let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+        vgaWriteLine!("Loading memory map from 0x{:X}", memoryMapLocation);
+        let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().expect("Memory map"));
         memoryMap.Dump();
 
         if IsTheA20LineEnabled(&memoryMap) {
@@ -107,9 +109,11 @@ pub extern "fastcall" fn DanMain(kernel64Address: u32, kernel64Length: u32) -> !
                 // Cannot figure out how to get Rust to emit a long jump with a variable as the address
                 // ChatGPT said do a retf instead and that seems to work
                 asm!(
-                    "push 0x8",       // Code segment
-                    "push {0}",       // Address in that segment
+                    "mov edi, {0}", // First param for kernel64. https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/linux-x64-calling-convention-stack-frame
+                    "push 0x8",     // Code segment
+                    "push {1}",     // Address in that segment
                     "retf",
+                    in(reg) memoryMapLocation,
                     in(reg) jumpTarget,
                 );
 

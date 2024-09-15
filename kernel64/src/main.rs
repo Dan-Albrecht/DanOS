@@ -38,7 +38,6 @@ use kernel_shared::{
         halt::haltLoop,
         misc::{Breakpoint, DivideByZero},
     },
-    magicConstants::MEMORY_MAP_LOCATION,
     pageTable::pageBook::PageBook,
 };
 use memory::dumbHeap::BootstrapDumbHeap;
@@ -65,10 +64,10 @@ fn reloadCR3() {
 
 
 #[no_mangle]
-pub extern "C" fn DanMain() -> ! {
+pub extern "sysv64" fn DanMain(memoryMapLocation: usize) -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
 
-    let memoryMap = MemoryMap::Load(MEMORY_MAP_LOCATION);
+    let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().unwrap());
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,

@@ -31,7 +31,7 @@ try {
     $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
 
     $STAGE_2_LOAD_TARGET = $STAGE_3_LOAD_TARGET + ($kernelSectors * 512)    
-    TimeCommand { ..\stage2\build.ps1 -origin $STAGE_2_LOAD_TARGET -kernel32Address $STAGE_3_LOAD_TARGET -kernel64Address $STAGE_4_LOAD_TARGET -kernel64Length $kernel64Bytes.Length } -message 'Stage 2'
+    TimeCommand { ..\stage2\build.ps1 -origin $STAGE_2_LOAD_TARGET -kernel32Address $STAGE_3_LOAD_TARGET -kernel64Address $STAGE_4_LOAD_TARGET -kernel64Length $kernel64Bytes.Length -memoryMapTarget $memoryMapTarget } -message 'Stage 2'
     $stage2Bytes = Get-Content ..\stage2\bootloaderStage2.bin -Raw -AsByteStream
     $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
 

@@ -15,6 +15,8 @@ entry:
     call printVgaStringLastLine32
     mov ecx, KERNEL64_ADDRESS    
     mov edx,  KERNEL64_LENGTH
+    push MEMORY_MAP_TARGET
+    push 0 ; Dummy to get stack aligned
     jmp KERNEL32_JUMP_TARGET
 
 ; We seem to be running in 80x25
