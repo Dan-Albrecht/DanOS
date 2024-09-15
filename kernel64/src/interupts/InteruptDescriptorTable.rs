@@ -3,7 +3,6 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
-use kernel_shared::magicConstants::IDT_ADDRESS;
 use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
 
 use crate::assemblyHelpers::getCR2;
@@ -120,8 +119,8 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
-    memoryManager.Reserve(IDT_ADDRESS, size_of::<Table>(), WhatDo::Normal);
-    let idt = IDT_ADDRESS as *mut Table;
+    // BUGBUG: We need to tell the reserve function out alignment requriments
+    let idt :*mut Table = memoryManager.ReserveWherever(size_of::<Table>());
 
     // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,
     // but I'd like to still do it directly.

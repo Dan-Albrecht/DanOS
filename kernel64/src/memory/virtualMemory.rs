@@ -6,7 +6,7 @@ use kernel_shared::{
         PAGES_PER_TABLE, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER,
         SIZE_OF_PAGE_TABLE,
     },
-    memoryHelpers::{haltOnMisaligned, zeroMemory2},
+    memoryHelpers::{alignDown, haltOnMisaligned, zeroMemory2},
     pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, physicalMemory::{PhysicalMemoryManager, WhatDo},
 };
 

@@ -2,11 +2,6 @@ pub const SATA_DRIVE_BASE_CMD_BASE_ADDRESS: u32 = 0x50_0000;
 pub const SATA_DRIVE_BASE_FIS_BASE_ADDRESS: u32 = 0x60_0000;
 pub const SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS: usize = 0x70_0000;
 
-pub const DUMB_HEAP: usize = 0x1F_0000;
-pub const DUMB_HEAP_LENGTH: usize = 0xC000;
-
-pub static IDT_ADDRESS: usize = 0x9_0000;
-
 // BUGBUG: These, especially the last two should be 'address range of' or something like that, the objects themselves are way smaller
 pub static SIZE_OF_PAGE: usize = 0x1000;
 pub static SIZE_OF_PAGE_TABLE: usize = 0x20_0000;

@@ -190,8 +190,67 @@ impl PhysicalMemoryManager {
         }
     }
 
-    // BUGBUG: This is very dumb and inefficent
+    fn isAddressInRange(&self, address: usize, memoryMapIndex: usize) -> bool {
+        let entry = self.MemoryMap.Entries[memoryMapIndex];
+        let start = entry.BaseAddr;
+        let end = start + entry.Length;
+
+        // 128-bit isn't coming anytime soon
+        let address: u64 = address.try_into().unwrap();
+
+        if address >= start && address <= end {
+            true
+        } else {
+            false
+        }
+    }
+
+    // BUGBUG: This is incomplete
     pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize) -> *mut T {
+        let nextBlob = self.nextFreeBlob();
+        if None == nextBlob {
+            haltLoopWithMessage!("No more blobs to store data in");
+        }
+
+        let firstFreeIndex = nextBlob.unwrap();
+        let mut renameMe: Option<usize> = None;
+
+        for x in 0..self.MemoryMap.Count as usize {
+            if self.MemoryMap.Entries[x].GetType() == MemoryMapEntryType::AddressRangeMemory {
+                // BUGBUG: We're currently trying to take the highest addresses as we know stack is below and unreserved
+                // BUGBUG: We're making no attempt to avoid fragmentation, there could be a hole that could be filled by the request
+                for y in 0..firstFreeIndex {
+                    let toExamine = self.Blobs[y].Address;
+                    if self.isAddressInRange(toExamine, x) {
+                        if renameMe == None {
+                            renameMe = Some(toExamine);
+                        } else if let Some(currentRenam) = renameMe {
+                            if toExamine < currentRenam {
+                                renameMe = Some(toExamine);
+                            }
+                        }
+                    }
+                }
+
+                // BUGBUG: We're just doing the first entry, we should check the rest instead of just failing
+                // if the first one won't work
+                if None == renameMe {
+                    let mut start: usize = self.MemoryMap.Entries[x].BaseAddr.try_into().unwrap();
+                    let length: usize = self.MemoryMap.Entries[x].Length.try_into().unwrap();
+                    start += length;
+                    start -= sizeInBytes;
+
+                    self.Reserve(start, sizeInBytes, WhatDo::Normal);
+                    return start as *mut T;
+                } else {
+                    let start: usize = renameMe.unwrap() - sizeInBytes;
+
+                    self.Reserve(start, sizeInBytes, WhatDo::Normal);
+                    return start as *mut T;
+                }
+            }
+        }
+
         let mut start = 0;
         let len = self.Blobs.len();
 
@@ -211,6 +270,16 @@ impl PhysicalMemoryManager {
         self.Reserve(start, sizeInBytes, WhatDo::Normal);
 
         return start as *mut T;
+    }
+
+    fn nextFreeBlob(&self) -> Option<usize> {
+        for index in 0..self.Blobs.len() {
+            if self.Blobs[index].Address == 0 {
+                return Some(index);
+            }
+        }
+
+        None
     }
 
     pub fn ReserveKernel32(&mut self, address: u64) {

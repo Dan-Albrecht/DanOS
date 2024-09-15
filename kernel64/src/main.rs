@@ -24,11 +24,10 @@ use core::{arch::asm, fmt::Write};
 use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::SetIDT;
 
-use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::gdtStuff::GetGdtr;
 use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
-    DUMB_HEAP, DUMB_HEAP_LENGTH, PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
+    PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
     SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
 };
 use kernel_shared::memoryMap::MemoryMap;
@@ -62,7 +61,6 @@ fn reloadCR3() {
     }
 }
 
-
 #[no_mangle]
 pub extern "sysv64" fn DanMain(memoryMapLocation: usize) -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
@@ -80,8 +78,11 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize) -> ! {
     let gdtBase = GetGdtr().BaseAddress;
     physicalMemoryManager.ReserveKernel32(gdtBase);
 
+    const DUMB_HEAP_SIZE: usize = 0x5_0000;
+    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWherever(DUMB_HEAP_SIZE);
+
     let pageBook = PageBook::fromExisting();
-    let bdh = BootstrapDumbHeap::new(DUMB_HEAP, DUMB_HEAP_LENGTH);
+    let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
     loggerWriteLine!("Installing interrupt table...");
