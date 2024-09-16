@@ -27,8 +27,7 @@ use interupts::InteruptDescriptorTable::SetIDT;
 use kernel_shared::gdtStuff::GetGdtr;
 use kernel_shared::haltLoopWithMessage;
 use kernel_shared::magicConstants::{
-    PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS,
-    SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
+    PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS, VGA_BUFFER_ADDRESS, VGA_BYTES_PER_CHAR, VGA_HEIGHT, VGA_WIDTH
 };
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
@@ -61,6 +60,18 @@ fn reloadCR3() {
     }
 }
 
+fn getSP() -> usize {
+    unsafe {
+        let sp;
+        asm!(
+            "mov {0}, rsp",
+            out(reg) sp,
+        );
+
+        sp
+    }
+}
+
 #[no_mangle]
 pub extern "sysv64" fn DanMain(memoryMapLocation: usize) -> ! {
     loggerWriteLine!("Welcome to 64-bit Rust!");
@@ -72,14 +83,21 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize) -> ! {
         Blobs: from_fn(|_| MemoryBlob::default()),
     };
 
+    // BUGBUG: Should probalby get the base pointer as this function has already subtracted stack space
+    let sp = getSP();
+    physicalMemoryManager.Reserve(0, sp, WhatDo::YoLo);
+
     // NB: The current secret handshake with the 32-bit code is take the first
     // entry from the memory map. The address of the GDT to the end of that entry
     // has already been used.
     let gdtBase = GetGdtr().BaseAddress;
     physicalMemoryManager.ReserveKernel32(gdtBase);
 
+    // This is probably not in the memory map, but if it shows up, we want to mark it as used
+    physicalMemoryManager.Reserve(VGA_BUFFER_ADDRESS.try_into().unwrap(), (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_CHAR).into(), WhatDo::YoLo);
+
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
-    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWherever(DUMB_HEAP_SIZE);
+    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWherever(DUMB_HEAP_SIZE, 1);
 
     let pageBook = PageBook::fromExisting();
     let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE);

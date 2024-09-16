@@ -1,8 +1,9 @@
-use core::fmt::Write;
+use core::{fmt::Write, intrinsics::type_name};
 
 use crate::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage,
+    memoryHelpers::{alignDown, alignUp, haltOnMisaligned},
     memoryMap::{MemoryMap, MemoryMapEntryType},
     vgaWriteLine,
 };
@@ -35,9 +36,6 @@ impl Default for MemoryBlob {
 
 impl PhysicalMemoryManager {
     pub fn Reserve(&mut self, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
-        let requestLocation = requestLocation;
-        let requestAmmount = requestAmmount;
-
         if let WhatDo::YoLo = whatDo {
             self.ReserveInternal(
                 requestLocation,
@@ -120,38 +118,42 @@ impl PhysicalMemoryManager {
         memoryMapBase: usize,
         memoryMapLength: usize,
     ) {
-        let mut nextIndex = 0;
-
-        // BUGBUG: This code doesn't correctly handle when the array is full
+        // Figure out how many blobs we need to check
+        let mut firstFreeIndex = None;
         for blobIndex in 0..(self.Blobs.len()) {
-            nextIndex = blobIndex;
-            let blobAddress = self.Blobs[blobIndex].Address;
-            let blobLength = self.Blobs[blobIndex].Length;
-
-            if blobLength == 0 {
-                // Can't reserve 0 bytes, so use that as the marker of used or not
-                // We've made it to the end without finding it is already being used
+            if self.Blobs[blobIndex].Length == 0 {
+                firstFreeIndex = Some(blobIndex);
                 break;
             }
+        }
 
-            // Is this request to reserved already reserved by something else?
-            if requestLocation < (blobAddress + blobLength)
-                && (blobAddress) < (requestLocation + requestAmmount)
-            {
-                vgaWriteLine!(
+        if firstFreeIndex == None {
+            haltLoopWithMessage!("No more room in {}", type_name::<PhysicalMemoryManager>());
+        }
+
+        let firstFreeIndex = firstFreeIndex.unwrap();
+        let requestEnd = requestLocation + requestAmmount;
+
+        // Check them to see if we overlap
+        for blobIndex in 0..firstFreeIndex {
+            let blobLocation = self.Blobs[blobIndex].Address;
+            let blobAmmount = self.Blobs[blobIndex].Length;
+            let blobEnd = blobLocation + blobAmmount;
+
+            if requestLocation < blobEnd && blobLocation < requestEnd {
+                haltLoopWithMessage!(
                     "0x{:X} for 0x{:X} overlaps with index {} 0x{:X} for 0x{:X}",
                     requestLocation,
                     requestAmmount,
                     blobIndex,
-                    blobAddress,
-                    blobLength,
+                    blobLocation,
+                    blobAmmount,
                 );
-                haltLoop();
             }
         }
 
-        self.Blobs[nextIndex].Address = requestLocation;
-        self.Blobs[nextIndex].Length = requestAmmount;
+        self.Blobs[firstFreeIndex].Address = requestLocation;
+        self.Blobs[firstFreeIndex].Length = requestAmmount;
 
         vgaWriteLine!(
             "Reserved 0x{:X} bytes @ 0x{:X} within 0x{:X}..0x{:X} index {}",
@@ -159,7 +161,7 @@ impl PhysicalMemoryManager {
             requestLocation,
             memoryMapBase,
             memoryMapBase + memoryMapLength,
-            nextIndex,
+            firstFreeIndex,
         );
     }
 
@@ -205,76 +207,71 @@ impl PhysicalMemoryManager {
         }
     }
 
-    // BUGBUG: This is incomplete
-    pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize) -> *mut T {
+    pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
         let nextBlob = self.nextFreeBlob();
         if None == nextBlob {
             haltLoopWithMessage!("No more blobs to store data in");
         }
 
         let firstFreeIndex = nextBlob.unwrap();
-        let mut renameMe: Option<usize> = None;
+        let mut lowestAvailableAddress = None;
 
+        for x in 0..firstFreeIndex {
+            let endAddress = self.Blobs[x].Address + self.Blobs[x].Length;
+            if let Some(currentLowestAddress) = lowestAvailableAddress {
+                if endAddress > currentLowestAddress {
+                    lowestAvailableAddress = Some(endAddress);
+                }
+            } else {
+                lowestAvailableAddress = Some(endAddress);
+            }
+        }
+
+        if lowestAvailableAddress == None {
+            lowestAvailableAddress = Some(0);
+        }
+
+        let mut lowestAvailableAddress = alignUp(lowestAvailableAddress.unwrap(), alignment) as u64;
+        let sizeInBytes = sizeInBytes as u64;
+
+        // See where this will fit
+        // BUGBUG: We assume memory map is in ascending order, not sure if anything guarntees that
+        // BUGBUG: This number casting is out of control...
         for x in 0..self.MemoryMap.Count as usize {
-            if self.MemoryMap.Entries[x].GetType() == MemoryMapEntryType::AddressRangeMemory {
-                // BUGBUG: We're currently trying to take the highest addresses as we know stack is below and unreserved
-                // BUGBUG: We're making no attempt to avoid fragmentation, there could be a hole that could be filled by the request
-                for y in 0..firstFreeIndex {
-                    let toExamine = self.Blobs[y].Address;
-                    if self.isAddressInRange(toExamine, x) {
-                        if renameMe == None {
-                            renameMe = Some(toExamine);
-                        } else if let Some(currentRenam) = renameMe {
-                            if toExamine < currentRenam {
-                                renameMe = Some(toExamine);
-                            }
-                        }
+            let entry = self.MemoryMap.Entries[x];
+            if entry.GetType() == MemoryMapEntryType::AddressRangeMemory {
+                if lowestAvailableAddress >= entry.BaseAddr
+                    && lowestAvailableAddress <= entry.BaseAddr + entry.Length
+                {
+                    // The start is within the range, but what about the end?
+                    let requestEnd = lowestAvailableAddress + sizeInBytes;
+                    if requestEnd >= entry.BaseAddr && requestEnd <= entry.BaseAddr + entry.Length {
+                        self.Reserve(lowestAvailableAddress as usize, sizeInBytes as usize, WhatDo::Normal);
+                        return lowestAvailableAddress as *mut T;
+                    } else {
+                        vgaWriteLine!("End goes past the end of this blob, trying next...");
+                        lowestAvailableAddress = alignUp(entry.BaseAddr as usize + entry.Length as usize + 1 as usize, alignment) as u64;
                     }
                 }
+                else if lowestAvailableAddress < entry.BaseAddr {
+                    let potentialStart = alignUp(entry.BaseAddr as usize, alignment);
+                    let potentialEnd = potentialStart + sizeInBytes as usize;
 
-                // BUGBUG: We're just doing the first entry, we should check the rest instead of just failing
-                // if the first one won't work
-                if None == renameMe {
-                    let mut start: usize = self.MemoryMap.Entries[x].BaseAddr.try_into().unwrap();
-                    let length: usize = self.MemoryMap.Entries[x].Length.try_into().unwrap();
-                    start += length;
-                    start -= sizeInBytes;
-
-                    self.Reserve(start, sizeInBytes, WhatDo::Normal);
-                    return start as *mut T;
-                } else {
-                    let start: usize = renameMe.unwrap() - sizeInBytes;
-
-                    self.Reserve(start, sizeInBytes, WhatDo::Normal);
-                    return start as *mut T;
+                    if potentialStart < entry.BaseAddr as usize + entry.Length as usize && entry.BaseAddr < potentialEnd as u64 {
+                        self.Reserve(potentialStart as usize, sizeInBytes as usize, WhatDo::Normal);
+                        return potentialStart as *mut T;
+                    }
                 }
             }
         }
 
-        let mut start = 0;
-        let len = self.Blobs.len();
-
-        for blobIndex in 0..len {
-            let x = self.Blobs[blobIndex].Address;
-            let y = self.Blobs[blobIndex].Length;
-
-            if y == 0 {
-                // 0 length is our current 'not used' marker
-                break;
-            }
-
-            let z = x + y;
-            start = z;
-        }
-
-        self.Reserve(start, sizeInBytes, WhatDo::Normal);
-
-        return start as *mut T;
+        self.MemoryMap.Dump();
+        haltLoopWithMessage!("Couldn't find anywhere for 0x{:X} bytes", sizeInBytes);
     }
 
     fn nextFreeBlob(&self) -> Option<usize> {
         for index in 0..self.Blobs.len() {
-            if self.Blobs[index].Address == 0 {
+            if self.Blobs[index].Length == 0 {
                 return Some(index);
             }
         }

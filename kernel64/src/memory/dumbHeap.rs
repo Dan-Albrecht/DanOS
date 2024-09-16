@@ -1,12 +1,15 @@
-use kernel_shared::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryMap::{MemoryMap, MemoryMapEntryType}};
+use kernel_shared::{
+    assemblyStuff::halt::haltLoop,
+    haltLoopWithMessage,
+    memoryHelpers::alignUp,
+    memoryMap::{MemoryMap, MemoryMapEntryType},
+};
 
 use crate::loggerWriteLine;
 use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
 
-const DUMB_ENTRIES: usize = 10;
-
 pub struct BootstrapDumbHeap {
-    Entries: [BootstrapDumbHeapEntry; DUMB_ENTRIES],
+    Entries: [BootstrapDumbHeapEntry; 10],
     StartAddress: usize,
     Length: usize,
 }
@@ -34,7 +37,7 @@ impl BootstrapDumbHeap {
         }
     }
 
-    pub fn allocate(&mut self, length: usize) -> usize {
+    pub fn allocate(&mut self, length: usize, alignment: usize) -> usize {
         if length > self.Length {
             haltLoopWithMessage!(
                 "Requested length of 0x{:X} is bigger than the entire heap of 0x{:X}",
@@ -47,21 +50,21 @@ impl BootstrapDumbHeap {
             haltLoopWithMessage!("Allocating 0 doesn't make sense...");
         }
 
-        let mut firstFree = DUMB_ENTRIES;
+        let mut firstFree = None;
 
-        for index in 0..DUMB_ENTRIES {
-            firstFree = index;
-
+        for index in 0..self.Entries.len() {
             // 0 length entries are not allowed, so that's how we indicate free instead of having another bool
             if self.Entries[index].Length == 0 {
+                firstFree = Some(index);
                 break;
             }
         }
 
-        if firstFree == DUMB_ENTRIES - 1 {
+        if firstFree == None {
             haltLoopWithMessage!("All dumb entries already taken");
         }
 
+        let firstFree = firstFree.unwrap();
         let startAddress;
 
         if firstFree == 0 {
@@ -70,12 +73,19 @@ impl BootstrapDumbHeap {
             startAddress = self.Entries[firstFree - 1].Address + self.Entries[firstFree - 1].Length;
         }
 
+        let aligned = alignUp(startAddress, alignment);
+        if aligned != startAddress {
+            loggerWriteLine!("BDH aligned 0x{:X} to 0x{:X}", startAddress, aligned);
+        }
+        
+        // Don't want to accidentally use the wrong value, so make them the same
+        let startAddress = aligned;
         let endAddress = startAddress + length;
         let heapLimit = self.StartAddress + self.Length;
 
         if endAddress > heapLimit {
             haltLoopWithMessage!(
-                "0x{:X}, 0x{:X} is out of range of 0x{:X}, 0x{:X}",
+                "0x{:X}..=0x{:X} is out of range of 0x{:X}..=0x{:X}",
                 startAddress,
                 endAddress,
                 self.StartAddress,

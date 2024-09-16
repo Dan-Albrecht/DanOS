@@ -7,7 +7,8 @@ use kernel_shared::{
         SIZE_OF_PAGE_TABLE,
     },
     memoryHelpers::{alignDown, haltOnMisaligned, zeroMemory2},
-    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable}, physicalMemory::{PhysicalMemoryManager, WhatDo},
+    pageTable::{pageBook::PageBook, pageDirectoryTable::PageDirectoryTable, pageTable::PageTable},
+    physicalMemory::{PhysicalMemoryManager, WhatDo},
 };
 
 use crate::loggerWriteLine;
@@ -38,9 +39,7 @@ impl VirtualMemoryManager {
         upper_bits == 0 || upper_bits == 0xFFFF
     }
 
-    fn get_page_table_indexes(
-        address: usize,
-    )  {
+    fn get_page_table_indexes(address: usize) {
         if !Self::is_canonical_address(address) {
             haltLoopWithMessage!("0x{:X} is not canonical", address);
         }
@@ -50,7 +49,13 @@ impl VirtualMemoryManager {
         let pd_index = ((address >> 21) & 0x1FF) as usize;
         let pt_index = ((address >> 12) & 0x1FF) as usize;
 
-        loggerWriteLine!("--> {} {} {} {}", pml4_index, pdpt_index, pd_index, pt_index);
+        loggerWriteLine!(
+            "--> {} {} {} {}",
+            pml4_index,
+            pdpt_index,
+            pd_index,
+            pt_index
+        );
     }
 
     pub fn identityMap(&mut self, startAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
@@ -97,7 +102,7 @@ impl VirtualMemoryManager {
             if pdt as usize == 0 {
                 loggerWriteLine!("Need to allocate a new PDT");
                 let addr =
-                    self.bdh.allocate(size_of::<PageDirectoryTable>()) as *mut PageDirectoryTable;
+                    self.bdh.allocate(size_of::<PageDirectoryTable>(), 0x1000) as *mut PageDirectoryTable;
                 loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
                 zeroMemory2(addr);
                 pdt = addr;
@@ -110,7 +115,7 @@ impl VirtualMemoryManager {
 
             if pt as usize == 0 {
                 loggerWriteLine!("Need to allocate a new PT...");
-                let addr = self.bdh.allocate(size_of::<PageTable>()) as *mut PageTable;
+                let addr = self.bdh.allocate(size_of::<PageTable>(), 0x1000) as *mut PageTable;
                 loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
                 zeroMemory2(addr);
                 pt = addr;

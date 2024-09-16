@@ -1,13 +1,10 @@
-use crate::assemblyStuff::ports::{inB, outB};
-
-const VGA_WIDTH: u16 = 80;
-const VGA_HEIGHT: u16 = 25;
+use crate::{assemblyStuff::ports::{inB, outB}, magicConstants::{VGA_BUFFER_ADDRESS, VGA_BYTES_PER_CHAR, VGA_HEIGHT, VGA_WIDTH}};
 
 const VGA_ADDRESS_PORT: u16 = 0x3D4;
 const VGA_DATA_PORT: u16 = 0x3D5;
 const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
-const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
+
 
 #[macro_export]
 macro_rules! vgaWrite {
@@ -38,9 +35,8 @@ pub fn scrollUp() {
 
     for row in 1..VGA_HEIGHT {
         for column in 0..VGA_WIDTH {
-            // Each character on the screen takes 2 bytes (color+character)
-            let sourceOffset = (row * VGA_WIDTH + column) * 2;
-            let destinationOffset = ((row - 1) * VGA_WIDTH + column) * 2;
+            let sourceOffset = (row * VGA_WIDTH + column) * VGA_BYTES_PER_CHAR;
+            let destinationOffset = ((row - 1) * VGA_WIDTH + column) * VGA_BYTES_PER_CHAR;
 
             unsafe {
                 // Character
@@ -57,7 +53,7 @@ pub fn scrollUp() {
     // Clear the last row as we've scrolled it up now
     for column in 0..VGA_WIDTH {
         let row = VGA_HEIGHT - 1;
-        let destinationOffset = (row * VGA_WIDTH + column) * 2;
+        let destinationOffset = (row * VGA_WIDTH + column) * VGA_BYTES_PER_CHAR;
 
         unsafe {
             *vgaBuffer.offset(destinationOffset as isize) = 0;

@@ -3,6 +3,7 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::memoryHelpers::zeroMemory2;
 use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
 
 use crate::assemblyHelpers::getCR2;
@@ -38,7 +39,7 @@ impl Default for Entry {
 }
 
 // https://internals.rust-lang.org/t/conflation-of-alignment-and-packing/10443
-#[repr(C, align(8))]
+#[repr(C, align(16))]
 pub struct Table {
     pub Table: Table_,
 }
@@ -119,18 +120,9 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
-    // BUGBUG: We need to tell the reserve function out alignment requriments
-    let idt :*mut Table = memoryManager.ReserveWherever(size_of::<Table>());
+    let idt :*mut Table = memoryManager.ReserveWherever(size_of::<Table>(), align_of::<Table>());
 
-    // BUGBUG: Figure out how to call memset directly. The compiler is smart enough,
-    // but I'd like to still do it directly.
-    let bytePointer = idt as *mut u8;
-    for x in 0..(size_of::<Table>() as isize) {
-        unsafe {
-            *bytePointer.offset(x) = 0;
-        }
-    }
-
+    zeroMemory2(idt);
     SetupStuff(idt);
     let limit: u16;
 
