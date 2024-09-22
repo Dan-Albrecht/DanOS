@@ -23,7 +23,7 @@ use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use pagingStuff::enablePaging;
 
-// Returns the offset (relative to base address) of where the .text section is
+// Returns the location where the .text section is
 unsafe fn relocateKernel64(baseAddress: u32, length: u32) -> u32 {
     let length: usize = length.try_into().unwrap();
     vgaWriteLine!("Parsing ELF @ 0x{:X} for 0x{:X}", baseAddress, length);
@@ -80,12 +80,11 @@ unsafe fn relocateKernel64(baseAddress: u32, length: u32) -> u32 {
         }
     }
 
-    vgaWriteLine!(
-        "Relocated {} entries. .text offset is 0x{:X}",
-        relocationCount,
-        textOffset
-    );
-    return textOffset.try_into().expect("Kernel64 .text offset");
+    vgaWriteLine!("Relocated {} entries", relocationCount,);
+
+    return actualTextLocation
+        .try_into()
+        .expect("Kernel64 .text offset");
 }
 
 #[panic_handler]
@@ -111,7 +110,7 @@ pub extern "fastcall" fn DanMain(
         disablePic();
 
         vgaWriteLine!("Relocating 64-bit kernel...");
-        let textOffset = relocateKernel64(kernel64Address, kernel64Length);
+        let jumpTarget = relocateKernel64(kernel64Address, kernel64Length);
 
         vgaWriteLine!("Loading memory map from 0x{:X}", memoryMapLocation);
         let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().expect("Memory map"));
@@ -127,8 +126,6 @@ pub extern "fastcall" fn DanMain(
                 vgaWriteLine!("64-bit paging mode enabled...");
                 vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT(entry.BaseAddr, cantUseAbove);
-
-                let jumpTarget = kernel64Address + textOffset;
 
                 vgaWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
