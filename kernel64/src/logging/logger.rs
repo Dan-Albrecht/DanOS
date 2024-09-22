@@ -49,8 +49,8 @@ macro_rules! loggerWriteLine {
 impl Logger {
     fn new() -> Self {
         // BUGBUG: This will currently hand on real hard, need to fix the init code to not loop forever
-        let serial = SerialPort::tryGet(COMPort::COM1);
-        //let serial = None;
+        //let serial = SerialPort::tryGet(COMPort::COM1);
+        let serial = None;
         if serial.is_none() {
             vgaWriteLine!("Failed to init serial port...");
         }
