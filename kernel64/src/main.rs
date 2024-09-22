@@ -30,6 +30,7 @@ use kernel_shared::magicConstants::{
     PAGES_PER_TABLE, SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS, VGA_BUFFER_ADDRESS, VGA_BYTES_PER_CHAR, VGA_HEIGHT, VGA_WIDTH
 };
 use kernel_shared::memoryMap::MemoryMap;
+use kernel_shared::pageTable::enums::*;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
 use kernel_shared::{
     assemblyStuff::{

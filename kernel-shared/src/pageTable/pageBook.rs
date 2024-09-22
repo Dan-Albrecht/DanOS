@@ -3,6 +3,7 @@ use core::mem::size_of;
 
 use crate::memoryHelpers::alignDown;
 use crate::memoryMap::{MemoryMap, MemoryMapEntryType};
+use crate::pageTable::enums::*;
 use crate::pageTable::pageTable::ENTRIES_PER_PAGE_TABLE;
 use crate::{
     haltLoopWithMessage,
@@ -93,13 +94,12 @@ impl PageBook {
             for index in 0..ENTRIES_PER_PAGE_TABLE {
                 let page = index * size_of::<PhysicalPage>();
                 // BUGUBG: We're setting these uncachable for now just to be extra safe, but shouldn't be needed anymore...
-                // BUGBUG: This method now allows bulk setting of pages...
-                (*pt).setEntry(index, 1, page, true, true, false);
+                (*pt).setEntry(index, page as u64, Execute::Yes, Present::Yes, Writable::Yes, Cachable::No, UserSupervisor::Supervisor, WriteThrough::WriteTrough);
             }
 
-            (*pdt).setEntry(0, pt, true, true, false);
-            (*pdpt).setEntry(0, pdt, true, true, false);
-            (*pml4).setEntry(0, pdpt, true, true, false);
+            (*pdt).setEntry(0, pt, Execute::Yes, Present::Yes, Writable::Yes, Cachable::No, UserSupervisor::Supervisor, WriteThrough::WriteTrough);
+            (*pdpt).setEntry(0, pdt, Execute::Yes, Present::Yes, Writable::Yes, Cachable::No, UserSupervisor::Supervisor, WriteThrough::WriteTrough);
+            (*pml4).setEntry(0, pdpt, Execute::Yes, Present::Yes, Writable::Yes, Cachable::No, UserSupervisor::Supervisor, WriteThrough::WriteTrough);
             pb.setEntry(pml4, false, false);
 
             return CreationResult {
@@ -144,34 +144,11 @@ impl PageBook {
         self.Entry = address as u64;
     }
 
-    pub fn getEntry(&self) -> *const PageMapLevel4Table {
-        (self.Entry & (!0xFFF)) as *const PageMapLevel4Table
+    pub fn getEntry(&self) -> *mut PageMapLevel4Table {
+        (self.Entry & (!0xFFF)) as *mut PageMapLevel4Table
     }
 
     pub fn getCR3Value(&self) -> u64 {
         self.Entry
-    }
-
-    pub unsafe fn initNewPageTable(
-        pt: *mut PageTable,
-        startAddress: usize,
-        pageIndex: usize,
-        numberOfPages: usize,
-    ) {
-        zeroMemory2(pt);
-        vgaWriteLine!(
-            "New PT @ 0x{:X} settings index {} to 0x{:X}",
-            pt as usize,
-            pageIndex,
-            startAddress
-        );
-
-        for index in 0..numberOfPages {
-            let page = startAddress + (index * size_of::<PhysicalPage>());
-
-            // BUGBUG: Expose flags to upstream
-            // BUGBUG: This method now supports bulk setting of pages
-            (*pt).setEntry(index + pageIndex, 1, page, true, true, false);
-        }
     }
 }

@@ -48,30 +48,3 @@ pub fn alignDown(address: usize, alignment: usize) -> usize {
 
     return low;
 }
-
-pub(crate) fn setCommonBitAndValidate(
-    msg: &'static str,
-    address: usize,
-    present: bool,
-    writable: bool,
-    cachable: bool,
-) -> u64 {
-
-    haltOnMisaligned(msg, address, 0x1000);
-
-    let mut address = address;
-
-    if present {
-        address |= 1 << 0;
-    }
-
-    if writable {
-        address |= 1 << 1;
-    }
-
-    if !cachable {
-        address |= 1 << 4;
-    }
-
-    return address as u64;
-}
