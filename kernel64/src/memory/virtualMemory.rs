@@ -93,6 +93,7 @@ impl VirtualMemoryManager {
             loggerWriteLine!("Wasted 0x{:X} in mapping", adjustedLength - length);
         }
 
+        let length = adjustedLength;
         let vmi = Self::getVmi(virtualAddress);
         let numberOfPages = length / SIZE_OF_PAGE;
 
