@@ -51,7 +51,7 @@ impl VirtualMemoryManager {
         upper_bits == 0 || upper_bits == 0xFFFF
     }
 
-    fn canonicalize(address: usize) -> usize {
+    pub const fn canonicalize(address: usize) -> usize {
         let signBit = 1 << 47;
         if address & signBit != 0 {
             address | (!0 << 48)

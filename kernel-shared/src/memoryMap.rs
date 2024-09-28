@@ -1,6 +1,6 @@
 use core::{fmt::Write, mem::size_of};
 
-use crate::vgaWriteLine;
+use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 
 #[derive(Debug, PartialEq)]
 pub enum MemoryMapEntryType {
@@ -52,6 +52,10 @@ impl MemoryMap {
             Count: totalEntries as u8,
             Entries: Default::default(),
         };
+
+        if totalEntries >= result.Entries.len() {
+            haltLoopWithMessage!("Num of ({}) entries is bogus of we need to update code to handle", totalEntries);
+        }
 
         for index in 0..totalEntries {
             let ptr = entryAddress as *const MemoryMapEntry;

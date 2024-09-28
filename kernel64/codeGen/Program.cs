@@ -37,6 +37,12 @@ const string setupRegistration = """
         SetAddress(&mut (*table).Table.Entries[__SUFFIX__], Interrupt__SUFFIX__ as u64, __SUFFIX__);
 """;
 
+const string loggingUse = """
+use core::fmt::Write;
+use crate::loggerWriteLine;
+
+""";
+
 const string setupUse = """
 use super::table::Interrupt__SUFFIX__;
 
@@ -48,8 +54,11 @@ const string setupEpilog = """
 
 #[inline(never)]
 #[no_mangle]
-fn SetAddress(entry: &mut Entry, address: u64, _index: u16) {
-    //loggerWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);
+fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
+    if index == 0 {
+        loggerWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);
+    }
+
     entry.IsrHigh = (address >> 32) as u32;
     entry.IsrMid = ((address >> 16) & 0xFFFF) as u16;
     entry.IsrLow = (address & 0xFFFF) as u16;
@@ -70,6 +79,8 @@ using var tableStream = new FileStream("table.rs", FileMode.Create);
 using var tableWriter = new StreamWriter(tableStream);
 using var setupStream = new FileStream("setup.rs", FileMode.Create);
 using var setupWriter = new StreamWriter(setupStream);
+
+setupWriter.Write(loggingUse);
 
 for (int i = 0; i <= 255; i++)
 {

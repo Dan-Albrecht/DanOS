@@ -1,5 +1,5 @@
 use crate::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, magicConstants::SIZE_OF_PAGE, vgaWriteLine
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, magicConstants::SIZE_OF_PAGE, vgaWriteLine,
 };
 
 use super::{enums::*, physicalPage::PhysicalPage};
@@ -26,7 +26,15 @@ impl PageTable {
         us: UserSupervisor,
         wt: WriteThrough,
     ) {
-        let entry = Self::calculateEntry(physicalAddress, executable, present, writable, cachable, us, wt);
+        let entry = Self::calculateEntry(
+            physicalAddress,
+            executable,
+            present,
+            writable,
+            cachable,
+            us,
+            wt,
+        );
         self.Entries[index] = entry;
     }
 
@@ -43,7 +51,7 @@ impl PageTable {
 
         if address != maskedAddress {
             // Either misaligned or setting bits they shouldn't be
-            haltLoopWithMessage!("Address 0x{:X} contains masked bits", address);    
+            haltLoopWithMessage!("Address 0x{:X} contains masked bits", address);
         }
 
         let mut result = maskedAddress;

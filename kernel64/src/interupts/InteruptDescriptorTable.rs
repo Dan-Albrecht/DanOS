@@ -119,8 +119,8 @@ pub fn InterruptHandlerWithCodeIntImpl(
     haltLoop();
 }
 
-pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
-    let idt :*mut Table = memoryManager.ReserveWherever(size_of::<Table>(), align_of::<Table>());
+pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
+    let idt: *mut Table = memoryManager.ReserveWherever(size_of::<Table>(), align_of::<Table>());
 
     zeroMemory2(idt);
     SetupStuff(idt);
@@ -146,6 +146,7 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
         Limit: limit,
     };
 
+    // BUGUBUG: This address is going to get whacked at some point, protect it
     unsafe {
         asm!(
             "lidt [{0}]",
@@ -155,4 +156,6 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) {
             in(reg) addr_of!(idtr),
         );
     }
+
+    return idt as usize;
 }

@@ -11,4 +11,5 @@ pub mod memoryHelpers;
 pub mod memoryMap;
 pub mod pageTable;
 pub mod physicalMemory;
+pub mod relocation;
 pub mod textMode;

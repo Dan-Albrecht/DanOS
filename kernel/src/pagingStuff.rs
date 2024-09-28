@@ -6,6 +6,7 @@ use kernel_shared::{
     vgaWriteLine,
 };
 
+
 pub fn enablePaging(memoryMap: &MemoryMap) -> usize {
     unsafe {
         vgaWriteLine!("Enabling PAE");
