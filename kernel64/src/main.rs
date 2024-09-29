@@ -130,6 +130,8 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     // We're going to relocate ourselves, grab some memory
     let kernelBytesPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWherever(kernelSize, 0x1000);
+    let kernelStackPhysicalAddress: *mut u8 =
+        physicalMemoryManager.ReserveWherever(VM_KERNEL64_STACK_LENGTH, 0x1000);
     loggerWriteLine!(
         "New kernel home @ 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,
@@ -145,7 +147,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
         kernelSize,
         Execute::Yes,
         Present::Yes,
-        Writable::No, // BUGBUG: Flip back after debugging
+        Writable::No,
         Cachable::No,
         UserSupervisor::Supervisor,
         WriteThrough::WriteTrough,
@@ -185,12 +187,38 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
             "add rbx, rax", // 3 bytes
             "jmp rbx", // 2 bytes
             "pop rbx", // There is maybe a better way to do this with labels, but we're just trying to jump here in the newly mapped space. This code is at the same offset as the previosu identity mapped code.
-            //"pop rax",
-            //"mov rbp, {1}", // We're going to temporarily put the stack in the kernel's data area while we relocate it since it's still mapped to the same physical memory that stack was at before
-            //"add rbp, rsp",
-            //"mov rsp, rbp",
             in("rax") finalTarget + 5,
-            //const VirtualMemoryManager::canonicalize(VM_KERNEL64_DATA),
+        );
+    }
+
+    loggerWriteLine!("Kernel code has been relocated, now to stack...");
+
+    virtualMemoryManager.map(
+        kernelStackPhysicalAddress as usize,
+        VM_KERNEL64_DATA,
+        VM_KERNEL64_STACK_LENGTH,
+        Execute::Yes, // BUGBUG: Something is really screwed up, we're page faulint if this isn't executable...but its stack space...
+        Present::Yes,
+        Writable::Yes,
+        Cachable::No,
+        UserSupervisor::Supervisor,
+        WriteThrough::WriteTrough,
+    );
+
+    reloadCR3();
+
+    // Stack grows down, so put it at the end of the space
+    let stackTarget =
+        VirtualMemoryManager::canonicalize(VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH);
+
+    unsafe {
+        asm!(
+            "mov rsp, rax",
+            "mov rbp, rcx",
+            "jmp rcx",
+            in("rax") stackTarget,
+            in("rcx") newStackHome as usize,
+            in("rdi") &virtualMemoryManager as *const _ as usize,
         );
     }
 
@@ -234,4 +262,25 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
 
     loggerWriteLine!("!! We succesfuly divide by zero. We broke.");
     haltLoop();
+}
+
+extern "sysv64" fn newStackHome(oldVMM: *mut VirtualMemoryManager) -> ! {
+    loggerWriteLine!("We made it: 0x{:X}", oldVMM as usize);
+    funcA();
+    haltLoopWithMessage!("unreachable");
+}
+
+fn funcA() {
+    loggerWriteLine!("this is a");
+    funcB();
+}
+
+fn funcB() {
+    loggerWriteLine!("this is b");
+    funcC();
+}
+
+fn funcC() {
+    loggerWriteLine!("this is c");
+    haltLoopWithMessage!("parked");
 }

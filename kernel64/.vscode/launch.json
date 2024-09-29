@@ -8,9 +8,9 @@
             "name": "Debug from Windows",
             "targetCreateCommands": [
                 "target create --symfile ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.dbg ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink",
-                // This one is for after we've remapped the kernel code space
-                //"target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink --slide 0xFFFFFFFF00009000"
-                // This one is for before remap
+                // Adjust to remap
+                "target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink --slide 0x201000"
+                // Adjust to baseline
                 //"target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink --slide 0x9000"
             ],
             "processCreateCommands": [
