@@ -8,6 +8,8 @@ use kernel_shared::{
 use crate::loggerWriteLine;
 use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
 
+use super::memoryStuff::MemoryStuff;
+
 pub struct BootstrapDumbHeap {
     Entries: [BootstrapDumbHeapEntry; 10],
     StartAddress: usize,
@@ -25,6 +27,20 @@ impl Default for BootstrapDumbHeapEntry {
             Address: 0,
             Length: 0,
         }
+    }
+}
+
+impl MemoryStuff for BootstrapDumbHeap {
+    fn allocate<T>(&mut self) -> *mut T {
+        let size = size_of::<T>();
+        let align = align_of::<T>();
+        let address = BootstrapDumbHeap::allocate(self, size, align);
+
+        return address as *mut T;
+    }
+
+    fn free(&mut self, address: usize) {
+        todo!()
     }
 }
 
@@ -77,7 +93,7 @@ impl BootstrapDumbHeap {
         if aligned != startAddress {
             loggerWriteLine!("BDH aligned 0x{:X} to 0x{:X}", startAddress, aligned);
         }
-        
+
         // Don't want to accidentally use the wrong value, so make them the same
         let startAddress = aligned;
         let endAddress = startAddress + length;

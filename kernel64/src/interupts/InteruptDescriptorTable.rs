@@ -8,6 +8,9 @@ use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
 
 use crate::assemblyHelpers::getCR2;
 use crate::loggerWriteLine;
+use crate::memory::virtualMemory::VirtualMemoryManager;
+
+use crate::memory::memoryStuff::MemoryStuff;
 
 use super::setup::SetupStuff;
 use core::fmt::Write;
@@ -62,6 +65,56 @@ pub struct ExceptionStackFrame {
     CpuFlags: usize,
     StackPointer: usize,
     StackSegment: usize,
+}
+
+// Interupt Descriptor Table
+pub struct IDT {
+    idtr: *mut IDTR,
+}
+
+impl IDT {
+    pub fn new(mem: &mut impl MemoryStuff) -> Self {
+        let idt: *mut Table = mem.allocate();
+
+        unsafe {
+            zeroMemory2(idt);
+        }
+
+        SetupStuff(idt);
+        let limit: u16;
+        let entrySize = size_of::<Entry>();
+
+        unsafe {
+            let length = (*idt).Table.Entries.len();
+
+            // The last byte of the table
+            limit = (entrySize * length - 1) as u16;
+            loggerWriteLine!(
+                "IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.",
+                idt as usize,
+                entrySize,
+                length,
+                limit
+            );
+        }
+
+        let idtr: *mut IDTR = mem.allocate();
+
+        unsafe {
+            (*idtr).Base = idt as usize;
+            (*idtr).Limit = limit;
+
+            asm!(
+                "lidt [{0}]",
+                //"ljmp $2f", // BUGBUG? OS Dev says do a long jump after loading the table
+                "2:",
+                "sti",
+                in(reg) idtr,
+            );
+        }
+
+        return IDT { idtr: idtr };
+    }
 }
 
 #[inline(never)]

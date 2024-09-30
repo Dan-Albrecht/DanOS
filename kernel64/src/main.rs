@@ -25,7 +25,7 @@ use core::ptr::{read_unaligned, write_unaligned};
 use core::{arch::asm, fmt::Write};
 
 use diskStuff::read::readBytes;
-use interupts::InteruptDescriptorTable::SetIDT;
+use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
 use kernel_shared::gdtStuff::GetGdtr;
 use kernel_shared::magicConstants::*;
@@ -76,6 +76,8 @@ fn getSP() -> usize {
     }
 }
 
+// Arguments 1-6 are passed via registers RDI, RSI, RDX, RCX, R8, R9 respectively;
+// Arguments 7 and above are pushed on to the stack.
 #[no_mangle]
 pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> ! {
     loggerWriteLine!(
@@ -131,7 +133,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     let kernelBytesPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWherever(kernelSize, 0x1000);
     let kernelStackPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWherever(VM_KERNEL64_STACK_LENGTH, 0x1000);
+        physicalMemoryManager.ReserveWherever(VM_KERNEL64_DATA_LENGTH, 0x1000);
     loggerWriteLine!(
         "New kernel home @ 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,
@@ -196,7 +198,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     virtualMemoryManager.map(
         kernelStackPhysicalAddress as usize,
         VM_KERNEL64_DATA,
-        VM_KERNEL64_STACK_LENGTH,
+        VM_KERNEL64_DATA_LENGTH,
         Execute::Yes, // BUGBUG: Something is really screwed up, we're page faulint if this isn't executable...but its stack space...
         Present::Yes,
         Writable::Yes,
@@ -214,11 +216,14 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     unsafe {
         asm!(
             "mov rsp, rax",
-            "mov rbp, rcx",
-            "jmp rcx",
+            "mov rbp, r9",
+            "jmp r9",
             in("rax") stackTarget,
-            in("rcx") newStackHome as usize,
-            in("rdi") &virtualMemoryManager as *const _ as usize,
+            in("r9") newStackHome as usize,
+            in("rdi") memoryMapLocation,
+            in("rsi") kernelBytesPhysicalAddress,
+            in("rdx") kernelSize,
+            in("rcx") kernelStackPhysicalAddress,
         );
     }
 
@@ -264,23 +269,44 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     haltLoop();
 }
 
-extern "sysv64" fn newStackHome(oldVMM: *mut VirtualMemoryManager) -> ! {
-    loggerWriteLine!("We made it: 0x{:X}", oldVMM as usize);
-    funcA();
-    haltLoopWithMessage!("unreachable");
-}
+extern "sysv64" fn newStackHome(
+    memoryMapLocation: usize,
+    kernelCodePhysical: usize,
+    kernelCodeLength: usize,
+    kernelDataPhysical: usize,
+) -> ! {
+    loggerWriteLine!("We are using our new stack space");
 
-fn funcA() {
-    loggerWriteLine!("this is a");
-    funcB();
-}
+    // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use it again
+    let memoryMap = MemoryMap::Load(memoryMapLocation);
+    let mut physicalMemoryManager = PhysicalMemoryManager {
+        MemoryMap: memoryMap,
+        Blobs: from_fn(|_| MemoryBlob::default()),
+    };
 
-fn funcB() {
-    loggerWriteLine!("this is b");
-    funcC();
-}
+    physicalMemoryManager.Dump();
+    physicalMemoryManager.Reserve(kernelCodePhysical, kernelCodeLength, WhatDo::Normal);
+    physicalMemoryManager.Reserve(kernelDataPhysical, VM_KERNEL64_DATA_LENGTH, WhatDo::Normal);
 
-fn funcC() {
-    loggerWriteLine!("this is c");
-    haltLoopWithMessage!("parked");
+    let pageBook = PageBook::fromExisting();
+
+    // BUGBUG: Magic constant
+    const DUMB_HEAP_SIZE: usize = 0x5_0000;
+    // We're in the course of setting up a new virtual memory manager. We're currently executing in non-identity mapped space
+    // so we cannot just ask the physical manager for unused space. We know nothing has used the kernel data space yet aside
+    // from the stack, so just take space next to it and then we'll tell the virtual manager about it after it is up.
+    let bdhAddress = VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH;
+    let mut bdh = BootstrapDumbHeap::new(bdhAddress, DUMB_HEAP_SIZE);
+    
+    loggerWriteLine!("Installing new interrupt table...");
+    let _idt = IDT::new(&mut bdh);
+
+    loggerWriteLine!("PageBook @ 0x{:X}, BDH @ 0x{:X}", pageBook.getCR3Value() as usize, bdhAddress);
+    let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
+
+    loggerWriteLine!("Sending a breakpoint...");
+    Breakpoint();
+    loggerWriteLine!("We handled the breakpoint!");
+
+    haltLoopWithMessage!("End of line");
 }
