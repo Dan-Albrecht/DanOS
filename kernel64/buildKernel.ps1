@@ -34,10 +34,10 @@ try {
     TimeCommand {
 
         if ($debug) {
-            cargo build
+            cargo +nightly-2024-09-22 build
         }
         else {
-            cargo build --release
+            cargo +nightly-2024-09-22 build --release
         }
     } -message 'Kernel64 build'
 

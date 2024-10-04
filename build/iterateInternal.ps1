@@ -13,6 +13,10 @@ try {
     # i.e. Kernel64
     $STAGE_4_LOAD_TARGET = 0x8000
 
+    # Something regressed in Rust after
+    # +nightly-2024-09-22
+    # Starting with the next build we cannot make it to 64-bit, still unclear what the problem is
+
     if ($debug) {
         TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug } -message 'Kernel64dbg'
         $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\debug\kernel64.strippedWithDebugLink -Raw -AsByteStream
