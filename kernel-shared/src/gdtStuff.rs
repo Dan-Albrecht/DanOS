@@ -19,6 +19,21 @@ struct OurGdt {
     selfPointer: u64,
 }
 
+// 2.4.1 Global Descriptor Table Register (GDTR)
+#[repr(C, packed)]
+pub struct GDTR {
+    Limit: u16,
+    Base: u64,
+}
+
+// 3.5.1 Segment Descriptor Tables
+#[repr(C, packed)]
+pub struct GDT {
+    nullSection: u64,
+    codeSection: u64,
+    dataSection: u64,
+}
+
 pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
 
     let gdtAddress = alignDown(cantUseAbove - 1 - size_of::<OurGdt>(), GDT_ALIGNMENT);
@@ -59,6 +74,44 @@ pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
         "lgdt [eax]",
         in("eax") ourGdt
     );
+}
+
+impl GDT {
+    pub fn new() -> Self {
+        GDT { 
+            nullSection: 0, 
+            codeSection: 
+                1 << (32 + 21)      /* Long Mode - 64bit */ 
+                | 1 << (32 + 15)    /* Present */ 
+                // 13 & 14 = 0. DPL - This is for Ring0
+                | 1 << (32 + 12)    /* S Field - User Descriptor */ 
+                | 1 << (32 + 11)    /* Code/Data - Code Segment */ 
+                | 1 << (32 + 10),   /* Conforming - */
+            dataSection:
+                1 << (32 + 21)      /* Long Mode - 64bit */ 
+                | 1 << (32 + 15)    /* Present */
+                // 13 & 14 = 0. DPL - This is for Ring0
+                | 1 << (32 + 12)    /* S Field - User Descriptor */ 
+                /* 11 = 0. Data segment */
+                | 1 << (32 + 9),    /* Writable */ 
+        }
+    }
+}
+
+impl GDTR {
+    pub fn new() -> Self {
+        GDTR { Limit: 0, Base: 0 }
+    }
+
+    pub unsafe fn install(&mut self, gdt: GDT) {
+        self.Base = &gdt as *const _ as u64;
+        self.Limit = size_of::<GDT>().try_into().unwrap();
+
+        asm!(
+            "lgdt [eax]",
+            in("eax") self
+        );
+    }
 }
 
 #[repr(C, packed)]

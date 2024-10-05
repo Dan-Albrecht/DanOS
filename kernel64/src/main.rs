@@ -27,7 +27,7 @@ use core::{arch::asm, fmt::Write};
 use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
-use kernel_shared::gdtStuff::GetGdtr;
+use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
 use kernel_shared::magicConstants::*;
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::pageTable::enums::*;
@@ -292,12 +292,14 @@ extern "sysv64" fn newStackHome(
 
     // BUGBUG: Magic constant
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
+
     // We're in the course of setting up a new virtual memory manager. We're currently executing in non-identity mapped space
     // so we cannot just ask the physical manager for unused space. We know nothing has used the kernel data space yet aside
     // from the stack, so just take space next to it and then we'll tell the virtual manager about it after it is up.
     let bdhAddress = VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH;
     let mut bdh = BootstrapDumbHeap::new(bdhAddress, DUMB_HEAP_SIZE);
     
+    // BUGBUG: BDH alocates from data space. Potential one of the reason we had to mark that executable...
     loggerWriteLine!("Installing new interrupt table...");
     let _idt = IDT::new(&mut bdh);
 
@@ -307,6 +309,14 @@ extern "sysv64" fn newStackHome(
     loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
     loggerWriteLine!("We handled the breakpoint!");
+
+    // BUGBUG: This is on the stack, we should probably allocate from BDH
+    let gdt = GDT::new();
+    let mut gdtr = GDTR::new();
+    loggerWriteLine!("GDT @ 0x{:X}", &gdt as *const _ as usize);
+    unsafe {
+        gdtr.install(gdt);
+    }
 
     haltLoopWithMessage!("End of line");
 }
