@@ -83,7 +83,8 @@ pub fn writeString(msg: &[u8]) {
                 let currentOffset = calculatedOffset(&cursorPosition);
 
                 *vgaBuffer.offset(currentOffset) = byte;
-                *vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
+                //*vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
+                *vgaBuffer.offset(currentOffset + 1) = 0x82; // Green on dark gray
 
                 cursorPosition.x += 1;
             }
