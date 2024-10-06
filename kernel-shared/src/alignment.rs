@@ -7,3 +7,8 @@
 pub struct Aligned16<T> {
     pub Field: T,
 }
+
+#[repr(C, align(4096))]
+pub struct PageAligned<T>{
+    pub field: T,
+}

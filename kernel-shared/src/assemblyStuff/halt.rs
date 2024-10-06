@@ -3,7 +3,7 @@ use core::fmt::Write;
 use crate::vgaWrite;
 
 pub fn haltLoop() -> ! {
-    vgaWrite!("Halted");
+    vgaWrite!("End of line");
     unsafe {
         loop {
             asm!("hlt");

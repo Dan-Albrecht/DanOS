@@ -85,6 +85,9 @@ impl VirtualMemoryManager {
         us: UserSupervisor,
         wt: WriteThrough,
     ) {
+        // Just tryingt to prove we can flip the page table
+        const BUGBUG_SUBTRACT_FROM_VIRTUAL: usize = 0x22_5000;
+
         // BUGBUG: Need to handle the case when a data structure already exists with conflicting enum bits
         haltOnMisaligned("Map - Physical", physicalAddress, SIZE_OF_PAGE);
         haltOnMisaligned("Map - Virtual", virtualAddress, SIZE_OF_PAGE);
@@ -115,44 +118,70 @@ impl VirtualMemoryManager {
 
         unsafe {
             let pml4 = self.pageBook.getEntry();
+            if pml4.is_null() {
+                haltLoopWithMessage!("No PML4");
+            }
 
             let mut pdpt = (*pml4).getAddressForEntry(vmi.PML4);
-            if pdpt as usize == 0 {
+            if pdpt.is_null() {
                 let ptr = self
                     .bdh
                     .allocate(size_of::<PageDirectoryPointerTable>(), 0x1000);
-                loggerWriteLine!("Allocated a new PDPT @ 0x{:X}", ptr);
 
                 pdpt = ptr as *mut PageDirectoryPointerTable;
                 zeroMemory2(pdpt);
 
+                let phys = self.bdh.vToP(ptr) as *mut PageDirectoryPointerTable;
                 (*pml4).setEntry(
-                    vmi.PML4, pdpt, executable, present, writable, cachable, us, wt,
+                    vmi.PML4, phys, executable, present, writable, cachable, us, wt,
                 );
+
+                loggerWriteLine!("Allocated a new PDPT @ 0x{:X} / 0x{:X} (P/V)", phys as usize, ptr);
+            } else {
+                let old = pdpt;
+                pdpt = self.bdh.pToV(pdpt as usize) as *mut PageDirectoryPointerTable;
+
+                loggerWriteLine!("PDPT exists @ 0x{:X} / 0x{:X} (P/V)", old as usize, pdpt as usize);
             }
 
             let mut pdt = (*pdpt).getAddressForEntry(vmi.PDPT);
-            if pdt as usize == 0 {
+            if pdt.is_null() {
                 let ptr = self.bdh.allocate(size_of::<PageDirectoryTable>(), 0x1000);
-                loggerWriteLine!("Allocated a new PDT @ 0x{:X}", ptr);
 
                 pdt = ptr as *mut PageDirectoryTable;
                 zeroMemory2(pdt);
 
+                let phys = self.bdh.vToP(ptr) as *mut PageDirectoryTable;
                 (*pdpt).setEntry(
-                    vmi.PDPT, pdt, executable, present, writable, cachable, us, wt,
+                    vmi.PDPT, phys, executable, present, writable, cachable, us, wt,
                 );
+
+                loggerWriteLine!("Allocated a new PDT @ 0x{:X} / 0x{:X} (P/V)", phys as usize, ptr);
+            } else {
+                let old = pdt;
+                pdt = self.bdh.pToV(pdt as usize) as *mut PageDirectoryTable;
+
+                loggerWriteLine!("PDT exists @ 0x{:X} / 0x{:X} (P/V)", old as usize, pdt as usize);
             }
 
             let mut pt = (*pdt).getAddressForEntry(vmi.PD);
-            if pt as usize == 0 {
+            if pt.is_null() {
                 let ptr = self.bdh.allocate(size_of::<PageTable>(), 0x1000);
-                loggerWriteLine!("Allocated a new PT @ 0x{:X}", ptr);
 
                 pt = ptr as *mut PageTable;
                 zeroMemory2(pt);
 
-                (*pdt).setEntry(vmi.PD, pt, executable, present, writable, cachable, us, wt);
+                let phys = self.bdh.vToP(ptr) as *mut PageTable;
+                (*pdt).setEntry(
+                    vmi.PD, phys, executable, present, writable, cachable, us, wt,
+                );
+
+                loggerWriteLine!("Allocated a new PT @ 0x{:X} / 0x{:X} (P/V)", phys as usize, ptr);
+            } else {
+                let old = pt;
+                pt = self.bdh.pToV(pt as usize) as *mut PageTable;
+
+                loggerWriteLine!("PT exists @ 0x{:X} / 0x{:X} (P/V)", old as usize, pt as usize);
             }
 
             for pageOffset in 0..numberOfPages {
@@ -170,108 +199,25 @@ impl VirtualMemoryManager {
         }
     }
 
-    pub fn identityMap(&mut self, startAddress: usize, numberOfPages: usize, whatDo: WhatDo) {
-        haltOnMisaligned("Identity map", startAddress, SIZE_OF_PAGE);
-
-        self.physical.Reserve(startAddress, SIZE_OF_PAGE, whatDo);
-
-        let pageDirectoryPointerIndex = startAddress / SIZE_OF_PAGE_DIRECTORY_POINTER;
-        let pageDirectoryIndex =
-            (startAddress % SIZE_OF_PAGE_DIRECTORY_POINTER) / SIZE_OF_PAGE_DIRECTORY;
-        let pageTableIndex = (startAddress % SIZE_OF_PAGE_DIRECTORY) / SIZE_OF_PAGE_TABLE;
-        let pageIndex = (startAddress % SIZE_OF_PAGE_TABLE) / SIZE_OF_PAGE;
-
-        if pageIndex + numberOfPages > PAGES_PER_TABLE {
-            // BUGUBG: Handle it
-            haltLoopWithMessage!("Request crosses page directoris and we cannot handle that yet");
-        }
-
-        loggerWriteLine!(
-            "Requested 0x{:X} will live at {}, {}, {}, {}",
-            startAddress,
-            pageDirectoryPointerIndex,
-            pageDirectoryIndex,
-            pageTableIndex,
-            pageIndex,
-        );
-
-        Self::getVmi(startAddress);
-
-        // BUGUBG: Don't be lazy
-        if pageDirectoryPointerIndex != 0 {
-            loggerWriteLine!(
-                "Don't know how to do PDPT 0x{:X}",
-                pageDirectoryPointerIndex
-            );
-            haltLoop();
-        }
-
-        unsafe {
-            let pml4 = self.pageBook.getEntry();
-            let pdpt = (*pml4).getAddressForEntry(pageDirectoryPointerIndex);
-
-            let mut pdt = (*pdpt).getAddressForEntry(pageDirectoryIndex);
-            if pdt as usize == 0 {
-                loggerWriteLine!("Need to allocate a new PDT");
-                let addr = self.bdh.allocate(size_of::<PageDirectoryTable>(), 0x1000)
-                    as *mut PageDirectoryTable;
-                loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
-                zeroMemory2(addr);
-                pdt = addr;
-
-                (*pdpt).setEntry(
-                    pageDirectoryIndex,
-                    pdt,
-                    Execute::Yes,
-                    Present::Yes,
-                    Writable::Yes,
-                    Cachable::No,
-                    UserSupervisor::Supervisor,
-                    WriteThrough::WriteTrough,
-                );
-            }
-
-            let mut pt = (*pdt).getAddressForEntry(pageTableIndex);
-
-            if pt as usize == 0 {
-                loggerWriteLine!("Need to allocate a new PT...");
-                let addr = self.bdh.allocate(size_of::<PageTable>(), 0x1000) as *mut PageTable;
-                loggerWriteLine!("...and did that @ 0x{:X}", addr as usize);
-                zeroMemory2(addr);
-                pt = addr;
-
-                (*pdt).setEntry(
-                    pageTableIndex,
-                    pt,
-                    Execute::Yes,
-                    Present::Yes,
-                    Writable::Yes,
-                    Cachable::No,
-                    UserSupervisor::Supervisor,
-                    WriteThrough::WriteTrough,
-                );
-            }
-
-            for pageOffset in 0..numberOfPages {
-                (*pt).setEntry(
-                    pageIndex + pageOffset,
-                    (startAddress + (pageOffset * SIZE_OF_PAGE)) as u64,
-                    Execute::Yes,
-                    Present::Yes,
-                    Writable::Yes,
-                    Cachable::No,
-                    UserSupervisor::Supervisor,
-                    WriteThrough::WriteTrough,
-                );
-            }
-        }
+    pub fn identityMap(&mut self, 
+        physicalAddress: usize,
+        length: usize,
+        executable: Execute,
+        present: Present,
+        writable: Writable,
+        cachable: Cachable,
+        us: UserSupervisor,
+        wt: WriteThrough,
+    ) {
+        haltOnMisaligned("Identity map", physicalAddress, SIZE_OF_PAGE);
+        self.map(physicalAddress, physicalAddress, length, executable, present, writable, cachable, us, wt);
     }
-    
+
     pub(crate) fn getPhysical(&self, address: usize) -> Option<usize> {
         let vmi = Self::getVmi(address);
 
         let pml4 = self.pageBook.getEntry();
-        
+
         if pml4.is_null() {
             return None;
         }

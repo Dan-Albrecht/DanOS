@@ -38,6 +38,10 @@ impl PageBook {
         PageBook { Entry: 0 }
     }
 
+    pub fn fromPml4(pml4 : PageMapLevel4Table) -> PageBook {
+        PageBook { Entry: &pml4 as *const _ as u64}
+    }
+
     // This will create and initalize, uses memory from the first memory map entry
     pub fn fromScratch(memoryMap: &MemoryMap) -> CreationResult {
         unsafe {

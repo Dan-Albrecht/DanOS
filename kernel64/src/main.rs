@@ -7,6 +7,7 @@
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
+#![feature(core_intrinsics)]
 
 mod acpi;
 mod ahci;
@@ -19,6 +20,7 @@ mod memory;
 mod serial;
 
 use core::array::from_fn;
+use core::intrinsics::unreachable;
 use core::mem;
 use core::panic::PanicInfo;
 use core::ptr::{read_unaligned, write_unaligned};
@@ -27,10 +29,12 @@ use core::{arch::asm, fmt::Write};
 use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
+use kernel_shared::alignment::PageAligned;
 use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
 use kernel_shared::magicConstants::*;
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::pageTable::enums::*;
+use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
 use kernel_shared::relocation::relocateKernel64;
 use kernel_shared::{
@@ -43,6 +47,7 @@ use kernel_shared::{
 use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
+use memory::types::{PhysicalAddress, VirtualAddress};
 use memory::virtualMemory::VirtualMemoryManager;
 
 #[panic_handler]
@@ -74,6 +79,41 @@ fn getSP() -> usize {
 
         sp
     }
+}
+
+fn mapKernelCode(
+    virtualMemoryManager: &mut VirtualMemoryManager,
+    kernelBytesPhysicalAddress: usize,
+    kernelSize: usize,
+) {
+    virtualMemoryManager.map(
+        kernelBytesPhysicalAddress,
+        VM_KERNEL64_CODE,
+        kernelSize,
+        Execute::Yes,
+        Present::Yes,
+        Writable::No,
+        Cachable::No,
+        UserSupervisor::Supervisor,
+        WriteThrough::WriteTrough,
+    );
+}
+
+fn mapKernelData(
+    virtualMemoryManager: &mut VirtualMemoryManager,
+    kernelStackPhysicalAddress: usize,
+) {
+    virtualMemoryManager.map(
+        kernelStackPhysicalAddress,
+        VM_KERNEL64_DATA,
+        VM_KERNEL64_DATA_LENGTH,
+        Execute::Yes, // BUGBUG: Something is really screwed up, we're page faulint if this isn't executable...but its stack space...
+        Present::Yes,
+        Writable::Yes,
+        Cachable::No,
+        UserSupervisor::Supervisor,
+        WriteThrough::WriteTrough,
+    );
 }
 
 // Arguments 1-6 are passed via registers RDI, RSI, RDX, RCX, R8, R9 respectively;
@@ -117,7 +157,8 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     );
 
     let pageBook = PageBook::fromExisting();
-    let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE);
+    // This is using identity mapping, so nothing to adjust
+    let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE, false, 0);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
     loggerWriteLine!("Installing interrupt table...");
@@ -143,18 +184,11 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
     loggerWriteLine!("VMM created");
 
-    virtualMemoryManager.map(
+    mapKernelCode(
+        &mut virtualMemoryManager,
         kernelBytesPhysicalAddress as usize,
-        VM_KERNEL64_CODE,
         kernelSize,
-        Execute::Yes,
-        Present::Yes,
-        Writable::No,
-        Cachable::No,
-        UserSupervisor::Supervisor,
-        WriteThrough::WriteTrough,
     );
-
     reloadCR3();
 
     // Virtual memory address of the entry point into the kernel
@@ -195,18 +229,10 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
 
     loggerWriteLine!("Kernel code has been relocated, now to stack...");
 
-    virtualMemoryManager.map(
+    mapKernelData(
+        &mut virtualMemoryManager,
         kernelStackPhysicalAddress as usize,
-        VM_KERNEL64_DATA,
-        VM_KERNEL64_DATA_LENGTH,
-        Execute::Yes, // BUGBUG: Something is really screwed up, we're page faulint if this isn't executable...but its stack space...
-        Present::Yes,
-        Writable::Yes,
-        Cachable::No,
-        UserSupervisor::Supervisor,
-        WriteThrough::WriteTrough,
     );
-
     reloadCR3();
 
     // Stack grows down, so put it at the end of the space
@@ -227,48 +253,11 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
         );
     }
 
-    /*loggerWriteLine!("Seting up heap...");
-    let mut heap = DumbHeap::new(memoryMap);
-    let count = 100;
-    let myAlloc = heap.DoSomething(count);
-    loggerWriteLine!("Allocated 0x{:X} at 0x{:X}", count, myAlloc);
-
-    heap.DumpHeap();*/
-
-    // BUGBUG: Having trouble transfering this to the virtual memory manager
-    //let pp = &mut physicalMemoryManager as *mut PhysicalMemoryManager;
-
-    // BUGBUG: We're cheating that we know where the disk will be so just page it in
-    virtualMemoryManager.identityMap(0x7E0_0000, PAGES_PER_TABLE, WhatDo::Normal);
-    virtualMemoryManager.identityMap(0xB000_0000, 0x100, WhatDo::UseReserved);
-    virtualMemoryManager.identityMap(0xFEBD_5000, 1, WhatDo::YoLo);
-    virtualMemoryManager.identityMap(
-        SATA_DRIVE_BASE_CMD_BASE_ADDRESS as usize,
-        0x10,
-        WhatDo::Normal,
-    );
-    virtualMemoryManager.identityMap(
-        SATA_DRIVE_BASE_FIS_BASE_ADDRESS as usize,
-        0x10,
-        WhatDo::Normal,
-    );
-    virtualMemoryManager.identityMap(
-        SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS,
-        0x10,
-        WhatDo::Normal,
-    );
-    virtualMemoryManager.identityMap(0x800_0000, PAGES_PER_TABLE, WhatDo::YoLo);
-
-    reloadCR3();
-    readBytes();
-
-    loggerWriteLine!("Now let's divide by 0...");
-    DivideByZero();
-
-    loggerWriteLine!("!! We succesfuly divide by zero. We broke.");
-    haltLoop();
+    unreachable!("Retunred from new stack!");
 }
 
+// This currently ends up at 0x2130d0
+// VM_KERNEL64_CODE (0x20_0000) + (.text offset) 0x1000 + (function offset) 0x120d0
 extern "sysv64" fn newStackHome(
     memoryMapLocation: usize,
     kernelCodePhysical: usize,
@@ -288,8 +277,6 @@ extern "sysv64" fn newStackHome(
     physicalMemoryManager.Reserve(kernelCodePhysical, kernelCodeLength, WhatDo::Normal);
     physicalMemoryManager.Reserve(kernelDataPhysical, VM_KERNEL64_DATA_LENGTH, WhatDo::Normal);
 
-    let pageBook = PageBook::fromExisting();
-
     // BUGBUG: Magic constant
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
 
@@ -297,14 +284,12 @@ extern "sysv64" fn newStackHome(
     // so we cannot just ask the physical manager for unused space. We know nothing has used the kernel data space yet aside
     // from the stack, so just take space next to it and then we'll tell the virtual manager about it after it is up.
     let bdhAddress = VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH;
-    let mut bdh = BootstrapDumbHeap::new(bdhAddress, DUMB_HEAP_SIZE);
-    
+    let adjustment = VM_KERNEL64_DATA - kernelDataPhysical;
+    let mut bdh = BootstrapDumbHeap::new(bdhAddress, DUMB_HEAP_SIZE, true, adjustment);
+
     // BUGBUG: BDH alocates from data space. Potential one of the reason we had to mark that executable...
     loggerWriteLine!("Installing new interrupt table...");
     let _idt = IDT::new(&mut bdh);
-
-    loggerWriteLine!("PageBook @ 0x{:X}, BDH @ 0x{:X}", pageBook.getCR3Value() as usize, bdhAddress);
-    let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
 
     loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
@@ -318,5 +303,45 @@ extern "sysv64" fn newStackHome(
         gdtr.install(gdt);
     }
 
-    haltLoopWithMessage!("End of line");
+    // BUGBUG: More stack stuff
+    let pml4 = PageMapLevel4Table::new();
+    let pageBook = PageBook::fromPml4(pml4.field);
+    loggerWriteLine!(
+        "PageBook @ 0x{:X}, BDH @ 0x{:X}",
+        pageBook.getCR3Value() as usize,
+        bdhAddress
+    );
+    let cr3 = pageBook.getCR3Value();
+    let cr3Physical = bdh.vToP(cr3.try_into().unwrap());
+
+    // Create new VM map. This will get rid of the identity map we previously had.
+    let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
+    mapKernelCode(
+        &mut virtualMemoryManager,
+        kernelCodePhysical,
+        kernelCodeLength,
+    );
+    mapKernelData(&mut virtualMemoryManager, kernelDataPhysical as usize);
+
+    virtualMemoryManager.identityMap(
+        VGA_BUFFER_ADDRESS.try_into().unwrap(),
+        (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_CHAR).into(),
+        Execute::Yes, // BUGBUG: Another permissions mystery. Why must this be set? PageFaults if no...
+        Present::Yes,
+        Writable::Yes,
+        Cachable::No,
+        UserSupervisor::Supervisor,
+        WriteThrough::WriteTrough,
+    );
+
+    loggerWriteLine!("New cr is 0x{:X} / 0x{:X} (L/P)", cr3, cr3Physical);
+
+    unsafe {
+        asm!(
+            "mov cr3, rax",
+            in("rax") cr3Physical,
+        );
+    }
+
+    haltLoopWithMessage!("We're fully remapped");
 }

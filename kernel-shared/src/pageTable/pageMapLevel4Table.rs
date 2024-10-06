@@ -1,7 +1,7 @@
-use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
+use crate::{alignment::PageAligned, assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 
 use super::{enums::*, pageDirectoryPointerTable::PageDirectoryPointerTable};
-use core::fmt::Write;
+use core::{array::from_fn, fmt::Write};
 
 #[repr(C, packed)]
 pub struct PageMapLevel4Table {
@@ -11,6 +11,13 @@ pub struct PageMapLevel4Table {
 }
 
 impl PageMapLevel4Table {
+    pub fn new() -> PageAligned<Self> {
+        PageAligned {
+            field: PageMapLevel4Table {
+                Entries: from_fn(|_| 0),
+            },
+        }
+    }
     pub fn setEntry(
         &mut self,
         index: usize,

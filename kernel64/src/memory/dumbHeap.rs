@@ -14,6 +14,8 @@ pub struct BootstrapDumbHeap {
     Entries: [BootstrapDumbHeapEntry; 10],
     StartAddress: usize,
     Length: usize,
+    VirtualIsGreaterThanPhysical: bool,
+    Adjustment: usize,
 }
 
 struct BootstrapDumbHeapEntry {
@@ -45,11 +47,18 @@ impl MemoryStuff for BootstrapDumbHeap {
 }
 
 impl BootstrapDumbHeap {
-    pub fn new(address: usize, length: usize) -> BootstrapDumbHeap {
+    pub fn new(
+        address: usize,
+        length: usize,
+        virtualIsGreaterThanPhysical: bool,
+        adjustment: usize,
+    ) -> BootstrapDumbHeap {
         BootstrapDumbHeap {
             StartAddress: address,
             Length: length,
             Entries: from_fn(|_| BootstrapDumbHeapEntry::default()),
+            VirtualIsGreaterThanPhysical: virtualIsGreaterThanPhysical,
+            Adjustment: adjustment,
         }
     }
 
@@ -113,6 +122,22 @@ impl BootstrapDumbHeap {
         self.Entries[firstFree].Length = length;
 
         startAddress
+    }
+
+    pub fn vToP(&self, address: usize) -> usize {
+        if self.VirtualIsGreaterThanPhysical {
+            address - self.Adjustment
+        } else {
+            address + self.Adjustment
+        }
+    }
+
+    pub fn pToV(&self, address: usize) -> usize {
+        if self.VirtualIsGreaterThanPhysical {
+            address + self.Adjustment
+        } else {
+            address - self.Adjustment
+        }
     }
 }
 
