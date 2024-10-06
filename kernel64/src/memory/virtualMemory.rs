@@ -266,4 +266,38 @@ impl VirtualMemoryManager {
             }
         }
     }
+    
+    pub(crate) fn getPhysical(&self, address: usize) -> Option<usize> {
+        let vmi = Self::getVmi(address);
+
+        let pml4 = self.pageBook.getEntry();
+        
+        if pml4.is_null() {
+            return None;
+        }
+
+        unsafe {
+            let pdpt = (*pml4).getAddressForEntry(vmi.PML4);
+
+            if pdpt.is_null() {
+                return None;
+            }
+
+            let pdt = (*pdpt).getAddressForEntry(vmi.PDPT);
+
+            if pdt.is_null() {
+                return None;
+            }
+
+            let pt = (*pdt).getAddressForEntry(vmi.PD);
+
+            if pt.is_null() {
+                return None;
+            }
+
+            let pp = (*pt).getAddressForEntry(vmi.PT);
+
+            return Some(pp as usize);
+        }
+    }
 }
