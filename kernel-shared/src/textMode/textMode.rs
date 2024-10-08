@@ -27,6 +27,42 @@ macro_rules! vgaWriteLine {
     };
 }
 
+#[repr(u8)]
+enum ForegroundColor {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+    DarkGray = 8,
+    LightBlue = 9,
+    LightGreen = 10,
+    LightCyan = 11,
+    LightRed = 12,
+    LightMagenta = 13,
+    Yellow = 14,
+    White = 15,
+}
+
+#[repr(u8)]
+enum BackgroundColor {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+}
+
+fn getColorByte(fg: ForegroundColor, bg: BackgroundColor) -> u8 {
+    (bg as u8) << 4 | (fg as u8)
+}
+
 struct CursorPosition {
     pub x: u8,
     pub y: u8,
@@ -81,7 +117,7 @@ pub fn writeString(msg: &[u8]) {
                     cursorPosition.y += 1;
                 }
             } else {
-                if cursorPosition.x == ((VGA_WIDTH - 0) as u8) {
+                if cursorPosition.x == (VGA_WIDTH as u8) {
                     if cursorPosition.y == 24 {
                         scrollUp();
                     } else {
@@ -92,8 +128,10 @@ pub fn writeString(msg: &[u8]) {
                 let currentOffset = calculatedOffset(&cursorPosition);
 
                 *vgaBuffer.offset(currentOffset) = byte;
-                //*vgaBuffer.offset(currentOffset + 1) = 0x74; // Red on gray
-                *vgaBuffer.offset(currentOffset + 1) = 0x82; // Green on dark gray
+
+                // On real hardware, the VGA mode we're in only allows 3 bits for the background, 4bit is blinking :|
+                // BUGUBG: Figure out how to switch modes so we can use the 4th bit for more background colors
+                *vgaBuffer.offset(currentOffset + 1) = getColorByte(ForegroundColor::Green, BackgroundColor::Black);
 
                 cursorPosition.x += 1;
             }
