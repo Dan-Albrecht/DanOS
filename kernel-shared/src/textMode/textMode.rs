@@ -1,10 +1,12 @@
-use crate::{assemblyStuff::ports::{inB, outB}, magicConstants::{VGA_BUFFER_ADDRESS, VGA_BYTES_PER_CHAR, VGA_HEIGHT, VGA_WIDTH}};
+use crate::{
+    assemblyStuff::ports::{inB, outB},
+    magicConstants::{VGA_BUFFER_ADDRESS, VGA_BYTES_PER_CHAR, VGA_HEIGHT, VGA_WIDTH},
+};
 
 const VGA_ADDRESS_PORT: u16 = 0x3D4;
 const VGA_DATA_PORT: u16 = 0x3D5;
 const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
-
 
 #[macro_export]
 macro_rules! vgaWrite {
@@ -64,7 +66,6 @@ pub fn scrollUp() {
     }
 }
 
-// BUGBUG: Handle line wrap
 pub fn writeString(msg: &[u8]) {
     let vgaBuffer = VGA_BUFFER_ADDRESS as *mut u8;
     let mut cursorPosition = getCursorPosition();
@@ -80,6 +81,14 @@ pub fn writeString(msg: &[u8]) {
                     cursorPosition.y += 1;
                 }
             } else {
+                if cursorPosition.x == ((VGA_WIDTH - 0) as u8) {
+                    if cursorPosition.y == 24 {
+                        scrollUp();
+                    } else {
+                        cursorPosition.y += 1;
+                    }
+                    cursorPosition.x = 0;
+                }
                 let currentOffset = calculatedOffset(&cursorPosition);
 
                 *vgaBuffer.offset(currentOffset) = byte;
