@@ -293,7 +293,7 @@ extern "sysv64" fn newStackHome(
 
     loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
-    loggerWriteLine!("We handled the breakpoint!");
+    loggerWriteLine!("We handled the new breakpoint!");
 
     // BUGBUG: This is on the stack, we should probably allocate from BDH
     let gdt = GDT::new();
@@ -305,7 +305,7 @@ extern "sysv64" fn newStackHome(
 
     // BUGBUG: More stack stuff
     let pml4 = PageMapLevel4Table::new();
-    let pageBook = PageBook::fromPml4(pml4.field);
+    let pageBook = PageBook::fromPml4(pml4);
     loggerWriteLine!(
         "PageBook @ 0x{:X}, BDH @ 0x{:X}",
         pageBook.getCR3Value() as usize,

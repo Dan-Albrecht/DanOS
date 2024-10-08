@@ -48,7 +48,7 @@ macro_rules! loggerWriteLine {
 
 impl Logger {
     fn new() -> Self {
-        // BUGBUG: This will currently hang on real hard, need to fix the init code to not loop forever
+        // BUGBUG: This will currently hang on real hardware, need to fix the init code to not loop forever
         //let serial = SerialPort::tryGet(COMPort::COM1);
         let serial = None;
         if serial.is_none() {

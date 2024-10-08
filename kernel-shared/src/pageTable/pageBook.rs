@@ -1,6 +1,7 @@
 use core::fmt::Write;
 use core::mem::size_of;
 
+use crate::alignment::PageAligned;
 use crate::memoryHelpers::alignDown;
 use crate::memoryMap::{MemoryMap, MemoryMapEntryType};
 use crate::pageTable::enums::*;
@@ -38,7 +39,7 @@ impl PageBook {
         PageBook { Entry: 0 }
     }
 
-    pub fn fromPml4(pml4 : PageMapLevel4Table) -> PageBook {
+    pub fn fromPml4(pml4 : PageAligned<PageMapLevel4Table>) -> PageBook {
         PageBook { Entry: &pml4 as *const _ as u64}
     }
 
