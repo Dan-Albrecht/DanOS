@@ -7,7 +7,6 @@ mod pagingStuff;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
-use core::ptr::{read_unaligned, slice_from_raw_parts, write_unaligned};
 
 use a20Stuff::IsTheA20LineEnabled;
 use kernel_shared::relocation::relocateKernel64;
