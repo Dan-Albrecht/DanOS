@@ -3,7 +3,7 @@ use core::{fmt::Write, intrinsics::type_name};
 use crate::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage,
-    memoryHelpers::{alignDown, alignUp, haltOnMisaligned},
+    memoryHelpers::alignUp,
     memoryMap::{MemoryMap, MemoryMapEntryType},
     vgaWriteLine,
 };

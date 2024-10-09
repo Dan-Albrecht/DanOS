@@ -1,4 +1,4 @@
-use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
+use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
 use core::fmt::Write;
 
 use super::{enums::*, pageTable::PageTable};

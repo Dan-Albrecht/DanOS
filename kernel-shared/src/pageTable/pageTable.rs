@@ -1,5 +1,5 @@
 use crate::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, magicConstants::SIZE_OF_PAGE, vgaWriteLine,
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage,
 };
 
 use super::{enums::*, physicalPage::PhysicalPage};
