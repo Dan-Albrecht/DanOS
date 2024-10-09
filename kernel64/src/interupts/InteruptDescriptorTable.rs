@@ -4,11 +4,10 @@ use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::memoryHelpers::zeroMemory2;
-use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
+use kernel_shared::physicalMemory::PhysicalMemoryManager;
 
 use crate::assemblyHelpers::getCR2;
 use crate::loggerWriteLine;
-use crate::memory::virtualMemory::VirtualMemoryManager;
 
 use crate::memory::memoryStuff::MemoryStuff;
 

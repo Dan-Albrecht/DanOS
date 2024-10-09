@@ -3,17 +3,15 @@ use kernel_shared::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage,
     magicConstants::{
-        PAGES_PER_TABLE, SIZE_OF_PAGE, SIZE_OF_PAGE_DIRECTORY, SIZE_OF_PAGE_DIRECTORY_POINTER,
-        SIZE_OF_PAGE_TABLE,
+        PAGES_PER_TABLE, SIZE_OF_PAGE,
     },
-    memoryHelpers::{alignDown, alignUp, haltOnMisaligned, zeroMemory2},
+    memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
     pageTable::{
         enums::*, pageBook::PageBook, pageDirectoryPointerTable::PageDirectoryPointerTable,
-        pageDirectoryTable::PageDirectoryTable, pageMapLevel4Table::PageMapLevel4Table,
+        pageDirectoryTable::PageDirectoryTable,
         pageTable::PageTable,
     },
-    physicalMemory::{PhysicalMemoryManager, WhatDo},
-    vgaWriteLine,
+    physicalMemory::PhysicalMemoryManager,
 };
 
 use crate::loggerWriteLine;

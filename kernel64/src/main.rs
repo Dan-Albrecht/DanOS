@@ -20,16 +20,11 @@ mod memory;
 mod serial;
 
 use core::array::from_fn;
-use core::intrinsics::unreachable;
-use core::mem;
 use core::panic::PanicInfo;
-use core::ptr::{read_unaligned, write_unaligned};
 use core::{arch::asm, fmt::Write};
 
-use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
-use kernel_shared::alignment::PageAligned;
 use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
 use kernel_shared::magicConstants::*;
 use kernel_shared::memoryMap::MemoryMap;
@@ -40,14 +35,13 @@ use kernel_shared::relocation::relocateKernel64;
 use kernel_shared::{
     assemblyStuff::{
         halt::haltLoop,
-        misc::{Breakpoint, DivideByZero},
+        misc::Breakpoint,
     },
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
+use kernel_shared::haltLoopWithMessage;
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
-use memory::types::{PhysicalAddress, VirtualAddress};
 use memory::virtualMemory::VirtualMemoryManager;
 
 #[panic_handler]
