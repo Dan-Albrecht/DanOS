@@ -192,21 +192,6 @@ impl PhysicalMemoryManager {
         }
     }
 
-    fn isAddressInRange(&self, address: usize, memoryMapIndex: usize) -> bool {
-        let entry = self.MemoryMap.Entries[memoryMapIndex];
-        let start = entry.BaseAddr;
-        let end = start + entry.Length;
-
-        // 128-bit isn't coming anytime soon
-        let address: u64 = address.try_into().unwrap();
-
-        if address >= start && address <= end {
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
         let nextBlob = self.nextFreeBlob();
         if None == nextBlob {

@@ -28,6 +28,7 @@ macro_rules! vgaWriteLine {
 }
 
 #[repr(u8)]
+#[allow(dead_code)]
 enum ForegroundColor {
     Black = 0,
     Blue = 1,
@@ -48,6 +49,7 @@ enum ForegroundColor {
 }
 
 #[repr(u8)]
+#[allow(dead_code)]
 enum BackgroundColor {
     Black = 0,
     Blue = 1,

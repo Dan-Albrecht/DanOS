@@ -23,6 +23,7 @@ use core::array::from_fn;
 use core::panic::PanicInfo;
 use core::{arch::asm, fmt::Write};
 
+use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
 use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
@@ -337,5 +338,11 @@ extern "sysv64" fn newStackHome(
         );
     }
 
-    haltLoopWithMessage!("We're fully remapped");
+    loggerWriteLine!("We're fully remapped");
+    doDiskDrive();
+    haltLoop();
+}
+
+fn doDiskDrive() {
+    readBytes();
 }
