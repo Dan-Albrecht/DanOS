@@ -131,6 +131,7 @@ pub fn writeString(msg: &[u8]) {
 
                 // On real hardware, the VGA mode we're in only allows 3 bits for the background, 4bit is blinking :|
                 // BUGUBG: Figure out how to switch modes so we can use the 4th bit for more background colors
+                // https://old.reddit.com/r/osdev/comments/70fcig/blinking_text/
                 *vgaBuffer.offset(currentOffset + 1) = getColorByte(ForegroundColor::Green, BackgroundColor::Black);
 
                 cursorPosition.x += 1;
