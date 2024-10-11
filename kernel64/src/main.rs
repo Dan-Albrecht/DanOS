@@ -27,7 +27,7 @@ use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
 use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
-use kernel_shared::magicConstants::*;
+use kernel_shared::{magicConstants::*, vgaWriteLine};
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
@@ -44,6 +44,7 @@ use kernel_shared::haltLoopWithMessage;
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
+use serial::serialPort::{COMPort, SerialPort};
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -339,6 +340,7 @@ extern "sysv64" fn newStackHome(
     }
 
     loggerWriteLine!("We're fully remapped");
+
     doDiskDrive();
     haltLoop();
 }

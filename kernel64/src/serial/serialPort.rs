@@ -1,8 +1,10 @@
+use core::{fmt::Write, usize};
+use kernel_shared::{
+    assemblyStuff::ports::{inB, outB},
+    vgaWriteLine,
+};
 
-use core::fmt::Write;
-use kernel_shared::assemblyStuff::ports::{inB, outB};
-
-use crate::loggerWriteLine;
+// Do not use loggerWrite* functions in here as it may not be properly setup
 
 pub struct SerialPort {
     port: COMPort,
@@ -13,13 +15,29 @@ pub enum COMPort {
     COM1,
 }
 
+#[derive(Debug)]
+pub enum SerialFailure {
+    Timeout,
+}
+
+const MAX_LOOP_VALUE: usize = 0xFFFF_FFFF_FFFF;
+
 // https://wiki.osdev.org/Serial_Ports
 impl SerialPort {
     pub fn tryGet(port: COMPort) -> Option<SerialPort> {
         let result = SerialPort { port: port };
 
         unsafe {
-            if result.init() {
+            let initResult = result.init();
+            if initResult.is_err() {
+                vgaWriteLine!(
+                    "Failed to init serial with {:?}",
+                    initResult.as_ref().unwrap_err()
+                );
+                return None;
+            }
+
+            if initResult.unwrap() {
                 Some(result)
             } else {
                 None
@@ -27,38 +45,40 @@ impl SerialPort {
         }
     }
 
-    pub fn SendLine(&self, msg: &[u8]) {
-        self.Send(msg);
-
-        unsafe {
-            // CR, LF
-            self.sendByte(0xD);
-            self.sendByte(0xA);
-        }
-    }
-
-    pub fn Send(&self, msg: &[u8]) {
+    pub fn Send(&self, msg: &[u8]) -> Result<(), SerialFailure> {
         for index in 0..msg.len() {
             unsafe {
-                self.sendByte(msg[index]);
+                self.sendByte(msg[index])?;
             }
         }
+
+        Ok(())
     }
 
-    unsafe fn sendByte(&self, b: u8) {
-        // BUGBUG: Timeout of this infinite loop
-        while self.isTransmitNotEmpty() {}
+    unsafe fn sendByte(&self, b: u8) -> Result<(), SerialFailure> {
+        let mut x = 0;
+        while self.isTransmitNotEmpty() {
+            x += 1;
+            if x == MAX_LOOP_VALUE {
+                return Err(SerialFailure::Timeout);
+            }
+        }
+
         outB(self.port.getPortAddress() + 0, b);
+        Ok(())
     }
 
-    unsafe fn receiveByte(&self) -> u8 {
-        // BUGBUG: Timeout of this infinite loop
+    unsafe fn receiveByte(&self) -> Result<u8, SerialFailure> {
+        let mut x = 0;
         while !self.dataAvailable() {
-            
+            x += 1;
+            if x == MAX_LOOP_VALUE {
+                return Err(SerialFailure::Timeout);
+            }
         }
 
         let b = inB(self.port.getPortAddress() + 0);
-        b
+        Ok(b)
     }
 
     // https://wiki.osdev.org/Serial_Ports#Line_Status_Register
@@ -75,25 +95,32 @@ impl SerialPort {
         }
     }
 
-    unsafe fn init(&self) -> bool {
+    unsafe fn init(&self) -> Result<bool, SerialFailure> {
+        // BUGBUG: For yet another reason I do not understand if we don't have a random logging statment around the first few lines, we'll reset the CPU on real hardware (unsure of the fault)
+        vgaWriteLine!("Serial init...");
         self.enableInterrupts(false);
         self.set115KBaud();
         self.setupFIFO();
         self.enableLoopback();
-        
+
         // See if we can send a byte succesfully through loopack to validate
         // this thing is working
         let testByte = 0xDA;
-        self.sendByte(testByte);
-        let receivedByte = self.receiveByte();
+        self.sendByte(testByte)?;
+        let receivedByte = self.receiveByte()?;
 
         if testByte != receivedByte {
-            loggerWriteLine!("0x{:X} != 0x{:X}. Port {:?} is no good.", testByte, receivedByte, self.port);
-            return false;
+            vgaWriteLine!(
+                "0x{:X} != 0x{:X}. Port {:?} is no good.",
+                testByte,
+                receivedByte,
+                self.port
+            );
+            return Ok(false);
         }
 
         self.disableLoopback();
-        true
+        Ok(true)
     }
 
     // https://wiki.osdev.org/Serial_Ports#Interrupt_enable_register
@@ -122,7 +149,7 @@ impl SerialPort {
         // Setting to 1 byte triggering for now in an attempt to have maximum reliablity
         outB(self.port.getPortAddress() + 2, 0x07);
     }
-    
+
     // https://wiki.osdev.org/Serial_Ports#Modem_Control_Register
     unsafe fn enableLoopback(&self) {
         // Enable loop back
@@ -135,14 +162,14 @@ impl SerialPort {
         // in one shot, and-or does there need to be a delay between these two commands
         outB(self.port.getPortAddress() + 4, 0x1E);
     }
-    
+
     unsafe fn dataAvailable(&self) -> bool {
         let mut val = inB(self.port.getPortAddress() + 5);
         val &= 0x1;
 
         val != 0
     }
-    
+
     // https://wiki.osdev.org/Serial_Ports#Modem_Control_Register
     unsafe fn disableLoopback(&self) {
         // Clears loopback, enables both hardware pins and sets DTR, RTS

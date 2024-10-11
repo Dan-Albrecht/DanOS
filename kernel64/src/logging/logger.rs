@@ -48,7 +48,6 @@ macro_rules! loggerWriteLine {
 
 impl Logger {
     fn new() -> Self {
-        // BUGBUG: This will currently hang on real hardware, need to fix the init code to not loop forever
         let serial = SerialPort::tryGet(COMPort::COM1);
         if serial.is_none() {
             vgaWriteLine!("Failed to init serial port...");
@@ -61,7 +60,7 @@ impl Logger {
         // BUGBUG: This almost certianly means I'm doing it wrong...
         // This was a 'just make it compile' thing
         if self.serial.is_some() {
-            self.serial.as_ref().unwrap().Send(msg);
+            let _ = self.serial.as_ref().unwrap().Send(msg);
         }
 
         kernel_shared::textMode::textMode::writeString(msg);
