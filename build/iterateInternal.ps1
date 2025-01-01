@@ -8,7 +8,7 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
     
     $memoryMapTarget = 0x1000
-    $debug = $true
+    $debug = $false
 
     # i.e. Kernel64
     $STAGE_4_LOAD_TARGET = 0x8000
@@ -30,8 +30,16 @@ try {
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
     $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
-    TimeCommand { ..\kernel\buildKernel.ps1 } -message 'Kernel32'
-    $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
+
+    if ($debug) {
+        TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32dbg'
+        $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\debug\kernel.bin -Raw -AsByteStream
+    }
+    else {
+        TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32rel'
+        $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
+    }
+    
     $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
 
     $STAGE_2_LOAD_TARGET = $STAGE_3_LOAD_TARGET + ($kernelSectors * 512)    

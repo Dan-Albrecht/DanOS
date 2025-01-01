@@ -14,6 +14,7 @@ $ErrorActionPreference = 'Stop'
 Push-Location ${PSScriptRoot}
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUserDeclaredVarsMoreThanAssignments', 'This is a global PS state variable')]
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
+
 try {
     $PSNativeCommandUseErrorActionPreference = $true
     Push-Location .\src\interupts
