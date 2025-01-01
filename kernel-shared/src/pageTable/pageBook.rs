@@ -2,11 +2,10 @@ use core::fmt::Write;
 use core::mem::size_of;
 use core::u8;
 
-use crate::alignment::PageAligned;
 use crate::magicConstants::SIZE_OF_PAGE;
 use crate::memoryHelpers::alignDown;
 use crate::memoryMap::{MemoryMap, MemoryMapEntryType};
-use crate::memoryTypes::{PhysicalAddress, PhysicalAddressPlain, SomeSortOfIndex, VirtualAddress};
+use crate::memoryTypes::{PhysicalAddress, SomeSortOfIndex, VirtualAddress};
 use crate::pageTable::enums::*;
 use crate::pageTable::pageTable::ENTRIES_PER_PAGE_TABLE;
 use crate::{
