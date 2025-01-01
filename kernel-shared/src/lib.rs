@@ -9,6 +9,7 @@ pub mod gdtStuff;
 pub mod magicConstants;
 pub mod memoryHelpers;
 pub mod memoryMap;
+pub mod memoryTypes;
 pub mod pageTable;
 pub mod physicalMemory;
 pub mod relocation;

@@ -1,5 +1,5 @@
-use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage};
-use core::fmt::Write;
+use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryTypes::PhysicalAddress};
+use core::{fmt::Write, ptr::addr_of};
 
 use super::{enums::*, pageDirectoryTable::PageDirectoryTable};
 
@@ -14,7 +14,7 @@ impl PageDirectoryPointerTable {
     pub fn setEntry(
         &mut self,
         index: usize,
-        pdt: *const PageDirectoryTable,
+        pdt: &PhysicalAddress<PageDirectoryTable>,
         executable: Execute,
         present: Present,
         writable: Writable,
@@ -28,7 +28,7 @@ impl PageDirectoryPointerTable {
     }
 
     fn calculateEntry(
-        entry: *const PageDirectoryTable,
+        entry: &PhysicalAddress<PageDirectoryTable>,
         executable: Execute,
         present: Present,
         writable: Writable,
@@ -36,7 +36,7 @@ impl PageDirectoryPointerTable {
         us: UserSupervisor,
         wt: WriteThrough,
     ) -> u64 {
-        let address = entry as u64;
+        let address = entry.address as u64;
         let maskedAddress = address & 0xFFFFFFFFFF000;
 
         if address != maskedAddress {
@@ -93,10 +93,16 @@ impl PageDirectoryPointerTable {
         return result;
     }
 
-    pub fn getAddressForEntry(&self, index: usize) -> *mut PageDirectoryTable {
+    pub fn getAddressForEntry(&self, index: usize) -> PhysicalAddress<PageDirectoryTable> {
         let mut entry = self.Entries[index];
         entry = entry & 0xF_FFFF_FFFF_F000;
 
-        return entry as *mut PageDirectoryTable;
+        PhysicalAddress::<PageDirectoryTable>::new(entry as usize)
+    }
+
+    pub fn getNumberOfEntries(&self) -> usize {
+        let entries = addr_of!(self.Entries);
+
+        unsafe { (*entries).len() }
     }
 }

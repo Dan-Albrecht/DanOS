@@ -27,20 +27,18 @@ use diskStuff::read::readBytes;
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
 use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
-use kernel_shared::{magicConstants::*, vgaWriteLine};
+use kernel_shared::haltLoopWithMessage;
 use kernel_shared::memoryMap::MemoryMap;
+use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
 use kernel_shared::relocation::relocateKernel64;
 use kernel_shared::{
-    assemblyStuff::{
-        halt::haltLoop,
-        misc::Breakpoint,
-    },
+    assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::haltLoopWithMessage;
+use kernel_shared::{magicConstants::*, vgaWriteLine};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
@@ -152,7 +150,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
         DUMB_HEAP_SIZE
     );
 
-    let pageBook = PageBook::fromExisting();
+    let pageBook = PageBook::fromExistingIdentityMapped();
     // This is using identity mapping, so nothing to adjust
     let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE, false, 0);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
@@ -172,7 +170,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     let kernelStackPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWherever(VM_KERNEL64_DATA_LENGTH, 0x1000);
     loggerWriteLine!(
-        "New kernel home @ 0x{:X} for 0x{:X}",
+        "New kernel home @ (P) 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,
         kernelSize
     );
@@ -301,14 +299,22 @@ extern "sysv64" fn newStackHome(
 
     // BUGBUG: More stack stuff
     let pml4 = PageMapLevel4Table::new();
-    let pageBook = PageBook::fromPml4(pml4);
+    let vir = &pml4 as *const _ as usize;
+    let phs = vir - adjustment;
+    let pageBook = PageBook::new(
+        false,
+        false,
+        PhysicalAddress::<PageMapLevel4Table>::new(phs),
+        VirtualAddress::<PageMapLevel4Table>::new(vir),
+    );
     loggerWriteLine!(
         "PageBook @ 0x{:X}, BDH @ 0x{:X}",
         pageBook.getCR3Value() as usize,
         bdhAddress
     );
     let cr3 = pageBook.getCR3Value();
-    let cr3Physical = bdh.vToP(cr3.try_into().unwrap());
+    let cr3P = pageBook.getPhysical();
+    let cr3V = pageBook.getVirtual();
 
     // Create new VM map. This will get rid of the identity map we previously had.
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
@@ -317,6 +323,7 @@ extern "sysv64" fn newStackHome(
         kernelCodePhysical,
         kernelCodeLength,
     );
+
     mapKernelData(&mut virtualMemoryManager, kernelDataPhysical as usize);
 
     virtualMemoryManager.identityMap(
@@ -330,21 +337,18 @@ extern "sysv64" fn newStackHome(
         WriteThrough::WriteTrough,
     );
 
-    loggerWriteLine!("New cr is 0x{:X} / 0x{:X} (L/P)", cr3, cr3Physical);
+    loggerWriteLine!("New cr is 0x{:X}, 0x{:X} / 0x{:X} (P/V)", cr3, cr3P.address, cr3V.address);
 
     unsafe {
         asm!(
             "mov cr3, rax",
-            in("rax") cr3Physical,
+            in("rax") cr3,
         );
     }
 
     loggerWriteLine!("We're fully remapped");
 
-    doDiskDrive();
+    //virtualMemoryManager.getFreeVirtualAddress(1);
+    //readBytes(&mut virtualMemoryManager);
     haltLoop();
-}
-
-fn doDiskDrive() {
-    readBytes();
 }

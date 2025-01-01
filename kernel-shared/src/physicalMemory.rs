@@ -5,6 +5,7 @@ use crate::{
     haltLoopWithMessage,
     memoryHelpers::alignUp,
     memoryMap::{MemoryMap, MemoryMapEntryType},
+    memoryTypes::PhysicalAddressPlain,
     vgaWriteLine,
 };
 
@@ -14,7 +15,7 @@ pub struct PhysicalMemoryManager {
 }
 
 pub struct MemoryBlob {
-    Address: usize,
+    PhysicalAddress: PhysicalAddressPlain,
     Length: usize,
 }
 
@@ -28,7 +29,7 @@ pub enum WhatDo {
 impl Default for MemoryBlob {
     fn default() -> Self {
         MemoryBlob {
-            Address: 0,
+            PhysicalAddress: PhysicalAddressPlain { address: 0 },
             Length: 0,
         }
     }
@@ -136,7 +137,7 @@ impl PhysicalMemoryManager {
 
         // Check them to see if we overlap
         for blobIndex in 0..firstFreeIndex {
-            let blobLocation = self.Blobs[blobIndex].Address;
+            let blobLocation = self.Blobs[blobIndex].PhysicalAddress.address;
             let blobAmmount = self.Blobs[blobIndex].Length;
             let blobEnd = blobLocation + blobAmmount;
 
@@ -152,7 +153,9 @@ impl PhysicalMemoryManager {
             }
         }
 
-        self.Blobs[firstFreeIndex].Address = requestLocation;
+        self.Blobs[firstFreeIndex].PhysicalAddress = PhysicalAddressPlain {
+            address: requestLocation,
+        };
         self.Blobs[firstFreeIndex].Length = requestAmmount;
 
         vgaWriteLine!(
@@ -202,7 +205,7 @@ impl PhysicalMemoryManager {
         let mut lowestAvailableAddress = None;
 
         for x in 0..firstFreeIndex {
-            let endAddress = self.Blobs[x].Address + self.Blobs[x].Length;
+            let endAddress = self.Blobs[x].PhysicalAddress.address + self.Blobs[x].Length;
             if let Some(currentLowestAddress) = lowestAvailableAddress {
                 if endAddress > currentLowestAddress {
                     lowestAvailableAddress = Some(endAddress);
@@ -231,19 +234,31 @@ impl PhysicalMemoryManager {
                     // The start is within the range, but what about the end?
                     let requestEnd = lowestAvailableAddress + sizeInBytes;
                     if requestEnd >= entry.BaseAddr && requestEnd <= entry.BaseAddr + entry.Length {
-                        self.Reserve(lowestAvailableAddress as usize, sizeInBytes as usize, WhatDo::Normal);
+                        self.Reserve(
+                            lowestAvailableAddress as usize,
+                            sizeInBytes as usize,
+                            WhatDo::Normal,
+                        );
                         return lowestAvailableAddress as *mut T;
                     } else {
                         vgaWriteLine!("End goes past the end of this blob, trying next...");
-                        lowestAvailableAddress = alignUp(entry.BaseAddr as usize + entry.Length as usize + 1 as usize, alignment) as u64;
+                        lowestAvailableAddress = alignUp(
+                            entry.BaseAddr as usize + entry.Length as usize + 1 as usize,
+                            alignment,
+                        ) as u64;
                     }
-                }
-                else if lowestAvailableAddress < entry.BaseAddr {
+                } else if lowestAvailableAddress < entry.BaseAddr {
                     let potentialStart = alignUp(entry.BaseAddr as usize, alignment);
                     let potentialEnd = potentialStart + sizeInBytes as usize;
 
-                    if potentialStart < entry.BaseAddr as usize + entry.Length as usize && entry.BaseAddr < potentialEnd as u64 {
-                        self.Reserve(potentialStart as usize, sizeInBytes as usize, WhatDo::Normal);
+                    if potentialStart < entry.BaseAddr as usize + entry.Length as usize
+                        && entry.BaseAddr < potentialEnd as u64
+                    {
+                        self.Reserve(
+                            potentialStart as usize,
+                            sizeInBytes as usize,
+                            WhatDo::Normal,
+                        );
                         return potentialStart as *mut T;
                     }
                 }

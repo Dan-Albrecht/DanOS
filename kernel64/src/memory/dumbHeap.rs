@@ -2,7 +2,7 @@ use kernel_shared::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage,
     memoryHelpers::alignUp,
-    memoryMap::{MemoryMap, MemoryMapEntryType},
+    memoryMap::{MemoryMap, MemoryMapEntryType}, memoryTypes::{PhysicalAddress, VirtualAddress},
 };
 
 use crate::loggerWriteLine;
@@ -36,7 +36,8 @@ impl MemoryStuff for BootstrapDumbHeap {
     fn allocate<T>(&mut self) -> *mut T {
         let size = size_of::<T>();
         let align = align_of::<T>();
-        let address = BootstrapDumbHeap::allocate(self, size, align);
+        let address : VirtualAddress<T> = BootstrapDumbHeap::allocate(self, size, align);
+        let address = address.address;
 
         return address as *mut T;
     }
@@ -62,7 +63,18 @@ impl BootstrapDumbHeap {
         }
     }
 
-    pub fn allocate(&mut self, length: usize, alignment: usize) -> usize {
+    pub fn debugDump(&self) {
+        loggerWriteLine!("BDH dump:");
+        for x in 0..self.Entries.len()  {
+            if self.Entries[x].Length == 0 {
+                break;
+            }
+
+            loggerWriteLine!("{} = 0x{:X}", x, self.Entries[x].Address);
+        }
+    }
+
+    pub fn allocate<T>(&mut self, length: usize, alignment: usize) -> VirtualAddress<T> {
         if length > self.Length {
             haltLoopWithMessage!(
                 "Requested length of 0x{:X} is bigger than the entire heap of 0x{:X}",
@@ -110,7 +122,7 @@ impl BootstrapDumbHeap {
 
         if endAddress > heapLimit {
             haltLoopWithMessage!(
-                "0x{:X}..=0x{:X} is out of range of 0x{:X}..=0x{:X}",
+                "BDH is full. 0x{:X}..=0x{:X} is out of range of 0x{:X}..=0x{:X}",
                 startAddress,
                 endAddress,
                 self.StartAddress,
@@ -121,23 +133,29 @@ impl BootstrapDumbHeap {
         self.Entries[firstFree].Address = startAddress;
         self.Entries[firstFree].Length = length;
 
-        startAddress
+        VirtualAddress::new(startAddress)
     }
 
-    pub fn vToP(&self, address: usize) -> usize {
+    pub fn vToP<T>(&self, address: &VirtualAddress<T>) -> PhysicalAddress<T> {
+        let result;
         if self.VirtualIsGreaterThanPhysical {
-            address - self.Adjustment
+            result = address.address - self.Adjustment
         } else {
-            address + self.Adjustment
+            result = address.address + self.Adjustment
         }
+
+        PhysicalAddress::new(result)
     }
 
-    pub fn pToV(&self, address: usize) -> usize {
+    pub fn pToV<T>(&self, address: &PhysicalAddress<T>) -> VirtualAddress<T> {
+        let result;
         if self.VirtualIsGreaterThanPhysical {
-            address + self.Adjustment
+            result = address.address + self.Adjustment
         } else {
-            address - self.Adjustment
+            result = address.address - self.Adjustment
         }
+
+        VirtualAddress::new(result)
     }
 }
 
