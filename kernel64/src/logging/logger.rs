@@ -1,12 +1,23 @@
-use core::fmt::Write;
+use core::{cell::{self, UnsafeCell}, fmt::Write};
 use kernel_shared::vgaWriteLine;
-use lazy_static::lazy_static;
+use critical_section::RawRestoreState;
+use once_cell::sync::Lazy;
 
 use crate::serial::serialPort::{COMPort, SerialPort};
 
-lazy_static! {
-    pub static ref SystemLogger: Logger = Logger::new();
+struct DanOSCriticalSection;
+critical_section::set_impl!(DanOSCriticalSection);
+
+unsafe impl critical_section::Impl for DanOSCriticalSection {
+    unsafe fn acquire() -> RawRestoreState {
+        // We're currently running with interrupts disabled so nothing to do right now
+    }
+
+    unsafe fn release(_restore_state: RawRestoreState) {
+    }
 }
+
+pub static SystemLogger : Lazy<Logger> = Lazy::new(|| Logger::new());
 
 pub struct Logger {
     serial: Option<SerialPort>,

@@ -36,7 +36,7 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::magicConstants::*;
+use kernel_shared::{magicConstants::*, vgaWriteLine};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
