@@ -130,11 +130,21 @@ try {
 
     Write-Host "Writing $($danOSBin.Length) bytes to DanOS.bin"
     TimeCommand { [System.IO.File]::WriteAllBytes("${PSScriptRoot}\DanOS.bin", $danOSBin) } -message 'Write DanOS.bin'
+    $emptyVhdSize = 3MB
+
+    # The VHD has a mandatory footer we cannot overwrite
+    $footerLength = 512
+
+    $vhdFreeSpace = $emptyVhdSize - $footerLength
+
+    if ($danOSBin.Length -gt $vhdFreeSpace) {
+        Write-Error "VHD needs to be made bigger"
+    }
 
     if (![System.IO.File]::Exists("empty.vhd")) {
         # Creation is too slow, so just cache an empty one and use it
         Write-Host "Creating empty VHD"
-        TimeCommand { New-VHD -Path empty.vhd -Fixed -SizeBytes 3MB } -message 'Create empty VHD'
+        TimeCommand { New-VHD -Path empty.vhd -Fixed -SizeBytes $emptyVhdSize } -message 'Create empty VHD'
     }
 
     Copy-Item -Force .\empty.vhd .\DanOS.vhd

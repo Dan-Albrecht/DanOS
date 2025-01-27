@@ -181,7 +181,7 @@ printHex16:
     ret
 
 welcomeMsg          db `Welcome to DanOS!\r\n`, 0
-loadMsg1            db "Read ", 0
+loadMsg1            db "Reading drive ", 0
 loadMsg2            db " for ", 0
 loadMsg2_5          db " blocks and ", 0
 loadMsg3            db ` sectors\r\n`, 0

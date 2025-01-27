@@ -1,5 +1,5 @@
 ; Stage 2 enters and leaves in 32 bit protected mode. All it does is realy jump
-; to the rust code. We should probably just merge this with Stage 1.5 and call that Stage 2.
+; to the Rust code. We should probably just merge this with Stage 1.5 and call that Stage 2.
     BITS  32
     ORG STAGE_2_LOAD_TARGET ; This is where we loaded when we read from disk
 
