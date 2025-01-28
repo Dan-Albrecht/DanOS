@@ -1,0 +1,6 @@
+[build]
+target = "./i386-unknown-none.json"
+rustflags = ["-C", "relocation-model=static"]
+
+[unstable]
+build-std = ["core"]

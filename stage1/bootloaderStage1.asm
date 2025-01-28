@@ -25,11 +25,7 @@ main:
 
     call loadFromDisk
 
-    mov ax, 1
-    call STAGE1_5_TARGET_MEMORY_SEGMENT:0
-
-    mov ax, 2
-    jmp STAGE1_5_TARGET_MEMORY_SEGMENT:0
+    call STAGE2_TARGET_MEMORY_SEGMENT:0
 
 superHault:
     cli             ; Don't need to allow interupts anymore
