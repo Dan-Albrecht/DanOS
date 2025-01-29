@@ -18,6 +18,7 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 
 try {
     $PSNativeCommandUseErrorActionPreference = $true
+    $env:STAGE2_RUST_LOAD_TARGET = $loadTarget
 
     if ($debug) {
         $buildType = "debug"

@@ -7,7 +7,7 @@ fn main() {
 
     // The default is here only because we want to just run a compile without
     // needing to know what the correct value is.
-    let stage2_load = std::env::var("STAGE2_RUST_LOAD_TARGET").unwrap_or("0x2C000".to_string());
+    let stage2_load = std::env::var("STAGE2_RUST_LOAD_TARGET").unwrap_or("0x8000".to_string());
 
     println!("cargo:warning=Not a warning. Just FYI start address is {}.", stage2_load);
 

@@ -8,47 +8,39 @@ try {
     $PSNativeCommandUseErrorActionPreference = $true
     
     $memoryMapTarget = 0x1000
-    $debug = $false
-
-    # i.e. Kernel64
-    $STAGE_4_LOAD_TARGET = 0x8000
+    $debug = $true
 
     if ($debug) {
-        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug } -message 'Kernel64dbg'
-        $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\debug\kernel64.strippedWithDebugLink -Raw -AsByteStream
+        $targetType = "debug"
+    } else {
+        $targetType = "release"
     }
-    else {
-        TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug } -message 'Kernel64rel'
-        $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\release\kernel64.strippedWithDebugLink -Raw -AsByteStream
-    }
-    
+
+    $STAGE_2_LOAD_TARGET = 0x7E00 # Slap this right after boot sector for now, we're just going to assume it'll stay small and fit...
+    TimeCommand { ..\stage2_rust\build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
+    $stage2Bytes = Get-Content ..\stage2_rust\target\i386-unknown-none\$targetType\stage2_rust.bin -Raw -AsByteStream
+    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
+    $stage2Segment = $STAGE_2_LOAD_TARGET -shr 4
+
+<#
+    $STAGE_4_LOAD_TARGET = 0x8000
+    TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug } -message 'Kernel64'
+    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\$targetType\kernel64.strippedWithDebugLink -Raw -AsByteStream    
     $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
 
     $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
     $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
-
-    if ($debug) {
-        TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32dbg'
-        $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\debug\kernel.bin -Raw -AsByteStream
-    }
-    else {
-        TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32rel'
-        $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\release\kernel.bin -Raw -AsByteStream
-    }
-    
+    TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32'
+    $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\$targetType\kernel.bin -Raw -AsByteStream    
     $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
-
-    $STAGE_2_LOAD_TARGET = $STAGE_3_LOAD_TARGET + ($kernelSectors * 512)   
-    # BUGBUG: Assuming release build for now 
-    TimeCommand { ..\stage2_rust\build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $false } -message 'Stage 2'
-    $stage2Bytes = Get-Content ..\stage2_rust\target\i386-unknown-none\release\stage2_rust.bin -Raw -AsByteStream
-    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
-    $stage2Segment = $STAGE_2_LOAD_TARGET -shr 4
+#>
+    
 
     $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors
 
     # Divide by 16 to get to segment
-    $diskDataSegment = $STAGE_4_LOAD_TARGET -shr 4
+    #$diskDataSegment = $STAGE_4_LOAD_TARGET -shr 4
+    $diskDataSegment = $stage2Segment
 
     Write-Host "Stage 1 @ 0x7C00 (must be 1 sector)"
     Write-Host "Stage 2 @ 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X")) (for 0x$(([int]$stage2Sectors).ToString("X")) sectors)"
@@ -83,6 +75,17 @@ try {
         $writeIndex++
     }
 
+    for ($x = 0; $x -lt ($stage2Sectors * 512); $x++) {
+        if ($x -lt $stage2Bytes.Length) {
+            $danOSBin[$writeIndex] = $stage2Bytes[$x]
+        }
+        else {
+            $danOSBin[$writeIndex] = 0xDD
+        }
+        $writeIndex++
+    }
+
+    <#
     for ($x = 0; $x -lt ($kernel64Sectors * 512); $x++) {
         if ($x -lt $kernel64Bytes.Length) {
             $danOSBin[$writeIndex] = $kernel64Bytes[$x]
@@ -102,16 +105,7 @@ try {
         }
         $writeIndex++
     }
-
-    for ($x = 0; $x -lt ($stage2Sectors * 512); $x++) {
-        if ($x -lt $stage2Bytes.Length) {
-            $danOSBin[$writeIndex] = $stage2Bytes[$x]
-        }
-        else {
-            $danOSBin[$writeIndex] = 0xDD
-        }
-        $writeIndex++
-    }
+    #>
 
     Write-Host "Writing $($danOSBin.Length) bytes to DanOS.bin"
     TimeCommand { [System.IO.File]::WriteAllBytes("${PSScriptRoot}\DanOS.bin", $danOSBin) } -message 'Write DanOS.bin'

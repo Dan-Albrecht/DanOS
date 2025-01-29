@@ -29,9 +29,19 @@ fn pringString(blah: &[u8]) {
     }
 }
 
+#[cfg(debug_assertions)]
+fn sayHello() {
+    pringString(b"Hi from 16-bit Debug Rust!");
+}
+
+#[cfg(not(debug_assertions))]
+fn sayHello() {
+    pringString(b"Hi from 16-bit Release Rust!");
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn DanMain() -> ! {
-    pringString(b"Hi from 16-bit Rust!");
+    sayHello();
 
     loop {}
 }

@@ -76,6 +76,9 @@ loadFromDisk:
 
     mov cx, FULL_SECTOR_BLOCKS
 
+    ; Maybe no full blocks to even load
+    jcxz loadPartialBlock
+
 loadFullBlock:    
     mov ah, 0x42    ; Extended read function
     int 0x13
