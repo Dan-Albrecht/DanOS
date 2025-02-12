@@ -1,7 +1,7 @@
 use crate::{alignment::PageAligned, assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryTypes::PhysicalAddress, vgaWriteLine};
 
 use super::{enums::*, pageDirectoryPointerTable::PageDirectoryPointerTable};
-use core::{array::from_fn, fmt::Write, ptr::addr_of};
+use core::{array::from_fn, ptr::addr_of};
 
 use crate::memoryTypes::SomeSortOfIndex;
 

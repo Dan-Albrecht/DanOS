@@ -13,3 +13,7 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[features]
+# If use of BIOS functions is allowed
+use_bios = []

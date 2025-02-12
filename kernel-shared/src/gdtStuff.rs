@@ -1,7 +1,6 @@
 // Global Descriptor Table
 
 use core::arch::asm;
-use core::fmt::Write;
 
 use crate::memoryHelpers::{alignDown, zeroMemory2};
 use crate::{haltLoopWithMessage, vgaWriteLine};

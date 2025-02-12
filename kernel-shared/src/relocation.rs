@@ -1,4 +1,4 @@
-use core::{fmt::Write, ptr::{slice_from_raw_parts, write_unaligned}};
+use core::ptr::{slice_from_raw_parts, write_unaligned};
 use elf::{abi::R_X86_64_RELATIVE, endian::NativeEndian, file::Class, ElfBytes};
 
 use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};

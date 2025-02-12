@@ -1,4 +1,4 @@
-use core::{fmt::Write, mem::size_of};
+use core::mem::size_of;
 
 use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 

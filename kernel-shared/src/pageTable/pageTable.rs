@@ -1,9 +1,10 @@
+use core::ptr::addr_of;
+
 use crate::{
     assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryTypes::PhysicalAddress,
 };
 
 use super::{enums::*, physicalPage::PhysicalPage};
-use core::{fmt::Write, ptr::addr_of};
 
 pub(crate) const ENTRIES_PER_PAGE_TABLE: usize = 512;
 

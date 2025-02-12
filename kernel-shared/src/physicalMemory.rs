@@ -1,4 +1,4 @@
-use core::{fmt::Write, intrinsics::type_name};
+use core::intrinsics::type_name;
 
 use crate::{
     assemblyStuff::halt::haltLoop,

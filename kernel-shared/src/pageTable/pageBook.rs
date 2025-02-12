@@ -1,4 +1,3 @@
-use core::fmt::Write;
 use core::mem::size_of;
 use core::u8;
 

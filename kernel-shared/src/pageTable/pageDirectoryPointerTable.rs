@@ -1,5 +1,6 @@
+use core::ptr::addr_of;
+
 use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, memoryTypes::PhysicalAddress};
-use core::{fmt::Write, ptr::addr_of};
 
 use super::{enums::*, pageDirectoryTable::PageDirectoryTable};
 

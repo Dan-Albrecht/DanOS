@@ -1,6 +1,6 @@
-use core::fmt::Write;
+use core::fmt::{self, Write};
 
-use super::textMode::writeString;
+use super::vga::{self};
 
 pub struct Writer;
 
@@ -11,8 +11,8 @@ impl Writer {
 }
 
 impl Write for Writer {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        writeString(s.as_bytes());
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        vga::writeString(s.as_bytes());
         Ok(())
     }
 }

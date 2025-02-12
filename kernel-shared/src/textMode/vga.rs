@@ -8,25 +8,6 @@ const VGA_DATA_PORT: u16 = 0x3D5;
 const CURSOR_HIGH_REG: u8 = 0xE;
 const CURSOR_LOW_REG: u8 = 0xF;
 
-#[macro_export]
-macro_rules! vgaWrite {
-    ($($args:tt)*) => {
-        if let Some(ssss) = core::format_args!($($args)*).as_str() {
-            $crate::textMode::textMode::writeString(ssss.as_bytes());
-        } else {
-            let _ = write!($crate::textMode::writer::Writer::new(), $($args)*);
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! vgaWriteLine {
-    ($($args:tt)*) => {
-        $crate::vgaWrite!($($args)*);
-        $crate::textMode::textMode::writeString(b"\r\n");
-    };
-}
-
 #[repr(u8)]
 #[allow(dead_code)]
 enum ForegroundColor {
