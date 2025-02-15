@@ -12,8 +12,8 @@ pub fn haltLoop() -> ! {
 
 #[macro_export]
 macro_rules! haltLoopWithMessage {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         $crate::vgaWriteLine!($($args)*);
         haltLoop();
-    };
+    }};
 }
