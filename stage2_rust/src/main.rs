@@ -5,12 +5,16 @@
 #![feature(cfg_relocation_model)]
 
 mod disk;
+mod memory;
 
 use core::{arch::asm, panic::PanicInfo};
 use disk::{diskDriver::DiskDriver, fatDriver::FatDriver};
 use kernel_shared::{
-    assemblyStuff::{halt::haltLoop, misc::disablePic}, haltLoopWithMessage, textMode::teletype
+    assemblyStuff::{halt::haltLoop, misc::disablePic},
+    haltLoopWithMessage,
+    textMode::teletype,
 };
+use memory::map::MemoryMap;
 
 #[panic_handler]
 fn panic(pi: &PanicInfo) -> ! {
@@ -19,7 +23,9 @@ fn panic(pi: &PanicInfo) -> ! {
     if let Some(msg) = pi.message().as_str() {
         teletype::printLine(msg.as_bytes());
     } else {
-        teletype::printLine(b"Couldn't get panic message");
+        teletype::printLine(b"Couldn't get panic message easily; trying harder");
+        // We're risking a further panic here, but really want to see the message
+        haltLoopWithMessage!("Panic: {:?}", pi);
     }
 
     teletype::printLine(b"End of line");
@@ -48,6 +54,17 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
 
     disablePic();
     sayHello();
+
+    let mm: MemoryMap;
+
+    unsafe {
+        match MemoryMap::create() {
+            Ok(result) => mm = result,
+            Err(msg) => haltLoopWithMessage!("Getting memory map failed: {}", msg),
+        }
+    }
+
+    mm.dump();
 
     let disk = DiskDriver::new(driveNumber);
     disk.doStuff();
