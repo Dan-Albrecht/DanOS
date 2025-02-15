@@ -13,11 +13,11 @@
 
 main:
     cli             ; No interupts. We'll enable in the kernel when we can actually handle.
-    xor ax, ax      ; Clear segments as we've set org
+    xor ax, ax      ; Clear segments, when we go to Stage2 Rust, it wants them all 0
     mov ds, ax
     mov es, ax
-    mov bx, 0x7000  ; Build stack out of the way a bit
     mov ss, ax
+    mov bx, 0x7C00  ; Build stack right below us
     mov sp, bx
 
     mov si, welcomeMsg
@@ -25,7 +25,12 @@ main:
 
     call loadFromDisk
 
-    call STAGE2_TARGET_MEMORY_SEGMENT:0
+    xor ecx, ecx    ; Stage2 entry is defined as fastcall, so we'll use ecx to pass args to it
+    mov cl, dl      ; Pass drive number to Stage 2. BIOS sets DL and we've hopefully not trashed it.
+
+    ; Likely because of my incompetance, but the way the Rust code compiles it expect CS to be 0. Some of it's calls
+    ; are not IP-relative and will just be what it thinks is the full address. So just make that work and leave CS as 0.
+    jmp STAGE2_ADDRESS
 
 superHault:
     cli             ; Don't need to allow interupts anymore
@@ -40,12 +45,12 @@ DAPS:
                     db 0x10                         ; Size of packet
                     db 0x0                          ; Always 0
     readCount:      dw MAX_SECTOR_READ_COUNT        ; Number of disk sectors (512 (0x200) bytes) to load. BIOS updates with actual read after completion. QEMU seems to only allow a max of 0x80 sector (64K), BOCHS doesn't seem to care, my ThinkPad 0x7F.
-                    dw 0x0                          ; Target address offset
-    targetSegment:  dw DISK_DATA_MEMORY_SEGMENT     ; Target address segment
+                    dw STAGE2_ADDRESS               ; Target address offset
+    targetSegment:  dw 0x0                          ; Target address segment
     lba:            dd 0x1                          ; Lower 32-bits of LBA. Starts at 0. This code is in 0 and then the rest of the code is immediately next.
                     dd 0x0                          ; Upper 16-bits of LBA.
 
-; Loads code to DISK_DATA_MEMORY_SEGMENT:0
+; Loads code to 0:STAGE2_ADDRESS
 loadFromDisk:
     pusha
 
