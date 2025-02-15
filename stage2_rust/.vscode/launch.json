@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb", // https://github.com/vadimcn/codelldb/blob/master/MANUAL.md
+            "request": "launch",
+            "name": "LLDB via WSL",
+            "targetCreateCommands": [
+                "target create ${workspaceRoot}/target/i386-unknown-none/debug/stage2_rust.elf"
+            ],
+            "processCreateCommands": [
+                "gdb-remote 172.19.176.1:3333"
+            ]
+        },
+        {
+            "type": "lldb", // https://github.com/vadimcn/codelldb/blob/master/MANUAL.md
+            "request": "launch",
+            "name": "LLDB Direct",
+            "targetCreateCommands": [
+                "target create ${workspaceRoot}/target/i386-unknown-none/debug/stage2_rust.elf"
+            ],
+            "processCreateCommands": [
+                "gdb-remote localhost:3333"
+            ]
+        }    
+    ]
+}

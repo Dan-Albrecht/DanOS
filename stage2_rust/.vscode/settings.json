@@ -5,4 +5,8 @@
     "files.exclude": {
         "target": true,
     },
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "always",
+    "lldb.dereferencePointers": false,
+    "lldb.consoleMode": "commands",
 }

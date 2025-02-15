@@ -1,6 +1,8 @@
 [build]
 target = "./i386-unknown-none.json"
-rustflags = ["-C", "relocation-model=static"]
+# Single thread, as potential hack for 'issues' linking using x86_64-pc-windows-gnu
+# https://github.com/rust-lang/rust/issues/115985#issuecomment-1754112623
+# rustflags = ["-Clink-arg=--threads=1"]
 
 [unstable]
 build-std = ["core"]

@@ -1,47 +1,59 @@
 #![no_std]
 #![no_main]
 #![allow(non_snake_case)]
+#![feature(log_syntax)]
+#![feature(cfg_relocation_model)]
+
+mod disk;
 
 use core::{arch::asm, panic::PanicInfo};
+use disk::{diskDriver::DiskDriver, fatDriver::FatDriver};
+use kernel_shared::{
+    assemblyStuff::{halt::haltLoop, misc::disablePic}, haltLoopWithMessage, textMode::teletype
+};
 
 #[panic_handler]
-fn panic(_: &PanicInfo) -> ! {
-    loop {}
-}
+fn panic(pi: &PanicInfo) -> ! {
+    teletype::printLine(b"16-bit panic!");
 
-fn printChar(char: u8) {
-    unsafe {
-        asm!(
-            "mov ah, 0x0E", // Teletype output function
-            "xor bx, bx",   // BH = page number (0), BL is N/A for this mode
-                            // so 0 it for consistency
-            "int 0x10",     // Video Services
-            out("ah") _,
-            out("bx") _,
-            in("al") char,  // Char to print
-        );
+    if let Some(msg) = pi.message().as_str() {
+        teletype::printLine(msg.as_bytes());
+    } else {
+        teletype::printLine(b"Couldn't get panic message");
     }
-}
 
-fn pringString(blah: &[u8]) {
-    for b in blah {
-        printChar(*b);
+    teletype::printLine(b"End of line");
+
+    unsafe {
+        loop {
+            asm!("hlt");
+        }
     }
 }
 
 #[cfg(debug_assertions)]
 fn sayHello() {
-    pringString(b"Hi from 16-bit Debug Rust!");
+    teletype::printLine(b"Hi from 16-bit Debug Rust!");
 }
 
 #[cfg(not(debug_assertions))]
 fn sayHello() {
-    pringString(b"Hi from 16-bit Release Rust!");
+    teletype::printLine(b"Hi from 16-bit Release Rust!");
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn DanMain() -> ! {
+pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
+    #[cfg(not(relocation_model = "static"))]
+    compile_error!("Stage1 boot loader cannot handle having to relocate us.");
+
+    disablePic();
     sayHello();
 
-    loop {}
+    let disk = DiskDriver::new(driveNumber);
+    disk.doStuff();
+
+    let fat = FatDriver::new(disk);
+    fat.doStuff();
+
+    haltLoopWithMessage!("End of current 16-bit code");
 }

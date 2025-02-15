@@ -37,15 +37,14 @@ try {
         }
     } -message 'Stage2 build'
 
-    # Get the image of what we'll use
-    rust-objcopy.exe --input-target=elf32-i386 -O binary .\target\i386-unknown-none\$buildType\stage2_rust .\target\i386-unknown-none\$buildType\stage2_rust.bin
-    
-    # See what we actually got
-    rust-objdump.exe -d .\target\i386-unknown-none\$buildType\stage2_rust > .\target\i386-unknown-none\$buildType\stage2_rust.asm
+    # We're building an elf file; so call it that
+    Copy-Item -Path .\target\i386-unknown-none\$buildType\stage2_rust -Destination .\target\i386-unknown-none\$buildType\stage2_rust.elf -Force
 
-    # Alt from the flat binary
-    ndisasm.exe "-o$loadTarget" -b 16 .\target\i386-unknown-none\$buildType\stage2_rust.bin > .\target\i386-unknown-none\$buildType\stage2_rust.bin.asm
+    # Get a flat binary we can throw right into memory and jump to
+    rust-objcopy.exe --input-target=elf32-i386 -O binary .\target\i386-unknown-none\$buildType\stage2_rust.elf .\target\i386-unknown-none\$buildType\stage2_rust.bin
 
+    # Disassemble so we can see what we got. The real Linux tools are better than the rust-objdump one.
+    wsl -- objdump -D -m i8086 -M intel -j .text ./target/i386-unknown-none/$buildType/stage2_rust.elf > ./target/i386-unknown-none/$buildType/stage2_rust.elf.asm
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
