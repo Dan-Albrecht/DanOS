@@ -1,0 +1,7 @@
+[build]
+# Normally want this off, but specifying one of our targets is useful to code against
+# conditional compilation
+target = "../stage2_rust/i386-unknown-none.json"
+
+[unstable]
+build-std = ["core"]
