@@ -51,4 +51,4 @@ var root = new RootCommand("Various commands to operator on a disk at the raw le
     dangerousWrite,
 };
 
-await root.InvokeAsync(args);
+return await root.InvokeAsync(args);
