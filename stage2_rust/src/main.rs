@@ -10,9 +10,7 @@ mod memory;
 use core::{arch::asm, panic::PanicInfo};
 use disk::{diskDriver::DiskDriver, fatDriver::FatDriver};
 use kernel_shared::{
-    assemblyStuff::{halt::haltLoop, misc::disablePic},
-    haltLoopWithMessage,
-    textMode::teletype,
+    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, textMode::teletype, vgaWrite, vgaWriteLine
 };
 use memory::map::MemoryMap;
 
@@ -54,6 +52,15 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
 
     disablePic();
     sayHello();
+
+    // We need full 32-bit segment offsets to access everything as this code
+    // doesn't compile in a way that it knows to manipulate the segment registers.
+    // Only static strings should be used before this switch as fmt loves to
+    // try and jump somwhere we cannot yet reach.
+    let gdt = Gdt::create32BitFlat();
+    unsafe { gdt.enterUnrealMode(); };
+
+    vgaWriteLine!("Running in Unreal mode");
 
     let mm: MemoryMap;
 
