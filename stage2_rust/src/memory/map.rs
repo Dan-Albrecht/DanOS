@@ -45,6 +45,7 @@ impl MemoryMap {
             }
 
             _ = ecx;
+            result.EntryCount += 1;
 
             if firstTime {
                 firstTime = false;
@@ -56,8 +57,6 @@ impl MemoryMap {
                     return Err("int 0x15, 0xE820 not supported");
                 }
             } else {
-                result.EntryCount += 1;
-
                 // And here again, no CF, will just look at continuation saying we're done.
                 if continuation == 0 {
                     return Ok(result);
