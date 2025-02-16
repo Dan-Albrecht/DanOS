@@ -73,11 +73,11 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
 
     mm.dump();
 
-    let disk = DiskDriver::new(driveNumber);
-    disk.doStuff();
+    let disk = DiskDriver::new(driveNumber.try_into().unwrap());
 
     let fat = FatDriver::new(disk);
-    fat.doStuff();
-
+    let kernel32 = fat.findKernel32().unwrap();
+    vgaWriteLine!("Kernel32 is at 0x{:X}", kernel32);
     haltLoopWithMessage!("End of current 16-bit code");
+    
 }
