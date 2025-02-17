@@ -6,136 +6,69 @@ try {
     # I really hate you PowerShell
     [System.Environment]::CurrentDirectory = ${PSScriptRoot}
     $PSNativeCommandUseErrorActionPreference = $true
-    
-    $memoryMapTarget = 0x1000
+
+    # Preferneces
     $debug = $true
+
+    # Magic constants    
+    $STAGE_2_LOAD_TARGET = 0x7E00 # Slap this right after boot sector for now, we're just going to assume it'll stay small and fit...
+    $BOOTLOADER_MAX_SIZE = 1MB # Total ammount of space we have before the bootloaders before they'd start overwriting the first partition of our image
+    $OUTPUT_FILE = "DanOS.img"
 
     if ($debug) {
         $targetType = "debug"
     } else {
         $targetType = "release"
     }
-
-    $STAGE_2_LOAD_TARGET = 0x7E00 # Slap this right after boot sector for now, we're just going to assume it'll stay small and fit...
-    TimeCommand { ..\stage2_rust\build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
-    $stage2Bytes = Get-Content ..\stage2_rust\target\i386-unknown-none\$targetType\stage2_rust.bin -Raw -AsByteStream
-    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
-    $stage2Segment = $STAGE_2_LOAD_TARGET -shr 4
-
-<#
-    $STAGE_4_LOAD_TARGET = 0x8000
-    TimeCommand { ..\kernel64\buildKernel.ps1 -debug $debug } -message 'Kernel64'
-    $kernel64Bytes = Get-Content ..\kernel64\target\x86_64-unknown-none\$targetType\kernel64.strippedWithDebugLink -Raw -AsByteStream    
-    $kernel64Sectors = [Math]::Ceiling($kernel64Bytes.Length / 512)
-
-    $STAGE_3_LOAD_TARGET = $STAGE_4_LOAD_TARGET + ($kernel64Sectors * 512)
-    $env:KERNEL32_LOAD_TARGET = "0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X"))"
-    TimeCommand { ..\kernel\buildKernel.ps1 -debug $debug } -message 'Kernel32'
-    $kernelBytes = Get-Content ..\kernel\target\i686-unknown-none\$targetType\kernel.bin -Raw -AsByteStream    
-    $kernelSectors = [Math]::Ceiling($kernelBytes.Length / 512)
-#>
     
+    TimeCommand { ..\stage2_rust\build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
+    $stage2Path = "..\stage2_rust\target\i386-unknown-none\$targetType\stage2_rust.bin"
 
-    $neededSectors = $stage2Sectors + $kernelSectors + $kernel64Sectors
-
-    # Divide by 16 to get to segment
-    #$diskDataSegment = $STAGE_4_LOAD_TARGET -shr 4
-    $diskDataSegment = $stage2Segment
+    $stage2Bytes = Get-Content $stage2Path -Raw -AsByteStream
+    $stage2Item = Get-ChildItem $stage2Path
+    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
+    $stage2Padding = $stage2Sectors * 512 - $stage2Bytes.Length
+    Write-Host "Stage2 is @ $stage2Path size is $($stage2Item.Length) written @ $($stage2Item.LastWriteTime) and will need $stage2Padding padding"
 
     Write-Host "Stage 1 @ 0x7C00 (must be 1 sector)"
     Write-Host "Stage 2 @ 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X")) (for 0x$(([int]$stage2Sectors).ToString("X")) sectors)"
-    Write-Host "Stage 3 @ 0x$(([int]$STAGE_3_LOAD_TARGET).ToString("X")) (for 0x$(([int]$kernelSectors).ToString("X")) sectors)"
-    Write-Host "Stage 4 @ 0x$(([int]$STAGE_4_LOAD_TARGET).ToString("X")) (for 0x$(([int]$kernel64Sectors).ToString("X")) sectors)."
-    Write-Host "This is a total of 0x$(([int]$neededSectors).ToString("X")) sectors to load from disk to segment 0x$(([int]$diskDataSegment).ToString("X"))."
+    Write-Host "This is a total of 0x$(([int]$stage2Sectors).ToString("X")) sectors to load from disk to address 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X"))."
 
-    # BUGUBG: Don't harcode load target, just change address to sector
-    TimeCommand { ..\stage1\build.ps1 -sectorsToLoad $neededSectors -targetMemorySegment $diskDataSegment -handoffToSegment $stage2Segment } -message 'Stage 1'
+    TimeCommand { ..\stage1\build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
+    $stage1Path = "..\stage1\bootloaderStage1.bin"
+
+    $stage1Bytes = Get-Content $stage1Path -Raw -AsByteStream
+    $stage1Item = Get-ChildItem $stage1Path
+    Write-Host "Stage1 is @ $stage1Path size is $($stage1Item.Length) written @ $($stage1Item.LastWriteTime)"
     
-    # Slap on some partition info to make this look like an actual MBR disk so we can boot from it on real hardware
-    TimeCommand { dotnet run --runtime win-x64 --no-launch-profile --project ..\diskTools\diskTools.csproj merge ..\stage1\bootloaderStage1.bin \temp\usb2.bin ..\mergedStage1.bin } -message 'Partition Stage 1'
-    
-    $stage1Bytes = Get-Content ..\mergedStage1.bin -Raw -AsByteStream
-    if ($stage1Bytes.Length -ne 512 ) { Write-Error 'Bootloader should be exactly 512 bytes' }
-    $stage1Sectors = 1 # Must be per above and the laws of bios
-
-    # +1 as we also need Stage1
-    $danOSBin = [byte[]]::new((($neededSectors + 1) * 512))
-    Write-Host "Allocated $($danOSBin.Count) bytes"
-
-    $writeIndex = 0
-
-    for ($x = 0; $x -lt ($stage1Sectors * 512); $x++) {
-        if ($x -lt $stage1Bytes.Length) {
-            $danOSBin[$writeIndex] = $stage1Bytes[$x]
-        }
-        else {
-            # We pad all these to fill the sector
-            $danOSBin[$writeIndex] = 0xDA
-        }
-        $writeIndex++
+    if($stage1Bytes.Length -ne 440) {
+        # 440, not 512 since that's just the code space
+        # We'll manually slap on the MBR / partition info below
+        Write-Error "Stage 1 must be exactly 440 bytes"
     }
 
-    for ($x = 0; $x -lt ($stage2Sectors * 512); $x++) {
-        if ($x -lt $stage2Bytes.Length) {
-            $danOSBin[$writeIndex] = $stage2Bytes[$x]
-        }
-        else {
-            $danOSBin[$writeIndex] = 0xDD
-        }
-        $writeIndex++
+    if ($stage1Bytes.Length + $stage2Bytes.Length -gt $BOOTLOADER_MAX_SIZE) {
+        Write-Error "Bootloaders are too big"
     }
 
-    <#
-    for ($x = 0; $x -lt ($kernel64Sectors * 512); $x++) {
-        if ($x -lt $kernel64Bytes.Length) {
-            $danOSBin[$writeIndex] = $kernel64Bytes[$x]
-        }
-        else {
-            $danOSBin[$writeIndex] = 0xDB
-        }
-        $writeIndex++
+    if (![System.IO.File]::Exists("empty.img")) {
+        Write-Error "empty.img doesn't exist. You'll need to create it by hand. Follow the README.md."
     }
 
-    for ($x = 0; $x -lt ($kernelSectors * 512); $x++) {
-        if ($x -lt $kernelBytes.Length) {
-            $danOSBin[$writeIndex] = $kernelBytes[$x]
-        }
-        else {
-            $danOSBin[$writeIndex] = 0xDC
-        }
-        $writeIndex++
-    }
-    #>
+    Copy-Item -Path 'empty.img' -Destination $OUTPUT_FILE -Force
 
-    Write-Host "Writing $($danOSBin.Length) bytes to DanOS.bin"
-    TimeCommand { [System.IO.File]::WriteAllBytes("${PSScriptRoot}\DanOS.bin", $danOSBin) } -message 'Write DanOS.bin'
-    $emptyVhdSize = 3MB
+    TimeCommand {
+        $fs = [System.IO.File]::Open($OUTPUT_FILE, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite)
+        $fs.Position = 0
+        
+        $fs.Write($stage1Bytes)
 
-    # The VHD has a mandatory footer we cannot overwrite
-    $footerLength = 512
+        # Need to leave the parition info intact either from Stage1 itself, or the prebuild empty.img
+        $fs.Position = 512
+        $fs.Write($stage2Bytes)
 
-    $vhdFreeSpace = $emptyVhdSize - $footerLength
-
-    if ($danOSBin.Length -gt $vhdFreeSpace) {
-        Write-Error "VHD needs to be made bigger"
-    }
-
-    if (![System.IO.File]::Exists("empty.vhd")) {
-        # Creation is too slow, so just cache an empty one and use it
-        Write-Host "Creating empty VHD"
-        TimeCommand { New-VHD -Path empty.vhd -Fixed -SizeBytes $emptyVhdSize } -message 'Create empty VHD'
-    }
-
-    Copy-Item -Force .\empty.vhd .\DanOS.vhd
-
-    Write-Host "Bulding VHD"
-    $osBytes = Get-Content .\DanOS.vhd -Raw -AsByteStream
-    for ($x = 0; $x -lt $danOSBin.Count; $x++) {
-        $osBytes[$x] = $danOSBin[$x]
-    }
-
-    Write-Host "Writing $($osBytes.Length) bytes to VHD"
-    TimeCommand { [System.IO.File]::WriteAllBytes("${PSScriptRoot}\DanOS.vhd", $osBytes) } -message 'Build VHD'
+        $fs.Close()
+    } -message 'Assemble image'
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
