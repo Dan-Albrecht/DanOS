@@ -9,7 +9,7 @@ try {
     # QEMU will crash if we do a divide by zero and have accel=whpx
     # -serial mon:stdio - to see our serial messages
     # -monitor stdio - to control QEMU from console
-    qemu-system-x86_64.exe -machine type=q35 -drive id=disk,file=.\build\DanOS.vhd,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -serial mon:stdio
+    qemu-system-x86_64.exe -machine type=q35 -drive id=disk,file=.\build\DanOS.img,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -serial mon:stdio
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

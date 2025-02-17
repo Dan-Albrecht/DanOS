@@ -197,12 +197,4 @@ hexPrefix           db "0x", 0
 haltMsg             db `\r\nEnd of line.`, 0
 
 times 440 - ($ - $$) db 0xDA ; Above can be a max of 440 bytes; add padding as needed so below will be at exact needed offsets
-
-; MBR Data
-dd 0            ; Unique Disk ID. Aparently some OSs will just randomly overwrite
-dw 0            ; Read Write (0) / ReadOnly (5A5A)
-dq 0,0          ; First partion entry
-dq 0,0          ; Second partion entry
-dq 0,0          ; Thrid partion entry
-dq 0,0          ; Fouth patition entry
-db 0x55, 0xAA   ; Boot sector magic number
+; MBR is just baked into the image we assemble, so just leave this space open

@@ -22,3 +22,33 @@ https://www.rustyelectrons.com/posts/1-bare-metal-rust-bootstrapped-by-c/
 
 https://github.com/rust-osdev
 https://github.com/rust-osdev/bootloader
+
+## Creating empty.img
+
+```
+Create empty 6MB file
+=====================
+dd if=/dev/zero of=empty.img bs=6M count=1
+
+Partition it
+============
+parted empty.img
+mklabel msdos
+mkpart primary fat16 1MiB 100%
+<< above is where we're allocating our 1MB bootsector space >>
+set 1 boot on
+quit
+
+Format it
+=========
+losetup --find --show --partscan empty.img
+<< remember output of the partition >>
+lsblk
+<< Confirm partition is seen >>
+mkfs.fat -s 2 -v -F 16 /dev/loop0p1
+<< Should probably use 8+ MB so I don't have to force low sector count >>
+
+Lazy unmount
+============
+losetup -D
+```

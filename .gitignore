@@ -16,6 +16,7 @@ Cargo.lock
 # Various binary files we'll produce
 *.bin
 *.vhd
+*.img
 
 # Temp build files
 obj/
