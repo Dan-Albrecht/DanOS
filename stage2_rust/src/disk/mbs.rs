@@ -52,19 +52,42 @@ impl Mbr {
         })
     }
 
-    pub fn dumpActive(&self) {
+    pub fn dumpPartitions(&self) {
+        self.partition1.dumpPartition(1);
+        self.partition2.dumpPartition(2);
+        self.partition3.dumpPartition(3);
+        self.partition4.dumpPartition(4);
+    }
+
+    pub fn getActivePartition(&self) -> Result<Option<(&PartitionEntry, u8)>, &'static str> {
+        let mut result: Option<(&PartitionEntry, u8)> = None;
+
         if self.partition1.bootable {
-            self.dumpPartition("1", &self.partition1);
+            result = Some((&self.partition1, 1));
         }
+
         if self.partition2.bootable {
-            self.dumpPartition("2", &self.partition2);
+            if result.is_some() {
+                return Err("Multiple bootable partitions found");
+            }
+            result = Some((&self.partition2, 2));
         }
+
         if self.partition3.bootable {
-            self.dumpPartition("3", &self.partition3);
+            if result.is_some() {
+                return Err("Multiple bootable partitions found");
+            }
+            result = Some((&self.partition3, 3));
         }
+
         if self.partition4.bootable {
-            self.dumpPartition("4", &self.partition4);
+            if result.is_some() {
+                return Err("Multiple bootable partitions found");
+            }
+            result = Some((&self.partition4, 4));
         }
+
+        Ok(result)
     }
 
     fn getPE(buffer: &[u8], offset: usize) -> PartitionEntry {
@@ -77,21 +100,37 @@ impl Mbr {
             end_head: buffer[offset + 5],
             end_sector: buffer[offset + 6] & 0b0011_1111,
             end_cylinder: (buffer[offset + 6] & 0b1100_0000) << 2 | buffer[offset + 7],
-            start_lba: u32::from_le_bytes([buffer[offset + 8], buffer[offset + 9], buffer[offset + 10], buffer[offset + 11]]),
-            size: u32::from_le_bytes([buffer[offset + 12], buffer[offset + 13], buffer[offset + 14], buffer[offset + 15]]),
+            start_lba: u32::from_le_bytes([
+                buffer[offset + 8],
+                buffer[offset + 9],
+                buffer[offset + 10],
+                buffer[offset + 11],
+            ]),
+            size: u32::from_le_bytes([
+                buffer[offset + 12],
+                buffer[offset + 13],
+                buffer[offset + 14],
+                buffer[offset + 15],
+            ]),
         }
     }
-    
-    fn dumpPartition(&self, arg: &str, pe: &PartitionEntry) {
-        vgaWriteLine!("Partition {} - Bootable: {}", arg, pe.bootable);
-        vgaWriteLine!("  Start Head: {}", pe.start_head);
-        vgaWriteLine!("  Start Sector: {}", pe.start_sector);
-        vgaWriteLine!("  Start Cylinder: {}", pe.start_cylinder);
-        vgaWriteLine!("  Partition Type: {}", pe.partition_type);
-        vgaWriteLine!("  End Head: {}", pe.end_head);
-        vgaWriteLine!("  End Sector: {}", pe.end_sector);
-        vgaWriteLine!("  End Cylinder: {}", pe.end_cylinder);
-        vgaWriteLine!("  Start LBA: {}", pe.start_lba);
-        vgaWriteLine!("  Size: {}", pe.size);
+}
+
+impl PartitionEntry {
+    pub fn dumpPartition(&self, partitionNumber: u8) {
+        vgaWriteLine!(
+            "Partition {} - Bootable: {}",
+            partitionNumber,
+            self.bootable
+        );
+        vgaWriteLine!("  Start Head: {}", self.start_head);
+        vgaWriteLine!("  Start Sector: {}", self.start_sector);
+        vgaWriteLine!("  Start Cylinder: {}", self.start_cylinder);
+        vgaWriteLine!("  Partition Type: {}", self.partition_type);
+        vgaWriteLine!("  End Head: {}", self.end_head);
+        vgaWriteLine!("  End Sector: {}", self.end_sector);
+        vgaWriteLine!("  End Cylinder: {}", self.end_cylinder);
+        vgaWriteLine!("  Start LBA: {}", self.start_lba);
+        vgaWriteLine!("  Size: {}", self.size);
     }
 }

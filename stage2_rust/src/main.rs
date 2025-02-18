@@ -10,7 +10,7 @@ mod memory;
 use core::{arch::asm, panic::PanicInfo};
 use disk::{diskDriver::DiskDriver, fatDriver::FatDriver};
 use kernel_shared::{
-    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, textMode::teletype, vgaWrite, vgaWriteLine
+    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, textMode::teletype, vgaWriteLine
 };
 use memory::map::MemoryMap;
 
@@ -78,6 +78,5 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
     let fat = FatDriver::new(disk);
     let kernel32 = fat.findKernel32().unwrap();
     vgaWriteLine!("Kernel32 is at 0x{:X}", kernel32);
-    haltLoopWithMessage!("End of current 16-bit code");
-    
+    haltLoopWithMessage!("End of current 16-bit code");    
 }

@@ -40,11 +40,15 @@ try {
     # We're building an elf file; so call it that
     Copy-Item -Path .\target\i386-unknown-none\$buildType\stage2_rust -Destination .\target\i386-unknown-none\$buildType\stage2_rust.elf -Force
 
-    # Get a flat binary we can throw right into memory and jump to
-    rust-objcopy.exe --input-target=elf32-i386 -O binary .\target\i386-unknown-none\$buildType\stage2_rust.elf .\target\i386-unknown-none\$buildType\stage2_rust.bin
+    TimeCommand {
+        # Get a flat binary we can throw right into memory and jump to
+        rust-objcopy.exe --input-target=elf32-i386 -O binary .\target\i386-unknown-none\$buildType\stage2_rust.elf .\target\i386-unknown-none\$buildType\stage2_rust.bin
+    } -message 'Stage2 flatten'
 
-    # Disassemble so we can see what we got. The real Linux tools are better than the rust-objdump one.
-    wsl -- objdump -D -m i8086 -M intel -j .text ./target/i386-unknown-none/$buildType/stage2_rust.elf > ./target/i386-unknown-none/$buildType/stage2_rust.elf.asm
+    TimeCommand {
+        # Disassemble so we can see what we got. The real Linux tools are better than the rust-objdump one.
+        wsl -- objdump -D -m i8086 -M intel -j .text ./target/i386-unknown-none/$buildType/stage2_rust.elf > ./target/i386-unknown-none/$buildType/stage2_rust.elf.asm
+    } -message 'Stage2 disassemble'
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
