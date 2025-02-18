@@ -26,6 +26,16 @@ fn panic(info: &PanicInfo) -> ! {
     haltLoopWithMessage!("{}", info);
 }
 
+#[cfg(debug_assertions)]
+fn sayHello() {
+    vgaWriteLine!("Hi from 32-bit Debug Rust!");
+}
+
+#[cfg(not(debug_assertions))]
+fn sayHello() {
+    vgaWriteLine!("Hi from 32-bit Release Rust!");
+}
+
 // Arguments are 32-bit since we know the bootloader code is operating in that mode
 // Args in ECX, EDX, then stack
 #[no_mangle]
@@ -35,8 +45,7 @@ pub extern "fastcall" fn DanMain(
     memoryMapLocation: u32,
 ) -> ! {
     unsafe {
-        // Previous stage didn't newline after its last message
-        vgaWriteLine!("\r\nWe've made it to Rust!");
+        sayHello();
 
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
