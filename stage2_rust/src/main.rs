@@ -10,28 +10,33 @@ mod memory;
 use core::{arch::asm, panic::PanicInfo};
 use disk::{diskDriver::DiskDriver, fatDriver::FatDriver};
 use kernel_shared::{
-    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, textMode::teletype, vgaWriteLine
+    assemblyStuff::{halt::haltLoop, misc::disablePic},
+    gdtStuff::Gdt,
+    haltLoopWithMessage,
+    textMode::teletype,
+    vgaWriteLine,
 };
 use memory::map::MemoryMap;
 
 #[panic_handler]
 fn panic(pi: &PanicInfo) -> ! {
-    teletype::printLine(b"16-bit panic!");
 
+    // BUGBUG: Seems the VGA write methods don't update the cursor position in a way the BIOS functions will notice
+    // so just pick one of the two methods to use for now
     if let Some(msg) = pi.message().as_str() {
+        teletype::printLine(b"16-bit panic!");
         teletype::printLine(msg.as_bytes());
-    } else {
-        teletype::printLine(b"Couldn't get panic message easily; trying harder");
-        // We're risking a further panic here, but really want to see the message
-        haltLoopWithMessage!("Panic: {:?}", pi);
-    }
+        teletype::printLine(b"End of line");
 
-    teletype::printLine(b"End of line");
-
-    unsafe {
-        loop {
-            asm!("hlt");
+        unsafe {
+            loop {
+                asm!("hlt");
+            }
         }
+    } else {
+        vgaWriteLine!("16-big panic!");
+        // We're risking a further panic here, but really want to see the message
+        haltLoopWithMessage!("{:?}", pi);
     }
 }
 
@@ -58,7 +63,9 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
     // Only static strings should be used before this switch as fmt loves to
     // try and jump somwhere we cannot yet reach.
     let gdt = Gdt::create32BitFlat();
-    unsafe { gdt.enterUnrealMode(); };
+    unsafe {
+        gdt.enterUnrealMode();
+    };
 
     vgaWriteLine!("Running in Unreal mode");
 
@@ -75,8 +82,9 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
 
     let disk = DiskDriver::new(driveNumber.try_into().unwrap());
 
-    let fat = FatDriver::new(disk);
+    let fat = FatDriver::new(disk).unwrap();
     let kernel32 = fat.findKernel32().unwrap();
+
     vgaWriteLine!("Kernel32 is at 0x{:X}", kernel32);
-    haltLoopWithMessage!("End of current 16-bit code");    
+    haltLoopWithMessage!("End of current 16-bit code");
 }

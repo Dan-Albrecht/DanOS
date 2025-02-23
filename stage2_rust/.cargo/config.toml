@@ -3,6 +3,7 @@ target = "./i386-unknown-none.json"
 # Single thread, as potential hack for 'issues' linking using x86_64-pc-windows-gnu
 # https://github.com/rust-lang/rust/issues/115985#issuecomment-1754112623
 # rustflags = ["-Clink-arg=--threads=1"]
+rustflags = ["-Zmacro-backtrace"]
 
 [unstable]
 build-std = ["core"]

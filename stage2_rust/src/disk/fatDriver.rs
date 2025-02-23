@@ -1,9 +1,10 @@
-use kernel_shared::{vgaWrite, vgaWriteLine};
-
 use super::{diskDriver::DiskDriver, mbs::Mbr};
+use enumflags2::{BitFlag, bitflags};
+use kernel_shared::{vgaWrite, vgaWriteLine};
 
 pub struct FatDriver {
     disk: DiskDriver,
+    f16: Option<Fat16>,
 }
 
 // BIOS Parameter Block
@@ -32,12 +33,17 @@ struct Fat16 {
     base_lba: u32, // LBA of the first sector of the partition
 }
 
-const ATTR_READ_ONLY: u8 = 0x01;
-const ATTR_HIDDEN: u8 = 0x02;
-const ATTR_SYSTEM: u8 = 0x04;
-const ATTR_VOLUME_ID: u8 = 0x08;
-const ATTR_DIRECTORY: u8 = 0x10;
-const ATTR_ARCHIVE: u8 = 0x20;
+#[bitflags]
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DirectoryEntryAttribute {
+    ReadOnly = 0x01,
+    Hidden = 0x02,
+    System = 0x04,
+    VolumeId = 0x08,
+    Directory = 0x10,
+    Archive = 0x20,
+}
 
 #[repr(C, packed)]
 struct DirectoryEntry {
@@ -52,7 +58,7 @@ impl Fat16 {
         Self { bpb, base_lba }
     }
 
-    pub fn doSomething(&self, disk: &DiskDriver) -> Result<(), &'static str> {
+    pub fn findFile(&self, disk: &DiskDriver, name: &[u8], ext: &[u8]) -> Result<(), &'static str> {
         const FAT_ENTRIES: usize = 512;
         let mut buffer = [0 as u8; FAT_ENTRIES * 2];
 
@@ -66,9 +72,7 @@ impl Fat16 {
         let _fatTable =
             unsafe { core::slice::from_raw_parts(&buffer as *const _ as *const u16, FAT_ENTRIES) };
 
-        self.dumpRootDirectory(disk)?;
-
-        Ok(())
+        Err("File not found")
     }
 
     fn dumpRootDirectory(&self, disk: &DiskDriver) -> Result<(), &'static str> {
@@ -86,33 +90,71 @@ impl Fat16 {
             rootDirSize
         );
 
-        let mut buffer = [0 as u8; 512];
-        disk.read(rootDirStartLba.into(), &mut buffer)?;
-        let dirs : [DirectoryEntry; 16] = unsafe { core::mem::transmute(buffer) };
-        for dir in dirs.iter() {
-            if dir.attributes & ATTR_VOLUME_ID != 0 {
-                vgaWriteLine!(" Volume ID / Root Directory");
-                continue;
-            }
-            if dir.name[0] == 0 {
-                // End of data
-                break;
-            }
-            
-            if dir.name[0] == 0xE5 {
-                // This entry is free, but there might be more
-                continue;
+        const BUFFER_LENGTH: usize = 512;
+        const ENTRIES_PER_SECTOR: usize = BUFFER_LENGTH / core::mem::size_of::<DirectoryEntry>();
+
+        // Confirm the sizes are exact multiples
+        const { assert!(BUFFER_LENGTH % core::mem::size_of::<DirectoryEntry>() == 0) };
+
+        let mut buffer = [0 as u8; BUFFER_LENGTH];
+        let mut lba: u64 = rootDirStartLba.into();
+        let mut rootDirRead = 0;
+        let mut done = false;
+        let mut entriesRead = 0;
+
+        while rootDirRead < rootDirSize && !done {
+            disk.read(lba, &mut buffer)?;
+
+            let entries: [DirectoryEntry; ENTRIES_PER_SECTOR] =
+                unsafe { core::mem::transmute(buffer) };
+
+            for entry in entries.iter() {
+                entriesRead += 1;
+                let attributes = DirectoryEntryAttribute::from_bits_truncate(entry.attributes);
+
+                if attributes.contains(DirectoryEntryAttribute::VolumeId) {
+                    vgaWriteLine!(" Volume ID / Root Directory");
+                    continue;
+                }
+
+                if entry.name[0] == 0 {
+                    // End of data
+                    done = true;
+                    vgaWriteLine!("Finished reading root directory at entry {}", entriesRead);
+                    break;
+                }
+
+                if entry.name[0] == 0xE5 {
+                    // This entry is free, but there might be more
+                    continue;
+                }
+
+                if attributes.contains(DirectoryEntryAttribute::Directory) {
+                    vgaWrite!(" Directory: ");
+                } else {
+                    vgaWrite!(" File: ");
+                }
+
+                let nameEnd = entry
+                    .name
+                    .iter()
+                    .rposition(|&char| char != 0x20)
+                    .unwrap_or(entry.name.len());
+
+                let extEnd = entry
+                    .ext
+                    .iter()
+                    .rposition(|&char| char != 0x20)
+                    .unwrap_or(entry.ext.len());
+
+                let name = core::str::from_utf8(&entry.name[0..=nameEnd]).unwrap_or("Invalid Name");
+                let ext = core::str::from_utf8(&entry.ext[0..=extEnd]).unwrap_or("Invalid Ext");
+
+                vgaWriteLine!(" {}.{}", name, ext);
             }
 
-            if dir.attributes & ATTR_DIRECTORY != 0 {
-                vgaWrite!(" Directory: ");
-            } else {
-                vgaWrite!(" File: ");
-            }
-
-            let name = core::str::from_utf8(&dir.name).unwrap_or("Invalid UTF-8");
-            let ext = core::str::from_utf8(&dir.ext).unwrap_or("Invalid UTF-8");
-            vgaWriteLine!(" {}.{}", name, ext);
+            rootDirRead += BUFFER_LENGTH as u32;
+            lba += 1;
         }
 
         Ok(())
@@ -120,15 +162,11 @@ impl Fat16 {
 }
 
 impl FatDriver {
-    pub fn new(disk: DiskDriver) -> Self {
-        FatDriver { disk }
-    }
-
-    pub fn findKernel32(&self) -> Result<usize, &'static str> {
+    pub fn new(disk: DiskDriver) -> Result<Self, &'static str> {
         let mut buffer = [0 as u8; 512];
 
         // Read the first sector of the disk so we can get partition information
-        self.disk.read(0, &mut buffer)?;
+        disk.read(0, &mut buffer)?;
 
         let mbr = Mbr::new(&buffer)?;
         let psResult = mbr.getActivePartition()?;
@@ -142,9 +180,25 @@ impl FatDriver {
         let partitionNumber = peResult.1;
         pe.dumpPartition(partitionNumber);
 
-        let bpb = self.readBpb(pe)?;
+        let mut result = FatDriver { disk, f16: None };
+
+        let bpb = result.readBpb(pe)?;
         let fat16 = Fat16::new(bpb, pe.start_lba);
-        fat16.doSomething(&self.disk)?;
+        fat16.dumpRootDirectory(&result.disk)?;
+        result.f16 = Some(fat16);
+
+        Ok(result)
+    }
+
+    pub fn findKernel32(&self) -> Result<usize, &'static str> {
+        if self.f16.is_none() {
+            return Err("No FAT16 driver found");
+        }
+
+        self.f16
+            .as_ref()
+            .unwrap()
+            .findFile(&self.disk, b"HI", b"TXT")?;
 
         Ok(0)
     }
