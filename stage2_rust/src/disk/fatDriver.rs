@@ -1,6 +1,10 @@
 use super::{diskDriver::DiskDriver, mbs::Mbr};
+use core::str;
 use enumflags2::{BitFlag, bitflags};
 use kernel_shared::{vgaWrite, vgaWriteLine};
+
+// Sector - Unit of access for the media. We'll be using 512 bytes.
+// Cluster - Multiple of Sector. Instrinct allocation unit for the file system.
 
 pub struct FatDriver {
     disk: DiskDriver,
@@ -19,7 +23,7 @@ struct Bpb {
     root_entries: u16,
     total_sectors: u16, // If this is 0, then use total_sectors_large
     media_descriptor: u8,
-    sectors_per_fat: u16,
+    sectors_per_fat: u16, // BPB_FATSz16
     sectors_per_track: u16,
     head_count: u16,
     hidden_sectors: u32,
@@ -46,11 +50,21 @@ pub enum DirectoryEntryAttribute {
 }
 
 #[repr(C, packed)]
+#[derive(Copy, Clone)]
 struct DirectoryEntry {
     pub name: [u8; 8],
     pub ext: [u8; 3],
     pub attributes: u8,
-    pub _unused: [u8; 20],
+    reserved: u8,
+    pub creation_time_tenths: u8,
+    pub creation_time: u16,
+    pub creation_date: u16,
+    pub last_access_date: u16,
+    pub first_cluster_high: u16,
+    pub last_write_time: u16,
+    pub last_write_date: u16,
+    pub first_cluster_low: u16,
+    pub file_size: u32,
 }
 
 impl Fat16 {
@@ -69,13 +83,114 @@ impl Fat16 {
 
         disk.read(start, &mut buffer)?;
 
-        let _fatTable =
+        let fatTable =
             unsafe { core::slice::from_raw_parts(&buffer as *const _ as *const u16, FAT_ENTRIES) };
 
-        Err("File not found")
+        let de = self.walkRoot(disk, false, Some((name, ext)))?;
+        if de.is_none() {
+            return Err("File not found");
+        }
+
+        let de = de.unwrap();
+
+        if de.first_cluster_high != 0 {
+            return Err("High cluster is not 0; so this is probably FAT32");
+        }
+
+        vgaWriteLine!("FAT0 is 0x{:X}", fatTable[0]);
+        vgaWriteLine!("FAT1 is 0x{:X}", fatTable[1]);
+
+        let root_dir_sectors = ((self.bpb.root_entries * 32) + (self.bpb.bytes_per_sector - 1))
+            / self.bpb.bytes_per_sector;
+
+        let first_data_sector = self.bpb.reserved_sectors
+            + (self.bpb.fat_count as u16 * self.bpb.sectors_per_fat)
+            + root_dir_sectors;
+
+        let first_data_lba = self.base_lba + first_data_sector as u32;
+
+        let max_cluster = (self.bpb.total_sectors / self.bpb.sectors_per_cluster as u16) as usize;
+        let mut cluster = de.first_cluster_low as usize;
+        let mut bytes_to_read = de.file_size as usize;
+
+        loop {
+            if bytes_to_read == 0 {
+                return Err("Bytes to read is 0");
+            }
+
+            let fatEntry = fatTable[cluster];
+            vgaWriteLine!("<<Cluster {} has FAT entry 0x{:X}>>", cluster, fatEntry);
+
+            if fatEntry == 0 {
+                return Err("Unexpected free cluster");
+            }
+
+            if fatEntry == 1 {
+                return Err("Unexpected reserved cluster value");
+            }
+
+            if fatEntry >= (max_cluster as u16) + 1 && fatEntry <= 0xFFF6 {
+                return Err("Reserved cluster value");
+            }
+
+            if fatEntry == 0xFFF7 {
+                return Err("Bad cluster");
+            }
+
+            // We're past all the bad cases, so we can read the cluster
+            let cluster_lba =
+                first_data_lba + (cluster as u32 - 2) * self.bpb.sectors_per_cluster as u32;
+
+            vgaWrite!("<<Reading cluster {} at LBA 0x{:X}", cluster, cluster_lba);
+
+            let mut buffer = [0 as u8; 1024]; // BUGBUG: Buffer should be size of sector and it not account for it with multiple reads for look at the next FAT entry
+            disk.read(cluster_lba.into(), &mut buffer)?;
+            let read_end;
+
+            if bytes_to_read <= buffer.len() {
+                read_end = bytes_to_read;
+            } else {
+                read_end = buffer.len();
+            }
+
+            bytes_to_read -= read_end; // BUGBUG: Underflow?
+
+            vgaWriteLine!(" need 0x{:X} and 0x{:X} left>>", read_end, bytes_to_read);
+
+            let data = str::from_utf8(&buffer[0..read_end]).unwrap_or("Invalid string data");
+            let l = data.len();
+            let c = data.chars().count();
+            vgaWrite!("{}<<{},{}>>", data, l, c);
+
+            if fatEntry >= 0xFFF8 && fatEntry <= 0xFFFE {
+                // Reserved, but aparently can be treated as allocated and final cluster
+                break;
+            }
+
+            if fatEntry == 0xFFFF {
+                // Allocated and final cluster
+                break;
+            }
+
+            cluster = fatEntry as usize;
+        }
+
+        vgaWriteLine!("<<End of file>>");
+
+        if bytes_to_read != 0 {
+            vgaWriteLine!("Bytes to read is 0x{:X} at end of file", bytes_to_read);
+            return Err("Bytes to read is not 0 at end of file");
+        }
+
+        Ok(())
     }
 
-    fn dumpRootDirectory(&self, disk: &DiskDriver) -> Result<(), &'static str> {
+    fn walkRoot(
+        &self,
+        disk: &DiskDriver,
+        printInfo: bool,
+        filename: Option<(&[u8], &[u8])>,
+    ) -> Result<Option<DirectoryEntry>, &'static str> {
         let rootDirStartSector =
             self.bpb.reserved_sectors + (self.bpb.fat_count as u16 * self.bpb.sectors_per_fat);
         let rootDirStartLba = self.base_lba + rootDirStartSector as u32;
@@ -84,11 +199,13 @@ impl Fat16 {
             + (self.bpb.bytes_per_sector as u32 - 1))
             / self.bpb.bytes_per_sector as u32;
 
-        vgaWriteLine!(
-            "Root directory starts at LBA 0x{:X} and is {} sectors and contains:",
-            rootDirStartLba,
-            rootDirSize
-        );
+        if printInfo {
+            vgaWriteLine!(
+                "Root directory starts at LBA 0x{:X} and is {} sectors and contains:",
+                rootDirStartLba,
+                rootDirSize
+            );
+        }
 
         const BUFFER_LENGTH: usize = 512;
         const ENTRIES_PER_SECTOR: usize = BUFFER_LENGTH / core::mem::size_of::<DirectoryEntry>();
@@ -113,14 +230,18 @@ impl Fat16 {
                 let attributes = DirectoryEntryAttribute::from_bits_truncate(entry.attributes);
 
                 if attributes.contains(DirectoryEntryAttribute::VolumeId) {
-                    vgaWriteLine!(" Volume ID / Root Directory");
+                    if printInfo {
+                        vgaWriteLine!(" Volume ID / Root Directory");
+                    }
                     continue;
                 }
 
                 if entry.name[0] == 0 {
                     // End of data
                     done = true;
-                    vgaWriteLine!("Finished reading root directory at entry {}", entriesRead);
+                    if printInfo {
+                        vgaWriteLine!("Finished reading root directory at entry {}", entriesRead);
+                    }
                     break;
                 }
 
@@ -129,35 +250,49 @@ impl Fat16 {
                     continue;
                 }
 
-                if attributes.contains(DirectoryEntryAttribute::Directory) {
-                    vgaWrite!(" Directory: ");
-                } else {
-                    vgaWrite!(" File: ");
+                if printInfo {
+                    if attributes.contains(DirectoryEntryAttribute::Directory) {
+                        vgaWrite!(" Directory: ");
+                    } else {
+                        vgaWrite!(" File: ");
+                    }
                 }
 
-                let nameEnd = entry
-                    .name
-                    .iter()
-                    .rposition(|&char| char != 0x20)
-                    .unwrap_or(entry.name.len());
+                if printInfo || filename.is_some() {
+                    let nameEnd = entry
+                        .name
+                        .iter()
+                        .rposition(|&char| char != 0x20)
+                        .unwrap_or(entry.name.len());
 
-                let extEnd = entry
-                    .ext
-                    .iter()
-                    .rposition(|&char| char != 0x20)
-                    .unwrap_or(entry.ext.len());
+                    let extEnd = entry
+                        .ext
+                        .iter()
+                        .rposition(|&char| char != 0x20)
+                        .unwrap_or(entry.ext.len());
 
-                let name = core::str::from_utf8(&entry.name[0..=nameEnd]).unwrap_or("Invalid Name");
-                let ext = core::str::from_utf8(&entry.ext[0..=extEnd]).unwrap_or("Invalid Ext");
+                    let name =
+                        core::str::from_utf8(&entry.name[0..=nameEnd]).unwrap_or("Invalid Name");
+                    let ext = core::str::from_utf8(&entry.ext[0..=extEnd]).unwrap_or("Invalid Ext");
+                    let size = entry.file_size;
 
-                vgaWriteLine!(" {}.{}", name, ext);
+                    if printInfo {
+                        vgaWriteLine!(" {}.{} - {} bytes", name, ext, size);
+                    }
+
+                    if let Some((file_name, file_ext)) = filename {
+                        if name.as_bytes() == file_name && ext.as_bytes() == file_ext {
+                            return Ok(Some(*entry));
+                        }
+                    }
+                }
             }
 
             rootDirRead += BUFFER_LENGTH as u32;
             lba += 1;
         }
 
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -184,7 +319,7 @@ impl FatDriver {
 
         let bpb = result.readBpb(pe)?;
         let fat16 = Fat16::new(bpb, pe.start_lba);
-        fat16.dumpRootDirectory(&result.disk)?;
+        fat16.walkRoot(&result.disk, true, None)?;
         result.f16 = Some(fat16);
 
         Ok(result)
@@ -198,7 +333,8 @@ impl FatDriver {
         self.f16
             .as_ref()
             .unwrap()
-            .findFile(&self.disk, b"HI", b"TXT")?;
+            //.findFile(&self.disk, b"HI", b"TXT")?;
+            .findFile(&self.disk, b"LARGERT", b"XT")?;
 
         Ok(0)
     }
@@ -256,6 +392,9 @@ impl Bpb {
         vgaWriteLine!("FAT count: {}", { self.fat_count });
         vgaWriteLine!("Root entries: {}", { self.root_entries });
         vgaWriteLine!("Total sectors: {}", { self.total_sectors });
+        vgaWriteLine!("Total clusters: {}", {
+            self.total_sectors / self.sectors_per_cluster as u16
+        });
         vgaWriteLine!("Media descriptor: {}", { self.media_descriptor });
         vgaWriteLine!("Sectors per FAT: {}", { self.sectors_per_fat });
         vgaWriteLine!("Sectors per track: {}", { self.sectors_per_track });
