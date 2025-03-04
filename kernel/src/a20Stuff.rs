@@ -8,7 +8,7 @@ use kernel_shared::{
     vgaWriteLine,
 };
 
-pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool {
+pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool { unsafe {
     // Write to an even and odd megabyte address
     // If A20 is disabled, the memory will wrap around
     // and we'll write to the same location and the final
@@ -60,4 +60,4 @@ pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool {
     }
 
     haltLoopWithMessage!("Couldn't find a location to do A20 test");
-}
+}}

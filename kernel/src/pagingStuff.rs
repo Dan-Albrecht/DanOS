@@ -23,7 +23,7 @@ pub fn enablePaging(memoryMap: &MemoryMap) -> usize {
 }
 
 // 5.1.3 Physical-Address Extensions (PAE) Bit
-unsafe fn enablePae() {
+unsafe fn enablePae() { unsafe {
     asm!(
         "mov eax, cr4",
         // 5.1.3 Physical-Address Extensions (PAE) Bit
@@ -32,9 +32,9 @@ unsafe fn enablePae() {
         // Clobbers:
         out("eax") _,
     );
-}
+}}
 
-unsafe fn enableLongMode() {
+unsafe fn enableLongMode() { unsafe {
     asm!(
         // 3.1.7 Extended Feature Enable Register (EFER)
         "mov ecx, 0xC0000080",
@@ -46,9 +46,9 @@ unsafe fn enableLongMode() {
         out("eax") _,
         out("ecx") _,
     );
-}
+}}
 
-unsafe fn setPageData(memoryMap: &MemoryMap) -> usize {
+unsafe fn setPageData(memoryMap: &MemoryMap) -> usize { unsafe {
     vgaWriteLine!("Getting book");
     let result = PageBook::fromScratch(memoryMap);
     let cr3 = result.Book.getCR3Value();
@@ -60,9 +60,9 @@ unsafe fn setPageData(memoryMap: &MemoryMap) -> usize {
     );
 
     return result.LowestPhysicalAddressUsed;
-}
+}}
 
-unsafe fn reallyEnablePaging() {
+unsafe fn reallyEnablePaging() { unsafe {
     asm!(
         "mov eax, cr0",
         // 5.1.2 Page-Translation Enable (PG) Bit
@@ -71,4 +71,4 @@ unsafe fn reallyEnablePaging() {
         // Clobbers:
         out("eax") _,
     );
-}
+}}
