@@ -1,5 +1,4 @@
 use core::arch::asm;
-use core::fmt::Write;
 
 use kernel_shared::{
     memoryMap::MemoryMap, pageTable::pageBook::PageBook,

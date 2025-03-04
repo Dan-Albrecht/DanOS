@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use core::fmt::Write;
 use kernel_shared::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage,

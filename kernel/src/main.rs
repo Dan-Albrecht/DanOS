@@ -10,7 +10,6 @@ use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
 use kernel_shared::relocation::relocateKernel64;
-use core::fmt::Write;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::misc::disablePic;
