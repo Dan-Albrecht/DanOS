@@ -38,7 +38,7 @@ fn sayHello() {
 
 // Arguments are 32-bit since we know the bootloader code is operating in that mode
 // Args in ECX, EDX, then stack
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "fastcall" fn DanMain(
     kernel64Address: u32,
     kernel64Length: u32,
