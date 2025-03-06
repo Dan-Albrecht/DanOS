@@ -1,4 +1,3 @@
-use core::fmt::Write;
 use crate::loggerWriteLine;
 use super::table::Interrupt0;
 use super::table::Interrupt1;
@@ -256,9 +255,7 @@ use super::table::Interrupt252;
 use super::table::Interrupt253;
 use super::table::Interrupt254;
 use super::table::Interrupt255;
-//use crate::vgaWriteLine;
 use super::InteruptDescriptorTable::{Entry, Table};
-//use core::fmt::Write;
 
 pub fn SetupStuff(table: *mut Table) {
     unsafe {
@@ -522,7 +519,7 @@ pub fn SetupStuff(table: *mut Table) {
 }
 
 #[inline(never)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
     if index == 0 {
         loggerWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);

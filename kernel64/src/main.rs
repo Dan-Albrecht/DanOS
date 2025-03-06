@@ -25,7 +25,7 @@ use core::{arch::asm, fmt::Write};
 
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
-use kernel_shared::gdtStuff::{GetGdtr, GDT, GDTR};
+use kernel_shared::gdtStuff::{Gdt, GetGdtr, GDTR};
 use kernel_shared::memoryMap::MemoryMap;
 use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
@@ -36,7 +36,7 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{magicConstants::*, vgaWriteLine};
+use kernel_shared::{haltLoopWithMessage, magicConstants::*, vgaWriteLine};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
@@ -109,7 +109,7 @@ fn mapKernelData(
 
 // Arguments 1-6 are passed via registers RDI, RSI, RDX, RCX, R8, R9 respectively;
 // Arguments 7 and above are pushed on to the stack.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> ! {
     loggerWriteLine!(
         "Welcome to 64-bit Rust! We're 0x{:X} bytes long.",
@@ -256,6 +256,7 @@ extern "sysv64" fn newStackHome(
     kernelDataPhysical: usize,
 ) -> ! {
     loggerWriteLine!("We are using our new stack space");
+    haltLoopWithMessage!("Temp parking");
 
     // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use it again
     let memoryMap = MemoryMap::Load(memoryMapLocation);
@@ -287,7 +288,7 @@ extern "sysv64" fn newStackHome(
     loggerWriteLine!("We handled the new breakpoint!");
 
     // BUGBUG: This is on the stack, we should probably allocate from BDH
-    let gdt = GDT::new();
+    let gdt = Gdt::new();
     let mut gdtr = GDTR::new();
     loggerWriteLine!("GDT @ 0x{:X}", &gdt as *const _ as usize);
     unsafe {

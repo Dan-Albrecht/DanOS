@@ -44,6 +44,7 @@ macro_rules! loggerWrite {
         if let Some(formattedString) = core::format_args!($($args)*).as_str() {
             $crate::logging::logger::SystemLogger.Write(formattedString.as_bytes());
         } else {
+            use core::fmt::Write;
             let _ = write!($crate::logging::logger::LogWriter::new(), $($args)*);
         }
     };
@@ -74,6 +75,6 @@ impl Logger {
             let _ = self.serial.as_ref().unwrap().Send(msg);
         }
 
-        kernel_shared::textMode::textMode::writeString(msg);
+        kernel_shared::textMode::vga::writeString(msg);
     }
 }

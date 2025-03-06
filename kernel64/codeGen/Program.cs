@@ -8,25 +8,27 @@ use super::InteruptDescriptorTable::{ExceptionStackFrame, InterruptHandlerIntImp
 
 const string noCodeStub = """
 #[inline(never)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "x86-interrupt" fn Interrupt__SUFFIX__(stackFrame: ExceptionStackFrame) {
-    InterruptHandlerIntImpl(__SUFFIX__, stackFrame);
+    unsafe {
+        InterruptHandlerIntImpl(__SUFFIX__, stackFrame);
+    }
 }
 """;
 
 const string codeStub = """
 #[inline(never)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "x86-interrupt" fn Interrupt__SUFFIX__(stackFrame: ExceptionStackFrame, errorCode: u64) {
-    InterruptHandlerWithCodeIntImpl(__SUFFIX__, stackFrame, errorCode);
+    unsafe {
+        InterruptHandlerWithCodeIntImpl(__SUFFIX__, stackFrame, errorCode);
+    }
 }
 
 """;
 
 const string setupProlog = """
-//use crate::vgaWriteLine;
 use super::InteruptDescriptorTable::{Entry, Table};
-//use core::fmt::Write;
 
 pub fn SetupStuff(table: *mut Table) {
     unsafe {
@@ -38,7 +40,6 @@ const string setupRegistration = """
 """;
 
 const string loggingUse = """
-use core::fmt::Write;
 use crate::loggerWriteLine;
 
 """;
@@ -53,7 +54,7 @@ const string setupEpilog = """
 }
 
 #[inline(never)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn SetAddress(entry: &mut Entry, address: u64, index: u16) {
     if index == 0 {
         loggerWriteLine!("Setting interrupt 0x{:X} to 0x{:X}", index, address);
