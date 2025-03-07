@@ -1,7 +1,7 @@
 use super::{diskDriver::DiskDriver, mbs::Mbr};
-use core::str;
+use core::{slice, str};
 use enumflags2::{BitFlag, bitflags};
-use kernel_shared::{vgaWrite, vgaWriteLine};
+use kernel_shared::{haltLoopWithMessage, vgaWrite, vgaWriteLine};
 
 // Sector - Unit of access for the media. We'll be using 512 bytes.
 // Cluster - Multiple of Sector. Instrinct allocation unit for the file system.
@@ -67,12 +67,25 @@ struct DirectoryEntry {
     pub file_size: u32,
 }
 
+#[derive(Copy, Clone)]
+pub struct FileInfo {
+    pub name: [u8; 8],
+    pub ext: [u8; 3],
+    pub file_size: u32,
+    pub first_cluster_low: u16,
+}
+
 impl Fat16 {
     pub fn new(bpb: Bpb, base_lba: u32) -> Self {
         Self { bpb, base_lba }
     }
 
-    pub fn findFile(&self, disk: &DiskDriver, name: &[u8], ext: &[u8]) -> Result<(), &'static str> {
+    pub fn printFile(
+        &self,
+        disk: &DiskDriver,
+        name: &[u8],
+        ext: &[u8],
+    ) -> Result<(), &'static str> {
         const FAT_ENTRIES: usize = 512;
         let mut buffer = [0 as u8; FAT_ENTRIES * 2];
 
@@ -83,10 +96,10 @@ impl Fat16 {
 
         disk.read(start, &mut buffer)?;
 
-        let fatTable =
+        let fatTable: &[u16] =
             unsafe { core::slice::from_raw_parts(&buffer as *const _ as *const u16, FAT_ENTRIES) };
 
-        let de = self.walkRoot(disk, false, Some((name, ext)))?;
+        let de = self.findFile(disk, false, Some((name, ext)))?;
         if de.is_none() {
             return Err("File not found");
         }
@@ -119,7 +132,7 @@ impl Fat16 {
             }
 
             let fatEntry = fatTable[cluster];
-            vgaWriteLine!("<<Cluster {} has FAT entry 0x{:X}>>", cluster, fatEntry);
+            //vgaWriteLine!("<<Cluster {} has FAT entry 0x{:X}>>", cluster, fatEntry);
 
             if fatEntry == 0 {
                 return Err("Unexpected free cluster");
@@ -185,7 +198,7 @@ impl Fat16 {
         Ok(())
     }
 
-    fn walkRoot(
+    fn findFile(
         &self,
         disk: &DiskDriver,
         printInfo: bool,
@@ -229,9 +242,16 @@ impl Fat16 {
                 entriesRead += 1;
                 let attributes = DirectoryEntryAttribute::from_bits_truncate(entry.attributes);
 
-                if attributes.contains(DirectoryEntryAttribute::VolumeId) {
+                if attributes == DirectoryEntryAttribute::VolumeId {
                     if printInfo {
                         vgaWriteLine!(" Volume ID / Root Directory");
+                    }
+                    continue;
+                }
+
+                if attributes.contains(DirectoryEntryAttribute::VolumeId) {
+                    if printInfo {
+                        vgaWriteLine!(" Maybe a long file name entry");
                     }
                     continue;
                 }
@@ -294,6 +314,114 @@ impl Fat16 {
 
         Ok(None)
     }
+
+    fn loadFile(
+        &self,
+        disk: &DiskDriver,
+        kernel_info: &FileInfo,
+        memory_target: &mut [u8],
+    ) -> Result<(), &'static str> {
+
+        // BUGBUG: Need to handle arbitrary number of entries
+        const FAT_ENTRIES: usize = 8192;
+        let mut fat_buffer = [0 as u8; FAT_ENTRIES * 2];
+
+        // BUGBUG: This casting is annoying; figure out the correct way that doesn't involve 'as'
+        let mut start = self.base_lba as u64;
+        let dumb: u64 = self.bpb.reserved_sectors.into();
+        start += dumb;
+
+        disk.read(start, &mut fat_buffer)?;
+
+        let fatTable: &[u16] =
+            unsafe { slice::from_raw_parts(&fat_buffer as *const _ as *const u16, FAT_ENTRIES) };
+
+            let root_dir_sectors = ((self.bpb.root_entries * 32) + (self.bpb.bytes_per_sector - 1))
+            / self.bpb.bytes_per_sector;
+
+        let first_data_sector = self.bpb.reserved_sectors
+            + (self.bpb.fat_count as u16 * self.bpb.sectors_per_fat)
+            + root_dir_sectors;
+
+        let first_data_lba = self.base_lba + first_data_sector as u32;
+
+        let max_cluster = (self.bpb.total_sectors / self.bpb.sectors_per_cluster as u16) as usize;
+        let mut cluster_to_read = kernel_info.first_cluster_low as usize;
+        let mut bytes_to_read = kernel_info.file_size as usize;
+        let mut buffer_index_start = 0;
+        
+        let mut disk_buffer = [0 as u8; 1024];
+
+        loop {
+            if bytes_to_read == 0 {
+                return Err("Bytes to read is 0");
+            }
+
+            let fatEntry = fatTable[cluster_to_read];
+            //vgaWriteLine!("<<Cluster {} has FAT entry 0x{:X}>>", cluster_to_read, fatEntry);
+
+            if fatEntry == 0 {
+                return Err("Unexpected free cluster");
+            }
+
+            if fatEntry == 1 {
+                return Err("Unexpected reserved cluster value");
+            }
+
+            if fatEntry >= (max_cluster as u16) + 1 && fatEntry <= 0xFFF6 {
+                return Err("Reserved cluster value");
+            }
+
+            if fatEntry == 0xFFF7 {
+                return Err("Bad cluster");
+            }
+
+            // We're past all the bad cases, so we can read the cluster
+            let cluster_lba =
+                first_data_lba + (cluster_to_read as u32 - 2) * self.bpb.sectors_per_cluster as u32;
+
+            // BUGBUG: Buffer should be size of sector and it not account for it with multiple reads for look at the next FAT entry
+            // BUGBUG: Also an issue where the memory buffer is only mod 512, not mod 1024
+            let mut buffer_index_end = buffer_index_start;
+
+            if bytes_to_read <= 1024 {
+                // BUGBUG: Buffer reads need to be multiples of a sector
+                buffer_index_end += 1024;
+                bytes_to_read = 0;
+            } else {
+                buffer_index_end += 1024;
+                bytes_to_read -= 1024;
+            }
+
+            //vgaWriteLine!("<<Reading cluster {} at LBA 0x{:X} to [{}..{}] with 0x{:X} left", cluster_to_read, cluster_lba, buffer_index_start, buffer_index_end, bytes_to_read);
+
+            // Had trouble getting this to directly write to memory, so indirecting for now
+            disk.read(cluster_lba.into(), &mut disk_buffer)?;
+            memory_target[buffer_index_start..buffer_index_end].copy_from_slice(&disk_buffer);
+
+            if fatEntry >= 0xFFF8 && fatEntry <= 0xFFFE {
+                // Reserved, but aparently can be treated as allocated and final cluster
+                break;
+            }
+
+            if fatEntry == 0xFFFF {
+                // Allocated and final cluster
+                break;
+            }
+
+            buffer_index_start += 1024;
+            cluster_to_read = fatEntry as usize;
+        }
+
+        vgaWriteLine!("<<End of file>>");
+
+        if bytes_to_read != 0 {
+            vgaWriteLine!("Bytes to read is 0x{:X} at end of file", bytes_to_read);
+            return Err("Bytes to read is not 0 at end of file");
+        }
+
+        Ok(())
+    }
 }
 
 impl FatDriver {
@@ -319,13 +447,13 @@ impl FatDriver {
 
         let bpb = result.readBpb(pe)?;
         let fat16 = Fat16::new(bpb, pe.start_lba);
-        fat16.walkRoot(&result.disk, true, None)?;
+        fat16.findFile(&result.disk, true, None)?;
         result.f16 = Some(fat16);
 
         Ok(result)
     }
 
-    pub fn findKernel32(&self) -> Result<usize, &'static str> {
+    pub fn printHiText(&self) -> Result<(), &'static str> {
         if self.f16.is_none() {
             return Err("No FAT16 driver found");
         }
@@ -333,10 +461,33 @@ impl FatDriver {
         self.f16
             .as_ref()
             .unwrap()
-            //.findFile(&self.disk, b"HI", b"TXT")?;
-            .findFile(&self.disk, b"LARGERT", b"XT")?;
+            .printFile(&self.disk, b"HI", b"TXT")?;
 
-        Ok(0)
+        Ok(())
+    }
+
+    pub fn getFileInfo(&self, filename: (&[u8], &[u8])) -> Result<FileInfo, &'static str> {
+        if self.f16.is_none() {
+            return Err("No FAT16 driver found");
+        }
+
+        let de =
+            self.f16
+                .as_ref()
+                .unwrap()
+                .findFile(&self.disk, false, Some(filename))?;
+        if de.is_none() {
+            return Err("File not found");
+        }
+
+        let result = FileInfo {
+            name: de.unwrap().name,
+            ext: de.unwrap().ext,
+            file_size: de.unwrap().file_size,
+            first_cluster_low: de.unwrap().first_cluster_low,
+        };
+
+        Ok(result)
     }
 
     fn readBpb(&self, pe: &super::mbs::PartitionEntry) -> Result<Bpb, &'static str> {
@@ -379,6 +530,30 @@ impl FatDriver {
         vgaWriteLine!("Disk appears to be FAT16 with {} clusters", countOfClusters);
 
         Ok(bpb)
+    }
+
+    // The address must be capable of holding the entire file rounded up to the nearest cluster
+    pub unsafe fn loadFile(
+        &self,
+        address: usize,
+        file_info: &FileInfo,
+    ) -> Result<(), &'static str> {
+        if self.f16.is_none() {
+            return Err("No FAT16 driver found");
+        }
+
+        let needed_size = ((file_info.file_size as usize + 1023) / 1024) * 1024;
+
+        unsafe {
+            let buffer = slice::from_raw_parts_mut(address as *mut u8, needed_size);
+
+            self.f16
+                .as_ref()
+                .unwrap()
+                .loadFile(&self.disk, file_info, buffer)?;
+        }
+
+        Ok(())
     }
 }
 

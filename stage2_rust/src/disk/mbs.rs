@@ -22,13 +22,7 @@ pub struct PartitionEntry {
 }
 
 impl Mbr {
-    pub fn new(buffer: &[u8]) -> Result<Self, &'static str> {
-        // BUGBUG: Would like to restrict the argument to just a reference to the last 66 bytes of the buffer
-
-        if buffer.len() < 66 {
-            return Err("Buffer must be at least 66-bytes to get the data we need");
-        }
-
+    pub fn new(buffer: &[u8; 512]) -> Result<Self, &'static str> {
         let signature = &buffer[buffer.len() - 2..];
         if signature != [0x55, 0xAA] {
             return Err("Invalid MBR signature");
@@ -36,13 +30,13 @@ impl Mbr {
 
         let mut partionInfoStart = buffer.len() - 66;
 
-        let partition1 = Self::getPE(buffer, partionInfoStart);
+        let partition1 = Self::createPartitionEntry(buffer, partionInfoStart);
         partionInfoStart += 16;
-        let partition2 = Self::getPE(buffer, partionInfoStart);
+        let partition2 = Self::createPartitionEntry(buffer, partionInfoStart);
         partionInfoStart += 16;
-        let partition3 = Self::getPE(buffer, partionInfoStart);
+        let partition3 = Self::createPartitionEntry(buffer, partionInfoStart);
         partionInfoStart += 16;
-        let partition4 = Self::getPE(buffer, partionInfoStart);
+        let partition4 = Self::createPartitionEntry(buffer, partionInfoStart);
 
         Ok(Self {
             partition1,
@@ -90,7 +84,7 @@ impl Mbr {
         Ok(result)
     }
 
-    fn getPE(buffer: &[u8], offset: usize) -> PartitionEntry {
+    fn createPartitionEntry(buffer: &[u8], offset: usize) -> PartitionEntry {
         PartitionEntry {
             bootable: buffer[offset + 0] == 0x80,
             start_head: buffer[offset + 1],

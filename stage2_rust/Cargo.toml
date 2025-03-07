@@ -18,4 +18,5 @@ debug = true
 [profile.release]
 panic = "abort"
 lto = true
-opt-level = 3
+# We're still too bloated. For now we'll sacrifice debugging Stage2 to allow Stage3+ to be arbitrary size.
+opt-level = "s"

@@ -22,17 +22,19 @@ impl DiskDriver {
         DiskDriver { drive }
     }
 
+    // Read sectors from disk. The disk is read starting from the LBA address
+    // into the buffer for the full length of the buffer. The buffer's length
+    // must be a multiple of 512 bytes.
     pub fn read(&self, lba: u64, buffer: &mut [u8]) -> Result<(), &'static str> {
+        if (buffer.as_ptr() as usize) > u16::MAX as usize {
+            return Err("Buffer address overflow");
+        }
+
         if buffer.len() % 512 != 0 {
             return Err("Buffer length must be a multiple of 512 bytes");
         }
 
-        let bufferAddress = buffer.as_mut_ptr() as usize;
-        if bufferAddress > u16::MAX as usize {
-            vgaWriteLine!("Buffer address overflow: 0x{:X}", bufferAddress);
-            return Err("Buffer address overflow");
-        }
-        let bufferAddress: u16 = bufferAddress as u16;
+        let bufferAddress = buffer.as_mut_ptr() as u16;
 
         let mut daps = DAPS {
             structSize: size_of::<DAPS>().try_into().unwrap(),
@@ -45,11 +47,11 @@ impl DiskDriver {
 
         let dapsAddress: usize = &mut daps as *mut _ as usize;
         if dapsAddress > u16::MAX as usize {
-            vgaWriteLine!("Pointer address overflow: 0x{:X}", dapsAddress);
+            vgaWriteLine!("DAP Pointer address overflow: 0x{:X}", dapsAddress);
             return Err("DAP address overflow");
         }
-        let dapsAddress: u16 = dapsAddress as u16;
-        let mut ah : u8 = 0x42;
+        let dapsAddress = dapsAddress as u16;
+        let mut ah: u8 = 0x42; // Extended Read function
 
         // https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH=42h:_Extended_Read_Sectors_From_Drive
         unsafe {
