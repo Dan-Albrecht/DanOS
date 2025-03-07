@@ -1,12 +1,7 @@
 use core::intrinsics::type_name;
 
 use crate::{
-    assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage,
-    memoryHelpers::alignUp,
-    memoryMap::{MemoryMap, MemoryMapEntryType},
-    memoryTypes::PhysicalAddressPlain,
-    vgaWriteLine,
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::PhysicalAddressPlain, vgaWriteLine
 };
 
 pub struct PhysicalMemoryManager {
@@ -46,10 +41,10 @@ impl PhysicalMemoryManager {
             );
             return;
         } else {
-            for index in 0..(self.MemoryMap.Count as usize) {
-                let memoryType = self.MemoryMap.Entries[index].GetType();
+            for index in 0..(self.MemoryMap.EntryCount as usize) {
+                let memoryType = self.MemoryMap.Entries[index].getType();
 
-                let memoryMapBase = self.MemoryMap.Entries[index].BaseAddr;
+                let memoryMapBase = self.MemoryMap.Entries[index].BaseAddress;
                 let memoryMapBase: Result<usize, _> = memoryMapBase.try_into();
 
                 let memoryMapLength = self.MemoryMap.Entries[index].Length;
@@ -169,10 +164,10 @@ impl PhysicalMemoryManager {
     }
 
     pub fn Dump(&self) {
-        for index in 0..(self.MemoryMap.Count as usize) {
-            let memoryType = self.MemoryMap.Entries[index].GetType();
+        for index in 0..(self.MemoryMap.EntryCount as usize) {
+            let memoryType = self.MemoryMap.Entries[index].getType();
 
-            let memoryMapBase = self.MemoryMap.Entries[index].BaseAddr;
+            let memoryMapBase = self.MemoryMap.Entries[index].BaseAddress;
             let memoryMapBase: Result<usize, _> = memoryMapBase.try_into();
 
             let memoryMapLength = self.MemoryMap.Entries[index].Length;
@@ -225,15 +220,15 @@ impl PhysicalMemoryManager {
         // See where this will fit
         // BUGBUG: We assume memory map is in ascending order, not sure if anything guarntees that
         // BUGBUG: This number casting is out of control...
-        for x in 0..self.MemoryMap.Count as usize {
+        for x in 0..self.MemoryMap.EntryCount as usize {
             let entry = self.MemoryMap.Entries[x];
-            if entry.GetType() == MemoryMapEntryType::AddressRangeMemory {
-                if lowestAvailableAddress >= entry.BaseAddr
-                    && lowestAvailableAddress <= entry.BaseAddr + entry.Length
+            if entry.getType() == MemoryMapEntryType::AddressRangeMemory {
+                if lowestAvailableAddress >= entry.BaseAddress
+                    && lowestAvailableAddress <= entry.BaseAddress + entry.Length
                 {
                     // The start is within the range, but what about the end?
                     let requestEnd = lowestAvailableAddress + sizeInBytes;
-                    if requestEnd >= entry.BaseAddr && requestEnd <= entry.BaseAddr + entry.Length {
+                    if requestEnd >= entry.BaseAddress && requestEnd <= entry.BaseAddress + entry.Length {
                         self.Reserve(
                             lowestAvailableAddress as usize,
                             sizeInBytes as usize,
@@ -243,16 +238,16 @@ impl PhysicalMemoryManager {
                     } else {
                         vgaWriteLine!("End goes past the end of this blob, trying next...");
                         lowestAvailableAddress = alignUp(
-                            entry.BaseAddr as usize + entry.Length as usize + 1 as usize,
+                            entry.BaseAddress as usize + entry.Length as usize + 1 as usize,
                             alignment,
                         ) as u64;
                     }
-                } else if lowestAvailableAddress < entry.BaseAddr {
-                    let potentialStart = alignUp(entry.BaseAddr as usize, alignment);
+                } else if lowestAvailableAddress < entry.BaseAddress {
+                    let potentialStart = alignUp(entry.BaseAddress as usize, alignment);
                     let potentialEnd = potentialStart + sizeInBytes as usize;
 
-                    if potentialStart < entry.BaseAddr as usize + entry.Length as usize
-                        && entry.BaseAddr < potentialEnd as u64
+                    if potentialStart < entry.BaseAddress as usize + entry.Length as usize
+                        && entry.BaseAddress < potentialEnd as u64
                     {
                         self.Reserve(
                             potentialStart as usize,
@@ -265,7 +260,7 @@ impl PhysicalMemoryManager {
             }
         }
 
-        self.MemoryMap.Dump();
+        self.MemoryMap.dump();
         haltLoopWithMessage!("Couldn't find anywhere for 0x{:X} bytes", sizeInBytes);
     }
 
@@ -281,7 +276,7 @@ impl PhysicalMemoryManager {
 
     pub fn ReserveKernel32(&mut self, address: u64) {
         let firstEntry = self.MemoryMap.Entries[0];
-        let ammount = (firstEntry.BaseAddr + firstEntry.Length) - address;
+        let ammount = (firstEntry.BaseAddress + firstEntry.Length) - address;
         let ammount: usize = ammount.try_into().unwrap();
         let address: usize = address.try_into().unwrap();
         self.Reserve(address, ammount, WhatDo::Normal);

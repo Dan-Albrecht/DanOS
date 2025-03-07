@@ -19,3 +19,6 @@ pub const PAGES_PER_TABLE: usize = SIZE_OF_PAGE_TABLE / SIZE_OF_PAGE;
 
 #[cfg(target_pointer_width = "64")]
 pub const SIZE_OF_PAGE_DIRECTORY_POINTER: usize = 0x80_0000_0000;
+
+// Current fixed load target for kernel32. If we can get the ELF loader code into Stag2, we can remove this.
+pub const KERNEL32_JUMP_ADDRESS : usize = 0x10_0000;

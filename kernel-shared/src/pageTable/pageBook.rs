@@ -2,8 +2,9 @@ use core::mem::size_of;
 use core::u8;
 
 use crate::magicConstants::SIZE_OF_PAGE;
+use crate::memory::map::MemoryMap;
+use crate::memory::mapEntry::MemoryMapEntryType;
 use crate::memoryHelpers::alignDown;
-use crate::memoryMap::{MemoryMap, MemoryMapEntryType};
 use crate::memoryTypes::{PhysicalAddress, SomeSortOfIndex, VirtualAddress};
 use crate::pageTable::enums::*;
 use crate::pageTable::pageTable::ENTRIES_PER_PAGE_TABLE;
@@ -67,11 +68,11 @@ impl PageBook {
         unsafe {
             // We're being lazy, but safe. Want the first entry to be usable memory and big enough so we can at least allocate the page structure in it.
             let entry = memoryMap.Entries[0];
-            if entry.GetType() != MemoryMapEntryType::AddressRangeMemory {
+            if entry.getType() != MemoryMapEntryType::AddressRangeMemory {
                 haltLoopWithMessage!("Add better PageTable setup code");
             }
 
-            let maxAddress = entry.BaseAddr + entry.Length - 1;
+            let maxAddress = entry.BaseAddress + entry.Length - 1;
 
             if maxAddress & 0xFFFF_FFFF_0000_0000 != 0 {
                 haltLoopWithMessage!("Address extends beyond 32-bit space and I want easy casting");
