@@ -35,6 +35,8 @@ try {
         }
     } -message 'Kernel32 build'
 
+    Copy-Item -Path .\target\i686-unknown-none\$buildType\kernel -Destination .\target\i686-unknown-none\$buildType\kernel.elf -Force
+
     # For now, always handy to have the assembly around
     rust-objdump.exe -M intel --disassemble-all .\target\i686-unknown-none\$buildType\kernel > .\target\i686-unknown-none\$buildType\kernel.asm
 
@@ -53,8 +55,8 @@ try {
 
     # Re-disassemble above to get a sense we still have what we want
     # https://stackoverflow.com/a/58871420
-    rust-objcopy.exe -I binary -O elf32-i386 --rename-section=.data=.text,code .\target\i686-unknown-none\$buildType\kernel.bin .\target\i686-unknown-none\$buildType\kernel.elf
-    rust-objdump.exe -M intel -d .\target\i686-unknown-none\$buildType\kernel.elf > .\target\i686-unknown-none\$buildType\kernel.elf.asm
+    # rust-objcopy.exe -I binary -O elf32-i386 --rename-section=.data=.text,code .\target\i686-unknown-none\$buildType\kernel.bin .\target\i686-unknown-none\$buildType\kernel.elf
+    # rust-objdump.exe -M intel -d .\target\i686-unknown-none\$buildType\kernel.elf > .\target\i686-unknown-none\$buildType\kernel.elf.asm
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

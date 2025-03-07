@@ -1,10 +1,7 @@
 #![allow(non_snake_case)]
 
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage,
-    memoryMap::{MemoryMap, MemoryMapEntryType},
-    vgaWriteLine,
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, vgaWriteLine
 };
 
 pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool { unsafe {

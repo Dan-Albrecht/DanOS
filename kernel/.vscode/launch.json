@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug from Windows",
+            "cwd": "${workspaceFolder}",
+            "targetCreateCommands": [
+                "target create ${workspaceRoot}/target/i686-unknown-none/debug/kernel.elf",
+            ],
+            "processCreateCommands": [
+                "gdb-remote localhost:3333",
+                "settings set target.x86-disassembly-flavor intel",
+                "breakpoint set --name DanMain",
+            ],
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug from WSL",
+            "cwd": "${workspaceFolder}",
+            "targetCreateCommands": [
+                "target create ${workspaceRoot}/target/i686-unknown-none/debug/kernel.elf",
+            ],
+            "processCreateCommands": [
+                "gdb-remote 172.19.176.1:3333",
+                "settings set target.x86-disassembly-flavor intel",
+            ],
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug from WSL via GDB",
+            "executable": "${workspaceRoot}/target/i686-unknown-none/debug/kernel.elf",
+            "target": "172.19.176.1:3333",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+        },
+    ]
+}

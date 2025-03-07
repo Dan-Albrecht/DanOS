@@ -1,8 +1,7 @@
 use core::arch::asm;
 
 use kernel_shared::{
-    memoryMap::MemoryMap, pageTable::pageBook::PageBook,
-    vgaWriteLine,
+    memory::map::MemoryMap, pageTable::pageBook::PageBook, vgaWriteLine
 };
 
 

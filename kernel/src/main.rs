@@ -9,13 +9,13 @@ use core::arch::asm;
 use core::panic::PanicInfo;
 
 use a20Stuff::IsTheA20LineEnabled;
+use kernel_shared::memory::map::MemoryMap;
 use kernel_shared::relocation::relocateKernel64;
 use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::gdtStuff::Setup64BitGDT;
-use kernel_shared::memoryMap::MemoryMap;
-use kernel_shared::{haltLoopWithMessage, vgaWriteLine};
+use kernel_shared::{haltLoopWithMessage, memory, vgaWriteLine};
 use pagingStuff::enablePaging;
 
 #[panic_handler]
@@ -49,12 +49,16 @@ pub extern "fastcall" fn DanMain(
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
 
+        vgaWriteLine!("K64: 0x{:X} K64L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, memoryMapLocation);
         vgaWriteLine!("Relocating 64-bit kernel...");
+
         let jumpTarget = relocateKernel64(kernel64Address.try_into().expect("kernel64Address"), kernel64Length.try_into().expect("kernel64Length"));
 
         vgaWriteLine!("Loading memory map from 0x{:X}", memoryMapLocation);
-        let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().expect("Memory map"));
-        memoryMap.Dump();
+        // BUGBUG: Want this to be a copy as the memory location this is in probably isn't the best
+        let memoryMap = memoryMapLocation as *const MemoryMap;
+        let memoryMap = &*memoryMap;
+        memoryMap.dump();
 
         if IsTheA20LineEnabled(&memoryMap) {
             if Is64BitModeSupported() {
@@ -65,7 +69,7 @@ pub extern "fastcall" fn DanMain(
 
                 vgaWriteLine!("64-bit paging mode enabled...");
                 vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
-                Setup64BitGDT(entry.BaseAddr, cantUseAbove);
+                Setup64BitGDT(entry.BaseAddress, cantUseAbove);
 
                 vgaWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
