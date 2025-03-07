@@ -1,8 +1,5 @@
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage,
-    memoryHelpers::alignUp,
-    memoryMap::{MemoryMap, MemoryMapEntryType}, memoryTypes::{PhysicalAddress, VirtualAddress},
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::{PhysicalAddress, VirtualAddress}
 };
 
 use crate::loggerWriteLine;
@@ -180,9 +177,9 @@ struct HeapEntry {
 
 impl DumbHeap {
     pub fn new(memoryMap: MemoryMap) -> Self {
-        for index in 0..(memoryMap.Count as usize) {
-            if let MemoryMapEntryType::AddressRangeMemory = memoryMap.Entries[index].GetType() {
-                let stupidAddress = memoryMap.Entries[index].BaseAddr as usize;
+        for index in 0..(memoryMap.EntryCount as usize) {
+            if let MemoryMapEntryType::AddressRangeMemory = memoryMap.Entries[index].getType() {
+                let stupidAddress = memoryMap.Entries[index].BaseAddress as usize;
                 let stupidSize = memoryMap.Entries[index].Length as usize;
                 if stupidSize < (1 * 1024 * 1024) {
                     loggerWriteLine!(
