@@ -35,28 +35,18 @@ try {
         }
     } -message 'Kernel32 build'
 
-    Copy-Item -Path .\target\i686-unknown-none\$buildType\kernel -Destination .\target\i686-unknown-none\$buildType\kernel.elf -Force
+    # Having the assembly to look at when debuggin in Bochs is quite handy
+    objdump -M intel --disassemble ./target/i686-unknown-none/$buildType/kernel > ./target/i686-unknown-none/$buildType/kernel.asm
 
-    # For now, always handy to have the assembly around
-    rust-objdump.exe -M intel --disassemble-all .\target\i686-unknown-none\$buildType\kernel > .\target\i686-unknown-none\$buildType\kernel.asm
+    # Stage2 requires, for now, a staticaly linked kernel. Verify it is where Stage2 will expect it to be.
+    $danMainAddress = readelf --symbols ./target/i686-unknown-none/$buildType/kernel | grep DanMain | awk '{print $2}' | sed 's/^0*//'
 
-    $allLines = [System.IO.File]::ReadAllLines("${PSScriptRoot}\target\i686-unknown-none\$buildType\kernel.asm")
-    if ($allLines[3] -ne "Disassembly of section .text:") {
-        Write-Error "Linking seems screwed up again. Text section isn't first. Found: $($allLines[3])"
+    if ($danMainAddress -ne "100000") {
+        Write-Error "DanMain was not found at the expected address. Found: $danMainAddress"
     }
 
-    # We might change the loader address, but we expect the symbol to be here
-    if (!$allLines[5].EndsWith(" <DanMain>:")) {
-        Write-Error "Linking seems screwed up again. DanMain wasn't at the start. Found: $($allLines[5])"
-    }
-
-    # Turn it into the actual bits we'll run
-    rust-objcopy.exe -O binary .\target\i686-unknown-none\$buildType\kernel .\target\i686-unknown-none\$buildType\kernel.bin
-
-    # Re-disassemble above to get a sense we still have what we want
-    # https://stackoverflow.com/a/58871420
-    # rust-objcopy.exe -I binary -O elf32-i386 --rename-section=.data=.text,code .\target\i686-unknown-none\$buildType\kernel.bin .\target\i686-unknown-none\$buildType\kernel.elf
-    # rust-objdump.exe -M intel -d .\target\i686-unknown-none\$buildType\kernel.elf > .\target\i686-unknown-none\$buildType\kernel.elf.asm
+    # Translate to flat binary so Stage2 can just jump to it.
+    objcopy -O binary ./target/i686-unknown-none/$buildType/kernel ./target/i686-unknown-none/$buildType/kernel.bin
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

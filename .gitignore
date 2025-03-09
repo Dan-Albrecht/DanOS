@@ -29,3 +29,6 @@ launchSettings.json
 
 # Window positions and junk from Bochs
 bx_enh_dbg.ini
+
+# Dotnet output
+bin/

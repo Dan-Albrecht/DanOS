@@ -283,13 +283,13 @@ impl Fat16 {
                         .name
                         .iter()
                         .rposition(|&char| char != 0x20)
-                        .unwrap_or(entry.name.len());
+                        .unwrap_or(entry.name.len()-1);
 
                     let extEnd = entry
                         .ext
                         .iter()
                         .rposition(|&char| char != 0x20)
-                        .unwrap_or(entry.ext.len());
+                        .unwrap_or(entry.ext.len()-1);
 
                     let name =
                         core::str::from_utf8(&entry.name[0..=nameEnd]).unwrap_or("Invalid Name");

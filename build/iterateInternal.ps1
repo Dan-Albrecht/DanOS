@@ -21,8 +21,8 @@ try {
         $targetType = "release"
     }
     
-    TimeCommand { ..\stage2_rust\build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
-    $stage2Path = "..\stage2_rust\target\i386-unknown-none\$targetType\stage2_rust.bin"
+    TimeCommand { ../stage2_rust/build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
+    $stage2Path = "../stage2_rust/target/i386-unknown-none/$targetType/stage2_rust.bin"
 
     $stage2Bytes = Get-Content $stage2Path -Raw -AsByteStream
     $stage2Item = Get-ChildItem $stage2Path
@@ -34,8 +34,8 @@ try {
     Write-Host "Stage 2 @ 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X")) (for 0x$(([int]$stage2Sectors).ToString("X")) sectors)"
     Write-Host "This is a total of 0x$(([int]$stage2Sectors).ToString("X")) sectors to load from disk to address 0x$(([int]$STAGE_2_LOAD_TARGET).ToString("X"))."
 
-    TimeCommand { ..\stage1\build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
-    $stage1Path = "..\stage1\bootloaderStage1.bin"
+    TimeCommand { ../stage1/build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
+    $stage1Path = "../stage1/bootloaderStage1.bin"
 
     $stage1Bytes = Get-Content $stage1Path -Raw -AsByteStream
     $stage1Item = Get-ChildItem $stage1Path
@@ -43,7 +43,7 @@ try {
     
     if($stage1Bytes.Length -ne 440) {
         # 440, not 512 since that's just the code space
-        # We'll manually slap on the MBR / partition info below
+        # The partition info is already in the empty.img
         Write-Error "Stage 1 must be exactly 440 bytes"
     }
 
@@ -54,6 +54,13 @@ try {
     if (![System.IO.File]::Exists("empty.img")) {
         Write-Error "empty.img doesn't exist. You'll need to create it by hand. Follow the README.md."
     }
+
+    # BUGBUG: Ensure empty.img is mounted
+    TimeCommand {
+        cp ../kernel/target/i686-unknown-none/$targetType/kernel.bin /mnt/danOS/kernel.bin
+        cp ../kernel64/target/x86_64-unknown-none/$targetType/kernel64 /mnt/danOS/kernel64.elf
+        sync
+    } -message 'Copy kernels'
 
     Copy-Item -Path 'empty.img' -Destination $OUTPUT_FILE -Force
 
