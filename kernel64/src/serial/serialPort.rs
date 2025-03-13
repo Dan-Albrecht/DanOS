@@ -1,4 +1,3 @@
-use core::{fmt::Write, usize};
 use kernel_shared::{
     assemblyStuff::ports::{inB, outB},
     vgaWriteLine,

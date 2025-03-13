@@ -4,6 +4,7 @@ use crate::{vgaWrite, vgaWriteLine};
 
 use super::mapEntry::{MemoryMapEntry, MemoryMapEntryType};
 
+#[derive(Copy, Clone)]
 pub struct MemoryMap {
     pub Entries: [MemoryMapEntry; 32],
     pub EntryCount: u8,

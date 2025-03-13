@@ -1,34 +1,33 @@
 {
-    // https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
             "type": "lldb",
-            "request": "custom",
-            "name": "Debug from Windows",
+            "request": "launch",
+            "name": "Better Debug",
+            "cwd": "${workspaceFolder}",
             "targetCreateCommands": [
-                "target create --symfile ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.dbg ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink",
-                // Adjust to remap
-                "target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink --slide 0x201000"
-                // Adjust to baseline
-                //"target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink --slide 0x9000"
+                "target create ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64",
+                // BUGUBG: This is quite anoying as this changes everytime kernel32 changes in size. Need to find a better way...
+                "target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64 --slide 0x136400",
             ],
             "processCreateCommands": [
                 "gdb-remote localhost:3333",
                 "settings set target.x86-disassembly-flavor intel",
+                "breakpoint set --name DanMain",
             ],
         },
         {
             "type": "gdb",
             "request": "attach",
             "name": "Debug from WSL via GDB",
-            "executable": "${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.strippedWithDebugLink",
+            "executable": "${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64",
             // Find host via:
             // ip route show | grep -i default | awk '{ print $3}'
             // Before remap
-            // add-symbol-file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.dbg 0x9000
+            // add-symbol-file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64 0x9000
             // After remap
-            // add-symbol-file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64.dbg -o 0xffffffff00009000
+            // add-symbol-file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64 -o 0xffffffff00009000
             "target": "172.19.176.1:3333",
             "remote": true,
             "cwd": "${workspaceRoot}",

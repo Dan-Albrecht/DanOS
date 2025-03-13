@@ -1,6 +1,3 @@
 [toolchain]
-# https://github.com/vadimcn/codelldb/wiki/Windows#debugging-rust-on-windows
-# Says this is better than msvc for debugging
 channel = "nightly"
-# targets = ["x86_64-pc-windows-msvc"]
 targets = ["x86_64-pc-windows-gnu"]

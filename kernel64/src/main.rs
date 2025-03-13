@@ -12,6 +12,7 @@
 mod acpi;
 mod ahci;
 mod assemblyHelpers;
+mod criticalSection;
 mod diskStuff;
 mod interupts;
 mod logging;
@@ -21,7 +22,7 @@ mod serial;
 
 use core::array::from_fn;
 use core::panic::PanicInfo;
-use core::{arch::asm, fmt::Write};
+use core::arch::asm;
 
 use interupts::InteruptDescriptorTable::{SetIDT, IDT};
 
@@ -36,14 +37,14 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{haltLoopWithMessage, magicConstants::*, vgaWriteLine};
+use kernel_shared::{haltLoopWithMessage, magicConstants::*};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    // We get called mid-line, so always move to a new one
+    // We can get called mid-line, so always move to a new one
     loggerWriteLine!("");
     loggerWriteLine!("64-bit kernel panic!");
     loggerWriteLine!("{info}");
@@ -111,14 +112,11 @@ fn mapKernelData(
 // Arguments 7 and above are pushed on to the stack.
 #[unsafe(no_mangle)]
 pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> ! {
-    haltLoopWithMessage!("We're in 64!");
     loggerWriteLine!(
         "Welcome to 64-bit Rust! We're 0x{:X} bytes long.",
         kernelSize
     );
 
-    // BUGBUG: Reload this
-    //let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().unwrap());
     let memoryMap : MemoryMap;
     unsafe { memoryMap = *(memoryMapLocation as *const MemoryMap);}
 
