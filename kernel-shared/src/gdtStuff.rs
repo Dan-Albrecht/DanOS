@@ -1,7 +1,6 @@
 // Global Descriptor Table
 
 use core::arch::asm;
-use core::intrinsics::unreachable;
 
 use crate::memoryHelpers::{alignDown, zeroMemory2};
 use crate::{haltLoopWithMessage, vgaWriteLine};
@@ -139,7 +138,7 @@ impl Gdt {
             );
         }
 
-        unreachable();
+        unreachable!();
     }
 }
 

@@ -1,4 +1,4 @@
-use core::intrinsics::type_name;
+use core::any::type_name;
 
 use crate::{
     assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::PhysicalAddressPlain, vgaWriteLine
