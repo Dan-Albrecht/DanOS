@@ -52,3 +52,10 @@ Lazy unmount
 ============
 losetup -D
 ```
+
+### Mount existing
+
+```bash
+sudo losetup --find --show --partscan empty.img
+sudo mount /dev/loop0p1 /mnt/danOS -o rw,uid=$(id -u),gid=$(id -g)
+```

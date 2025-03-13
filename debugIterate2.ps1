@@ -3,8 +3,8 @@ $ErrorActionPreference = 'Stop'
 $oldErrorState = $PSNativeCommandUseErrorActionPreference
 try {
     $PSNativeCommandUseErrorActionPreference = $true
-    .\build\iterateInternal.ps1
-    & 'C:\Program Files\Bochs-2.7\bochsdbg.exe' -f .\bochsrc.bxrc
+    ./build/iterateInternal.ps1
+    & '/mnt/c/Program Files/Bochs-2.7/bochsdbg.exe' -f ./bochsrc.bxrc
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState
