@@ -36,8 +36,6 @@ impl PhysicalMemoryManager {
             self.ReserveInternal(
                 requestLocation,
                 requestAmmount,
-                requestLocation,
-                requestAmmount,
             );
             return;
         } else {
@@ -66,8 +64,6 @@ impl PhysicalMemoryManager {
                             self.ReserveInternal(
                                 requestLocation,
                                 requestAmmount,
-                                memoryMapBase,
-                                memoryMapLength,
                             );
                             return;
                         }
@@ -77,8 +73,6 @@ impl PhysicalMemoryManager {
                             self.ReserveInternal(
                                 requestLocation,
                                 requestAmmount,
-                                memoryMapBase,
-                                memoryMapLength,
                             );
                             return;
                         }
@@ -111,10 +105,8 @@ impl PhysicalMemoryManager {
         &mut self,
         requestLocation: usize,
         requestAmmount: usize,
-        memoryMapBase: usize,
-        memoryMapLength: usize,
     ) {
-        // Figure out how many blobs we need to check
+        // Figure out if we have room for this
         let mut firstFreeIndex = None;
         for blobIndex in 0..(self.Blobs.len()) {
             if self.Blobs[blobIndex].Length == 0 {
@@ -154,11 +146,9 @@ impl PhysicalMemoryManager {
         self.Blobs[firstFreeIndex].Length = requestAmmount;
 
         vgaWriteLine!(
-            "Reserved 0x{:X} bytes @ 0x{:X} within 0x{:X}..0x{:X} index {}",
+            "Reserved 0x{:X} bytes @ 0x{:X} index {}",
             requestAmmount,
             requestLocation,
-            memoryMapBase,
-            memoryMapBase + memoryMapLength,
             firstFreeIndex,
         );
     }
@@ -272,13 +262,5 @@ impl PhysicalMemoryManager {
         }
 
         None
-    }
-
-    pub fn ReserveKernel32(&mut self, address: u64) {
-        let firstEntry = self.MemoryMap.Entries[0];
-        let ammount = (firstEntry.BaseAddress + firstEntry.Length) - address;
-        let ammount: usize = ammount.try_into().unwrap();
-        let address: usize = address.try_into().unwrap();
-        self.Reserve(address, ammount, WhatDo::Normal);
     }
 }

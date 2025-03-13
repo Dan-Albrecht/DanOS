@@ -79,14 +79,15 @@ pub extern "fastcall" fn DanMain(
                 // Cannot figure out how to get Rust to emit a long jump with a variable as the address
                 // ChatGPT said do a retf instead and that seems to work
                 asm!(
-                    "mov edi, {0}", // First param for kernel64. https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/linux-x64-calling-convention-stack-frame
-                    "mov esi, {1}",
-                    "push 0x8",     // Code segment
-                    "push {2}",     // Address in that segment
+                    // First param for kernel64. https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/linux-x64-calling-convention-stack-frame
+                    "mov  esi, eax", // Rust won't let us directly set this, so need to do it indirectly
+                    "push 0x8",      // Code segment
+                    "push ebx",      // Address in that segment
                     "retf",
-                    in(reg) memoryMapLocation,
-                    in(reg) kernel64Length,
-                    in(reg) jumpTarget,
+                    in("edi") memoryMapLocation,
+                    in("eax") kernel64Address,
+                    in("edx") kernel64Length,
+                    in("ebx") jumpTarget,
                 );
 
                 vgaWriteLine!("64-bit kernel returned!");

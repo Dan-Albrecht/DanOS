@@ -9,7 +9,9 @@
             "targetCreateCommands": [
                 "target create ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64",
                 // BUGUBG: This is quite anoying as this changes everytime kernel32 changes in size. Need to find a better way...
-                "target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64 --slide 0x136400",
+                // This is further complicated by the fact it seems to debugger can't handle the original address being 0, so we're 
+                // setting it to 0x5000, so the slide isn't exactly what kernel32 says.
+                "target modules load --file ${workspaceRoot}/target/x86_64-unknown-none/debug/kernel64 --slide 0x136800",
             ],
             "processCreateCommands": [
                 "gdb-remote localhost:3333",

@@ -20,13 +20,13 @@ mod magicConstants;
 mod memory;
 mod serial;
 
+use core::arch::asm;
 use core::array::from_fn;
 use core::panic::PanicInfo;
-use core::arch::asm;
 
-use interupts::InteruptDescriptorTable::{SetIDT, IDT};
+use interupts::InteruptDescriptorTable::{IDT, SetIDT};
 
-use kernel_shared::gdtStuff::{Gdt, GetGdtr, GDTR};
+use kernel_shared::gdtStuff::{GDTR, Gdt, GetGdtr};
 use kernel_shared::memory::map::MemoryMap;
 use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
@@ -111,14 +111,24 @@ fn mapKernelData(
 // Arguments 1-6 are passed via registers RDI, RSI, RDX, RCX, R8, R9 respectively;
 // Arguments 7 and above are pushed on to the stack.
 #[unsafe(no_mangle)]
-pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> ! {
+pub extern "sysv64" fn DanMain(
+    memoryMapLocation: usize,
+    kernelElfLocation: usize,
+    kernelElfSize: usize,
+) -> ! {
     loggerWriteLine!(
-        "Welcome to 64-bit Rust! We're 0x{:X} bytes long.",
-        kernelSize
+        "Welcome to 64-bit Rust! We're 0x{:X} bytes long starting at 0x{:X}. Memory map is at 0x{:X}",
+        kernelElfSize,
+        kernelElfLocation,
+        memoryMapLocation
     );
 
-    let memoryMap : MemoryMap;
-    unsafe { memoryMap = *(memoryMapLocation as *const MemoryMap);}
+    let memoryMap: MemoryMap;
+    unsafe {
+        memoryMap = *(memoryMapLocation as *const MemoryMap);
+    }
+
+    memoryMap.dump();
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
@@ -127,20 +137,30 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
 
     // BUGBUG: Should probalby get the base pointer as this function has already subtracted stack space
     let sp = getSP();
-    physicalMemoryManager.Reserve(0, sp, WhatDo::YoLo);
+    // BUGBUG: Get a proper stack size
+    loggerWriteLine!("Reserving stack 0x{:X}", sp);
+    physicalMemoryManager.Reserve(sp, 1, WhatDo::YoLo);
 
-    // NB: The current secret handshake with the 32-bit code is take the first
-    // entry from the memory map. The address of the GDT to the end of that entry
-    // has already been used.
-    let gdtBase = GetGdtr().BaseAddress;
-    physicalMemoryManager.ReserveKernel32(gdtBase);
+    // Reserve ourself
+    loggerWriteLine!("Reserving self 0x{:X}", kernelElfLocation);
+    physicalMemoryManager.Reserve(kernelElfLocation, kernelElfSize, WhatDo::Normal);
 
     // This is probably not in the memory map, but if it shows up, we want to mark it as used
+    loggerWriteLine!("Reserving VGA 0x{:X}", VGA_BUFFER_ADDRESS);
     physicalMemoryManager.Reserve(
         VGA_BUFFER_ADDRESS.try_into().unwrap(),
         (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_CHAR).into(),
         WhatDo::YoLo,
     );
+
+    loggerWriteLine!("Installing interrupt table...");
+    unsafe {
+        SetIDT(&mut physicalMemoryManager);
+    }
+
+    loggerWriteLine!("Sending a breakpoint...");
+    Breakpoint();
+    loggerWriteLine!("We handled the breakpoint!");
 
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
     let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWherever(DUMB_HEAP_SIZE, 1);
@@ -155,24 +175,15 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE, false, 0);
     loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
 
-    loggerWriteLine!("Installing interrupt table...");
-    unsafe {
-        SetIDT(&mut physicalMemoryManager);
-    }
-
-    loggerWriteLine!("Sending a breakpoint...");
-    Breakpoint();
-    loggerWriteLine!("We handled the breakpoint!");
-
     // We're going to relocate ourselves, grab some memory
     let kernelBytesPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWherever(kernelSize, 0x1000);
+        physicalMemoryManager.ReserveWherever(kernelElfSize, 0x1000);
     let kernelStackPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWherever(VM_KERNEL64_DATA_LENGTH, 0x1000);
     loggerWriteLine!(
         "New kernel home @ (P) 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,
-        kernelSize
+        kernelElfSize
     );
 
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
@@ -181,7 +192,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
     mapKernelCode(
         &mut virtualMemoryManager,
         kernelBytesPhysicalAddress as usize,
-        kernelSize,
+        kernelElfSize,
     );
     reloadCR3();
 
@@ -194,10 +205,10 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
         core::ptr::copy_nonoverlapping(
             currentBase as *const u8,
             VM_KERNEL64_CODE as *mut u8,
-            kernelSize,
+            kernelElfSize,
         );
 
-        newKernelLocation = relocateKernel64(VM_KERNEL64_CODE, kernelSize);
+        newKernelLocation = relocateKernel64(VM_KERNEL64_CODE, kernelElfSize);
     }
 
     let currentTextOffset = 0x9000;
@@ -242,7 +253,7 @@ pub extern "sysv64" fn DanMain(memoryMapLocation: usize, kernelSize: usize) -> !
             in("r9") newStackHome as usize,
             in("rdi") memoryMapLocation,
             in("rsi") kernelBytesPhysicalAddress,
-            in("rdx") kernelSize,
+            in("rdx") kernelElfSize,
             in("rcx") kernelStackPhysicalAddress,
         );
     }
@@ -265,12 +276,11 @@ extern "sysv64" fn newStackHome(
     //let memoryMap = MemoryMap::Load(memoryMapLocation);
     // BUGBUG: Reload this
     //let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().unwrap());
-    let memoryMap : MemoryMap;
-    unsafe { memoryMap = *(memoryMapLocation as *const MemoryMap);}
+    let memoryMap: MemoryMap;
+    unsafe {
+        memoryMap = *(memoryMapLocation as *const MemoryMap);
+    }
 
-
-
-    
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
         Blobs: from_fn(|_| MemoryBlob::default()),
@@ -346,7 +356,12 @@ extern "sysv64" fn newStackHome(
         WriteThrough::WriteTrough,
     );
 
-    loggerWriteLine!("New cr is 0x{:X}, 0x{:X} / 0x{:X} (P/V)", cr3, cr3P.address, cr3V.address);
+    loggerWriteLine!(
+        "New cr is 0x{:X}, 0x{:X} / 0x{:X} (P/V)",
+        cr3,
+        cr3P.address,
+        cr3V.address
+    );
 
     unsafe {
         asm!(
