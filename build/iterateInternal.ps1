@@ -17,7 +17,8 @@ try {
 
     if ($debug) {
         $targetType = "debug"
-    } else {
+    }
+    else {
         $targetType = "release"
     }
     
@@ -37,11 +38,14 @@ try {
     TimeCommand { ../stage1/build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
     $stage1Path = "../stage1/bootloaderStage1.bin"
 
+    TimeCommand { ../kernel/buildKernel.ps1 -debug $debug } -message 'Kernel32'
+    TimeCommand { ../kernel64/buildKernel.ps1 -debug $debug } -message 'Kernel64'
+
     $stage1Bytes = Get-Content $stage1Path -Raw -AsByteStream
     $stage1Item = Get-ChildItem $stage1Path
     Write-Host "Stage1 is @ $stage1Path size is $($stage1Item.Length) written @ $($stage1Item.LastWriteTime)"
     
-    if($stage1Bytes.Length -ne 440) {
+    if ($stage1Bytes.Length -ne 440) {
         # 440, not 512 since that's just the code space
         # The partition info is already in the empty.img
         Write-Error "Stage 1 must be exactly 440 bytes"
