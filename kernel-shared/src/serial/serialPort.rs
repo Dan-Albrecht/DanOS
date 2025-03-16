@@ -1,4 +1,4 @@
-use kernel_shared::{
+use crate::{
     assemblyStuff::ports::{inB, outB},
     vgaWriteLine,
 };
@@ -19,6 +19,10 @@ pub enum SerialFailure {
     Timeout,
 }
 
+#[cfg(target_pointer_width = "32")]
+const MAX_LOOP_VALUE: usize = 0xFFFF_FFFF;
+
+#[cfg(target_pointer_width = "64")]
 const MAX_LOOP_VALUE: usize = 0xFFFF_FFFF_FFFF;
 
 // https://wiki.osdev.org/Serial_Ports

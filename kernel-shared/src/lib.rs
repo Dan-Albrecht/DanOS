@@ -12,4 +12,5 @@ pub mod memoryTypes;
 pub mod pageTable;
 pub mod physicalMemory;
 pub mod relocation;
+pub mod serial;
 pub mod textMode;

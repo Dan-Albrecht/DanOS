@@ -1,7 +1,7 @@
 use kernel_shared::vgaWriteLine;
 use once_cell::sync::Lazy;
 
-use crate::serial::serialPort::{COMPort, SerialPort};
+use kernel_shared::serial::serialPort::{COMPort, SerialPort};
 
 pub static SYSTEM_LOGGER : Lazy<Logger> = Lazy::new(|| Logger::new());
 

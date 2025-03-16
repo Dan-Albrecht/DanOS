@@ -18,7 +18,6 @@ mod interupts;
 mod logging;
 mod magicConstants;
 mod memory;
-mod serial;
 
 use core::arch::asm;
 use core::array::from_fn;
