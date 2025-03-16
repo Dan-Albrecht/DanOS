@@ -164,6 +164,6 @@ pub extern "fastcall" fn DanMain(driveNumber: u32) -> ! {
     );
 
     unsafe {
-        gdt.enterProtectedMode(KERNEL32_JUMP_ADDRESS, kernel64Address, kernel64PaddedSize, &mm as *const _ as usize);
+        gdt.enterProtectedMode(KERNEL32_JUMP_ADDRESS, kernel64Address, kernel64PaddedSize, kernel32Address, kernel32PaddedSize, &mm as *const _ as usize);
     }
 }

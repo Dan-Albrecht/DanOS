@@ -113,26 +113,31 @@ impl Gdt {
     }
 
     #[cfg(target_pointer_width = "32")]
-    pub unsafe fn enterProtectedMode(&self, kernel32_jump_address: usize, kernel64Address: usize, kernel64Length: usize, memoryMapAddress: usize)-> ! {
+    pub unsafe fn enterProtectedMode(&self, kernel32_jump_address: usize, kernel64Address: usize, kernel64Length: usize, kernel32Address:usize, kernel32Length: usize, memoryMapAddress: usize)-> ! {
         self.load();
 
-        vgaWriteLine!("K64: 0x{:X} K64L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, memoryMapAddress);
+        vgaWriteLine!("Stage2 - K64: 0x{:X} K64L: 0x{:X} K32: 0x{:X} K32L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, kernel32Address, kernel32Length, memoryMapAddress);
 
         unsafe {
+            let kernel32Args =[kernel64Address, kernel64Length, kernel32Address, kernel32Length, memoryMapAddress];
+            let argsPtr = kernel32Args.as_ptr();
+
             asm!(
+                "mov ecx, dword ptr [eax + 0]", // Args to Kernel32
+                "mov edx, dword ptr [eax + 4]",
+                "push dword ptr [eax + 16]",
+                "push dword ptr [eax + 12]",
+                "push dword ptr [eax + 8]",
+                "push 0", // BUGBUG:? Attempting to align stack
+                "push 0",
+                "push 0",
                 "mov  eax, cr0",
                 "or   eax, 0x1",    // Set protected mode bit
                 "mov  cr0, eax",    // Enter protected mode
-                "push edi",
-                "push 0",           // BUGBUG: All these 0's are an attemp to align the stack
-                "push 0",           
-                "push 0",
                 "push 0x8",         // Index 1 (code segment) into the GDT
                 "push ebx",         // Easiest way to do a long jump is a long return
                 "retf",
-                in("ecx") kernel64Address,
-                in("edx") kernel64Length,
-                in("edi") memoryMapAddress,
+                in("eax") argsPtr,
                 in("ebx") kernel32_jump_address,
                 // Not doing out for the registers we trash since we're not returning
             );

@@ -41,6 +41,8 @@ fn sayHello() {
 pub extern "fastcall" fn DanMain(
     kernel64Address: u32,
     kernel64Length: u32,
+    kernel32Address: u32,
+    kernel32Length: u32,
     memoryMapLocation: u32,
 ) -> ! {
     unsafe {
@@ -49,8 +51,9 @@ pub extern "fastcall" fn DanMain(
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
 
-        vgaWriteLine!("K64: 0x{:X} K64L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, memoryMapLocation);
+        vgaWriteLine!("Stage3 - K64: 0x{:X} K64L: 0x{:X} K32: 0x{:X} K32L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, kernel32Address, kernel32Length, memoryMapLocation);
         vgaWriteLine!("Relocating 64-bit kernel...");
+        haltLoop();
 
         let jumpTarget = relocateKernel64(kernel64Address.try_into().expect("kernel64Address"), kernel64Length.try_into().expect("kernel64Length"));
 
