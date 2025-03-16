@@ -172,7 +172,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
-    let idt: *mut Table = memoryManager.ReserveWherever(size_of::<Table>(), align_of::<Table>());
+    let idt: *mut Table = memoryManager.ReserveWhereverZeroed(size_of::<Table>(), align_of::<Table>());
 
     zeroMemory2(idt);
     SetupStuff(idt);

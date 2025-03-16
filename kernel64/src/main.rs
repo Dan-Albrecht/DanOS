@@ -163,7 +163,7 @@ pub extern "sysv64" fn DanMain(
     loggerWriteLine!("We handled the breakpoint!");
 
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
-    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWherever(DUMB_HEAP_SIZE, 1);
+    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWhereverZeroed(DUMB_HEAP_SIZE, 1);
     loggerWriteLine!(
         "Dumb heap @ 0x{:X} for 0x{:X}",
         dumbHeapAddress as usize,
@@ -177,9 +177,9 @@ pub extern "sysv64" fn DanMain(
 
     // We're going to relocate ourselves, grab some memory
     let kernelBytesPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWherever(kernelElfSize, 0x1000);
+        physicalMemoryManager.ReserveWhereverZeroed(kernelElfSize, 0x1000);
     let kernelStackPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWherever(VM_KERNEL64_DATA_LENGTH, 0x1000);
+        physicalMemoryManager.ReserveWhereverZeroed(VM_KERNEL64_DATA_LENGTH, 0x1000);
     loggerWriteLine!(
         "New kernel home @ (P) 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,

@@ -1,7 +1,12 @@
 use core::any::type_name;
 
 use crate::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::PhysicalAddressPlain, vgaWriteLine
+    assemblyStuff::halt::haltLoop,
+    haltLoopWithMessage,
+    memory::{map::MemoryMap, mapEntry::MemoryMapEntryType},
+    memoryHelpers::{alignUp, zeroMemory2},
+    memoryTypes::PhysicalAddressPlain,
+    vgaWriteLine,
 };
 
 pub struct PhysicalMemoryManager {
@@ -33,10 +38,7 @@ impl Default for MemoryBlob {
 impl PhysicalMemoryManager {
     pub fn Reserve(&mut self, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
         if let WhatDo::YoLo = whatDo {
-            self.ReserveInternal(
-                requestLocation,
-                requestAmmount,
-            );
+            self.ReserveInternal(requestLocation, requestAmmount);
             return;
         } else {
             for index in 0..(self.MemoryMap.EntryCount as usize) {
@@ -61,19 +63,13 @@ impl PhysicalMemoryManager {
                 {
                     match memoryType {
                         MemoryMapEntryType::AddressRangeMemory => {
-                            self.ReserveInternal(
-                                requestLocation,
-                                requestAmmount,
-                            );
+                            self.ReserveInternal(requestLocation, requestAmmount);
                             return;
                         }
                         MemoryMapEntryType::AddressRangeReserved
                             if let WhatDo::UseReserved = whatDo =>
                         {
-                            self.ReserveInternal(
-                                requestLocation,
-                                requestAmmount,
-                            );
+                            self.ReserveInternal(requestLocation, requestAmmount);
                             return;
                         }
                         _ => {
@@ -101,11 +97,7 @@ impl PhysicalMemoryManager {
         }
     }
 
-    fn ReserveInternal(
-        &mut self,
-        requestLocation: usize,
-        requestAmmount: usize,
-    ) {
+    fn ReserveInternal(&mut self, requestLocation: usize, requestAmmount: usize) {
         // Figure out if we have room for this
         let mut firstFreeIndex = None;
         for blobIndex in 0..(self.Blobs.len()) {
@@ -180,7 +172,7 @@ impl PhysicalMemoryManager {
         }
     }
 
-    pub fn ReserveWherever<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
+    pub fn ReserveWhereverZeroed<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
         let nextBlob = self.nextFreeBlob();
         if None == nextBlob {
             haltLoopWithMessage!("No more blobs to store data in");
@@ -218,13 +210,19 @@ impl PhysicalMemoryManager {
                 {
                     // The start is within the range, but what about the end?
                     let requestEnd = lowestAvailableAddress + sizeInBytes;
-                    if requestEnd >= entry.BaseAddress && requestEnd <= entry.BaseAddress + entry.Length {
+                    if requestEnd >= entry.BaseAddress
+                        && requestEnd <= entry.BaseAddress + entry.Length
+                    {
                         self.Reserve(
                             lowestAvailableAddress as usize,
                             sizeInBytes as usize,
                             WhatDo::Normal,
                         );
-                        return lowestAvailableAddress as *mut T;
+                        let result = lowestAvailableAddress as *mut T;
+                        unsafe {
+                            zeroMemory2(result);
+                        }
+                        return result;
                     } else {
                         vgaWriteLine!("End goes past the end of this blob, trying next...");
                         lowestAvailableAddress = alignUp(
@@ -244,7 +242,11 @@ impl PhysicalMemoryManager {
                             sizeInBytes as usize,
                             WhatDo::Normal,
                         );
-                        return potentialStart as *mut T;
+                        let result = potentialStart as *mut T;
+                        unsafe {
+                            zeroMemory2(result);
+                        }
+                        return result;
                     }
                 }
             }
