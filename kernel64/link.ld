@@ -1,7 +1,7 @@
 ENTRY(DanMain)
 
 SECTIONS {
-    . = 0x5000;
+    . = 0x0;
     .text : {
         *(.text.DanMain);
         *(.text*);
