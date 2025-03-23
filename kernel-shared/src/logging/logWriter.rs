@@ -12,10 +12,7 @@ impl LogWriter {
 
 impl Write for LogWriter {
     fn write_str(&mut self, s: &str) -> Result {
-        unsafe {
-            SYSTEM_LOGGER.Write(s.as_bytes());
-        }
-
+        SYSTEM_LOGGER.Write(s.as_bytes());
         Ok(())
     }
 }

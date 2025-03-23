@@ -11,7 +11,7 @@ once_cell = { version = "1.20.2", default-features = false, features = [
 ] }
 
 [patch.crates-io]
-portable-atomic = { default-features = false, path = "../../portableAtomic" }
+portable-atomic = { path = "../../portableAtomic" }
 
 [profile.dev]
 panic = "abort"
