@@ -22,11 +22,16 @@ try {
         $targetType = "release"
     }
 
-    TimeCommand { ../stage1/build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
-    $stage1Path = "../stage1/bootloaderStage1.bin"
-    
     TimeCommand { ../stage2_rust/build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
     $stage2Path = "../stage2_rust/target/i386-unknown-none/$targetType/stage2_rust.bin"
+
+    $stage2Bytes = Get-Content $stage2Path -Raw -AsByteStream
+    $stage2Item = Get-ChildItem $stage2Path
+    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
+    $stage2Padding = $stage2Sectors * 512 - $stage2Bytes.Length
+
+    TimeCommand { ../stage1/build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
+    $stage1Path = "../stage1/bootloaderStage1.bin"
     
     TimeCommand { ../kernel/buildKernel.ps1 -debug $debug } -message 'Kernel32'
     $stage3Path = "../kernel/target/i686-unknown-none/$targetType/kernel.bin"
@@ -47,11 +52,7 @@ try {
     if ($stage1Bytes.Length + $stage2Bytes.Length -gt $BOOTLOADER_MAX_SIZE) {
         Write-Error "Bootloaders are too big"
     }
-    
-    $stage2Bytes = Get-Content $stage2Path -Raw -AsByteStream
-    $stage2Item = Get-ChildItem $stage2Path
-    $stage2Sectors = [Math]::Ceiling($stage2Bytes.Length / 512)
-    $stage2Padding = $stage2Sectors * 512 - $stage2Bytes.Length
+
     
     # BUGBUG: This name is confusing
     if (![System.IO.File]::Exists("empty.img")) {
