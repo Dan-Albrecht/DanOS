@@ -15,24 +15,24 @@ use kernel_shared::assemblyStuff::cpuID::Is64BitModeSupported;
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::assemblyStuff::misc::disablePic;
 use kernel_shared::gdtStuff::Setup64BitGDT;
-use kernel_shared::{haltLoopWithMessage, memory, vgaWriteLine};
+use kernel_shared::{haltLoopWithMessage, loggerWriteLine};
 use pagingStuff::enablePaging;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    vgaWriteLine!("32-bit kernel panic!");
-    vgaWriteLine!("{}", info.message());
+    loggerWriteLine!("32-bit kernel panic!");
+    loggerWriteLine!("{}", info.message());
     haltLoopWithMessage!("{}", info);
 }
 
 #[cfg(debug_assertions)]
 fn sayHello() {
-    vgaWriteLine!("Hi from 32-bit Debug Rust!");
+    loggerWriteLine!("Hi from 32-bit Debug Rust!");
 }
 
 #[cfg(not(debug_assertions))]
 fn sayHello() {
-    vgaWriteLine!("Hi from 32-bit Release Rust!");
+    loggerWriteLine!("Hi from 32-bit Release Rust!");
 }
 
 // Arguments are 32-bit since we know the bootloader code is operating in that mode
@@ -51,13 +51,12 @@ pub extern "fastcall" fn DanMain(
         // We don't have the interrupt table setup yet, try and prevent random things from trying to send us there
         disablePic();
 
-        vgaWriteLine!("Stage3 - K64: 0x{:X} K64L: 0x{:X} K32: 0x{:X} K32L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, kernel32Address, kernel32Length, memoryMapLocation);
-        vgaWriteLine!("Relocating 64-bit kernel...");
-        haltLoop();
+        loggerWriteLine!("Stage3 - K64: 0x{:X} K64L: 0x{:X} K32: 0x{:X} K32L: 0x{:X} MM: 0x{:X}", kernel64Address, kernel64Length, kernel32Address, kernel32Length, memoryMapLocation);
+        loggerWriteLine!("Relocating 64-bit kernel...");
 
         let jumpTarget = relocateKernel64(kernel64Address.try_into().expect("kernel64Address"), kernel64Length.try_into().expect("kernel64Length"));
 
-        vgaWriteLine!("Loading memory map from 0x{:X}", memoryMapLocation);
+        loggerWriteLine!("Loading memory map from 0x{:X}", memoryMapLocation);
         // BUGBUG: Want this to be a copy as the memory location this is in probably isn't the best
         let memoryMap = memoryMapLocation as *const MemoryMap;
         let memoryMap = &*memoryMap;
@@ -65,16 +64,16 @@ pub extern "fastcall" fn DanMain(
 
         if IsTheA20LineEnabled(&memoryMap) {
             if Is64BitModeSupported() {
-                vgaWriteLine!("64-bit mode is available");
+                loggerWriteLine!("64-bit mode is available");
 
                 let entry = memoryMap.Entries[0];
                 let cantUseAbove = enablePaging(&memoryMap);
 
-                vgaWriteLine!("64-bit paging mode enabled...");
-                vgaWriteLine!("...though we're in compatability (32-bit) mode currently.");
+                loggerWriteLine!("64-bit paging mode enabled...");
+                loggerWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 Setup64BitGDT(entry.BaseAddress, cantUseAbove);
 
-                vgaWriteLine!(
+                loggerWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
                     jumpTarget
                 );
@@ -93,12 +92,12 @@ pub extern "fastcall" fn DanMain(
                     in("ebx") jumpTarget,
                 );
 
-                vgaWriteLine!("64-bit kernel returned!");
+                loggerWriteLine!("64-bit kernel returned!");
             } else {
-                vgaWriteLine!("No 64-bit mode. :(");
+                loggerWriteLine!("No 64-bit mode. :(");
             }
         } else {
-            vgaWriteLine!("You have hardware/emulator with the A20 address line disabled...");
+            loggerWriteLine!("You have hardware/emulator with the A20 address line disabled...");
         }
     };
 

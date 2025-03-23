@@ -1,19 +1,19 @@
 use core::arch::asm;
 
 use kernel_shared::{
-    memory::map::MemoryMap, pageTable::pageBook::PageBook, vgaWriteLine
+    loggerWriteLine, memory::map::MemoryMap, pageTable::pageBook::PageBook
 };
 
 
 pub fn enablePaging(memoryMap: &MemoryMap) -> usize {
     unsafe {
-        vgaWriteLine!("Enabling PAE");
+        loggerWriteLine!("Enabling PAE");
         enablePae();
-        vgaWriteLine!("Setting page data");
+        loggerWriteLine!("Setting page data");
         let cantUseAbove = setPageData(memoryMap);
-        vgaWriteLine!("Enabling long mode");
+        loggerWriteLine!("Enabling long mode");
         enableLongMode();
-        vgaWriteLine!("Enabling paging");
+        loggerWriteLine!("Enabling paging");
         reallyEnablePaging();
 
         return cantUseAbove;
@@ -47,11 +47,11 @@ unsafe fn enableLongMode() { unsafe {
 }}
 
 unsafe fn setPageData(memoryMap: &MemoryMap) -> usize { unsafe {
-    vgaWriteLine!("Getting book");
+    loggerWriteLine!("Getting book");
     let result = PageBook::fromScratch(memoryMap);
     let cr3 = result.Book.getCR3Value();
 
-    vgaWriteLine!("Restier cr3 to 0x{:X}", cr3);
+    loggerWriteLine!("Restier cr3 to 0x{:X}", cr3);
     asm!(
         "mov cr3, eax",
         in("eax") cr3 as u32,

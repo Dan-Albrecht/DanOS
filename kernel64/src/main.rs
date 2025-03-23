@@ -120,6 +120,8 @@ pub extern "sysv64" fn DanMain(
         memoryMapLocation
     );
 
+    haltLoop();
+
     let memoryMap: MemoryMap;
     unsafe {
         memoryMap = *(memoryMapLocation as *const MemoryMap);

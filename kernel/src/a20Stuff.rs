@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, vgaWriteLine
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, loggerWriteLine, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType},
 };
 
 pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool { unsafe {
@@ -40,7 +40,7 @@ pub unsafe fn IsTheA20LineEnabled(memoryMap: &MemoryMap) -> bool { unsafe {
                 result = false;
             }
 
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "Using 0x{:X} and 0x{:X} to test A20",
                 evenMegabyte as usize,
                 oddMegabyte as usize
