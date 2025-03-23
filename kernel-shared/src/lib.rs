@@ -5,6 +5,7 @@
 pub mod alignment;
 pub mod assemblyStuff;
 pub mod gdtStuff;
+pub mod logging;
 pub mod magicConstants;
 pub mod memory;
 pub mod memoryHelpers;

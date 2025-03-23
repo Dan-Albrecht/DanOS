@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 kernel-shared = { path = "../kernel-shared" }
 
+[patch.crates-io]
+portable-atomic = { path = "../../portableAtomic" }
+
 [profile.dev]
 panic = "abort"
 

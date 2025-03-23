@@ -1,5 +1,6 @@
 [build]
 target = "./i686-unknown-none.json"
+rustflags = ["--cfg", "portable_atomic_no_atomic_64"]
 
 [unstable]
 build-std = ["core"]

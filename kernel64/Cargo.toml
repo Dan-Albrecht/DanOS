@@ -7,8 +7,9 @@ edition = "2024"
 
 [dependencies]
 kernel-shared = { path = "../kernel-shared" }
-critical-section = { version = "1.2.0" }
-once_cell = {version = "1.20.2", default-features = false, features = ["critical-section"]}
+
+[patch.crates-io]
+portable-atomic = { path = "../../portableAtomic" }
 
 [profile.dev]
 panic = "abort"

@@ -12,10 +12,8 @@
 mod acpi;
 mod ahci;
 mod assemblyHelpers;
-mod criticalSection;
 mod diskStuff;
 mod interupts;
-mod logging;
 mod magicConstants;
 mod memory;
 
@@ -36,7 +34,7 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{haltLoopWithMessage, magicConstants::*};
+use kernel_shared::{haltLoopWithMessage, loggerWriteLine, magicConstants::*};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;

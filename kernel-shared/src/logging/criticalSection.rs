@@ -1,6 +1,6 @@
 use critical_section::RawRestoreState;
 
-struct DanOSCriticalSection;
+pub struct DanOSCriticalSection;
 critical_section::set_impl!(DanOSCriticalSection);
 
 unsafe impl critical_section::Impl for DanOSCriticalSection {
