@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{vgaWrite, vgaWriteLine};
+use crate::{loggerWrite, loggerWriteLine, logging::logger::Logger, vgaWrite, vgaWriteLine};
 
 use super::mapEntry::{MemoryMapEntry, MemoryMapEntryType};
 
@@ -13,7 +13,6 @@ pub struct MemoryMap {
 impl MemoryMap {
     #[cfg(target_pointer_width = "32")]
     pub unsafe fn create() -> Result<MemoryMap, &'static str> {
-
         let smapSignature: u32 = "SMAP".chars().fold(0, |accumulator, currentChar| {
             (accumulator << 8) | currentChar as u32
         });
@@ -84,15 +83,24 @@ impl MemoryMap {
         }
     }
 
-    pub fn dump(&self){
+    pub fn dump(&self) {
+        self.dumpEx(false);
+    }
+
+    pub fn dumpEx(&self, useLogger: bool) {
         // We do this backwards, because if there's a crash we'll hope the first few entries are on the screen
         // (especially if we don't have serial hooked up)
         for index in (0..self.EntryCount as usize).rev() {
-            vgaWrite!("{}: ", index);
-            self.Entries[index].dump();
+            if useLogger {
+                loggerWrite!("{}: ", index);
+            } else {
+                vgaWrite!("{}: ", index);
+            }
+
+            self.Entries[index].dumpEx(useLogger);
         }
     }
-    
+
     pub fn IsValid(
         &self,
         requestedAddress: u64,

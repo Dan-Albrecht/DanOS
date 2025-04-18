@@ -60,7 +60,7 @@ pub extern "fastcall" fn DanMain(
         // BUGBUG: Want this to be a copy as the memory location this is in probably isn't the best
         let memoryMap = memoryMapLocation as *const MemoryMap;
         let memoryMap = &*memoryMap;
-        memoryMap.dump();
+        memoryMap.dumpEx(true);
 
         if IsTheA20LineEnabled(&memoryMap) {
             if Is64BitModeSupported() {

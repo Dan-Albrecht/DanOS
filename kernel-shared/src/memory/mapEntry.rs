@@ -1,4 +1,4 @@
-use crate::vgaWriteLine;
+use crate::{loggerWrite, loggerWriteLine, vgaWriteLine};
 
 #[derive(Debug, PartialEq)]
 pub enum MemoryMapEntryType {
@@ -42,6 +42,10 @@ impl MemoryMapEntry {
     }
 
     pub fn dump(&self) {
+        self.dumpEx(false);
+    }
+
+    pub fn dumpEx(&self, useLogger: bool) {
         let baseAddress = self.BaseAddress;
 
         let mut endAddress = self.BaseAddress + self.Length;
@@ -52,12 +56,23 @@ impl MemoryMapEntry {
         }
 
         let length = self.Length;
-        vgaWriteLine!(
-            "{:?} 0x{:X} - 0x{:X} (0x{:X})",
-            self.getType(),
-            baseAddress,
-            endAddress,
-            length,
-        );
+
+        if useLogger {
+            loggerWriteLine!(
+                "{:?} 0x{:X} - 0x{:X} (0x{:X})",
+                self.getType(),
+                baseAddress,
+                endAddress,
+                length,
+            );
+        } else {
+            vgaWriteLine!(
+                "{:?} 0x{:X} - 0x{:X} (0x{:X})",
+                self.getType(),
+                baseAddress,
+                endAddress,
+                length,
+            );
+        }
     }
 }
