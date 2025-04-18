@@ -4,7 +4,7 @@ use elf::{abi::R_X86_64_RELATIVE, endian::NativeEndian, file::Class, ElfBytes};
 use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, vgaWriteLine};
 
 // Returns the location where the .text section is
-pub unsafe fn relocateKernel64(baseAddress: usize, length: usize) -> usize {
+pub unsafe fn relocateKernel64(baseAddress: usize, length: usize) -> usize { unsafe {
     let length: usize = length.try_into().unwrap();
     vgaWriteLine!("Parsing ELF @ 0x{:X} for 0x{:X}", baseAddress, length);
     let data = slice_from_raw_parts(baseAddress as *const u8, length);
@@ -70,4 +70,4 @@ pub unsafe fn relocateKernel64(baseAddress: usize, length: usize) -> usize {
     return actualTextLocation
         .try_into()
         .expect("Kernel64 .text offset");
-}
+}}

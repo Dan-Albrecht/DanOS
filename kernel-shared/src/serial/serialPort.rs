@@ -58,7 +58,7 @@ impl SerialPort {
         Ok(())
     }
 
-    unsafe fn sendByte(&self, b: u8) -> Result<(), SerialFailure> {
+    unsafe fn sendByte(&self, b: u8) -> Result<(), SerialFailure> { unsafe {
         let mut x = 0;
         while self.isTransmitNotEmpty() {
             x += 1;
@@ -69,9 +69,9 @@ impl SerialPort {
 
         outB(self.port.getPortAddress() + 0, b);
         Ok(())
-    }
+    }}
 
-    unsafe fn receiveByte(&self) -> Result<u8, SerialFailure> {
+    unsafe fn receiveByte(&self) -> Result<u8, SerialFailure> { unsafe {
         let mut x = 0;
         while !self.dataAvailable() {
             x += 1;
@@ -82,10 +82,10 @@ impl SerialPort {
 
         let b = inB(self.port.getPortAddress() + 0);
         Ok(b)
-    }
+    }}
 
     // https://wiki.osdev.org/Serial_Ports#Line_Status_Register
-    unsafe fn isTransmitNotEmpty(&self) -> bool {
+    unsafe fn isTransmitNotEmpty(&self) -> bool { unsafe {
         let mut val = inB(self.port.getPortAddress() + 5);
 
         // Bit is set if transmition buffer is empty
@@ -96,9 +96,9 @@ impl SerialPort {
         } else {
             false
         }
-    }
+    }}
 
-    unsafe fn init(&self) -> Result<bool, SerialFailure> {
+    unsafe fn init(&self) -> Result<bool, SerialFailure> { unsafe {
         // BUGBUG: For yet another reason I do not understand if we don't have a random logging statment around the first few lines, we'll reset the CPU on real hardware (unsure of the fault)
         vgaWriteLine!("Serial init...");
         self.enableInterrupts(false);
@@ -124,18 +124,18 @@ impl SerialPort {
 
         self.disableLoopback();
         Ok(true)
-    }
+    }}
 
     // https://wiki.osdev.org/Serial_Ports#Interrupt_enable_register
-    unsafe fn enableInterrupts(&self, enable: bool) {
+    unsafe fn enableInterrupts(&self, enable: bool) { unsafe {
         if enable {
             todo!("Enable interrupts")
         } else {
             outB(self.port.getPortAddress() + 1, 0x00);
         }
-    }
+    }}
 
-    unsafe fn set115KBaud(&self) {
+    unsafe fn set115KBaud(&self) { unsafe {
         // Indicate we want to muck with the Divisor Latch Access Bit (DLAB) register
         outB(self.port.getPortAddress() + 3, 0x80);
 
@@ -145,16 +145,16 @@ impl SerialPort {
 
         // Clear mucking with DLAB bit, but also set no parity, one stop bit
         outB(self.port.getPortAddress() + 3, 0x03);
-    }
+    }}
 
     // https://wiki.osdev.org/Serial_Ports#First_In_First_Out_Control_Register
-    unsafe fn setupFIFO(&self) {
+    unsafe fn setupFIFO(&self) { unsafe {
         // Setting to 1 byte triggering for now in an attempt to have maximum reliablity
         outB(self.port.getPortAddress() + 2, 0x07);
-    }
+    }}
 
     // https://wiki.osdev.org/Serial_Ports#Modem_Control_Register
-    unsafe fn enableLoopback(&self) {
+    unsafe fn enableLoopback(&self) { unsafe {
         // Enable loop back
         // Sets Data Terminal Ready (DTR) & Request to Send (RTS)
         outB(self.port.getPortAddress() + 4, 0x0B);
@@ -164,20 +164,20 @@ impl SerialPort {
         // BUGBUG: Rationalize this copy/paste from osdev, why can't this be done
         // in one shot, and-or does there need to be a delay between these two commands
         outB(self.port.getPortAddress() + 4, 0x1E);
-    }
+    }}
 
-    unsafe fn dataAvailable(&self) -> bool {
+    unsafe fn dataAvailable(&self) -> bool { unsafe {
         let mut val = inB(self.port.getPortAddress() + 5);
         val &= 0x1;
 
         val != 0
-    }
+    }}
 
     // https://wiki.osdev.org/Serial_Ports#Modem_Control_Register
-    unsafe fn disableLoopback(&self) {
+    unsafe fn disableLoopback(&self) { unsafe {
         // Clears loopback, enables both hardware pins and sets DTR, RTS
         outB(self.port.getPortAddress() + 4, 0x0F);
-    }
+    }}
 }
 
 impl COMPort {

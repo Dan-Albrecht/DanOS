@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{loggerWrite, loggerWriteLine, logging::logger::Logger, vgaWrite, vgaWriteLine};
+use crate::{loggerWrite, vgaWrite, vgaWriteLine};
 
 use super::mapEntry::{MemoryMapEntry, MemoryMapEntryType};
 

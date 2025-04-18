@@ -163,7 +163,7 @@ pub struct GDTR {
     Base: u64,
 }
 
-pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
+pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) { unsafe {
 
     let gdtAddress = alignDown(cantUseAbove - 1 - size_of::<OurGdt>(), GDT_ALIGNMENT);
     let baseAddress = baseAddress as usize;
@@ -203,7 +203,7 @@ pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) {
         "lgdt [eax]",
         in("eax") ourGdt
     );
-}
+}}
 
 impl Gdt {
     pub fn new() -> Self {
@@ -232,7 +232,7 @@ impl GDTR {
         GDTR { Limit: 0, Base: 0 }
     }
 
-    pub unsafe fn install(&mut self, gdt: Gdt) {
+    pub unsafe fn install(&mut self, gdt: Gdt) { unsafe {
         self.Base = &gdt as *const _ as u64;
         self.Limit = size_of::<Gdt>().try_into().unwrap();
 
@@ -240,7 +240,7 @@ impl GDTR {
             "lgdt [eax]",
             in("eax") self
         );
-    }
+    }}
 }
 
 #[cfg(target_pointer_width = "64")]

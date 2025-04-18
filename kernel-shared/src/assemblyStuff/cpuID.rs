@@ -8,7 +8,7 @@ const EXTENDED_PROCESSOR_INFO: u32 = 0x80000001;
 
 // BUGBUG: The loaded assembly is screwed up, its only because we run through a ton of 0x0 instructions
 // we even make it here.
-unsafe fn IsCpuIDSupported() -> bool {
+unsafe fn IsCpuIDSupported() -> bool { unsafe {
     let eax: u32;
 
     // CPUID is detected by being ableto flip bit 21 of the EFLAGS register
@@ -37,9 +37,9 @@ unsafe fn IsCpuIDSupported() -> bool {
     } else {
         return true;
     }
-}
+}}
 
-unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
+unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool { unsafe {
     if !IsCpuIDSupported() {
         return false;
     }
@@ -52,9 +52,9 @@ unsafe fn AreExtendedCpuIDFunctionsSupported() -> bool {
     } else {
         false
     }
-}
+}}
 
-pub unsafe fn Is64BitModeSupported() -> bool {
+pub unsafe fn Is64BitModeSupported() -> bool { unsafe {
     if !AreExtendedCpuIDFunctionsSupported() {
         return false;
     }
@@ -67,7 +67,7 @@ pub unsafe fn Is64BitModeSupported() -> bool {
     } else {
         return false;
     }
-}
+}}
 
 // NB: Clobbers vary by function. The clobbers below are just for the two functions I'm using here.
 fn CpuId(function: u32) -> CpuIdResult {

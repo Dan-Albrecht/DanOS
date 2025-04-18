@@ -1,4 +1,4 @@
-use crate::{loggerWrite, loggerWriteLine, vgaWriteLine};
+use crate::{loggerWriteLine, vgaWriteLine};
 
 #[derive(Debug, PartialEq)]
 pub enum MemoryMapEntryType {

@@ -2,19 +2,19 @@ use core::mem::size_of;
 
 use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
 
-pub unsafe fn zeroMemory(address: usize, ammount: usize) {
+pub unsafe fn zeroMemory(address: usize, ammount: usize) { unsafe {
     assert!(ammount <= isize::MAX as usize);
     let pointer = address as *mut u8;
     for index in 0..ammount as isize {
         *pointer.offset(index) = 0;
     }
-}
+}}
 
-pub unsafe fn zeroMemory2<T>(address: *const T) {
+pub unsafe fn zeroMemory2<T>(address: *const T) { unsafe {
     let address = address as usize;
     let ammount = size_of::<T>();
     zeroMemory(address, ammount);
-}
+}}
 
 pub fn haltOnMisaligned(msg: &'static str, address: usize, alignment: usize) {
     let mask = alignment - 1;
