@@ -3,8 +3,10 @@ use core::mem::size_of;
 use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::logging::logger;
+use kernel_shared::magicConstants::IDT_START_ADDRESS;
 use kernel_shared::memoryHelpers::zeroMemory2;
-use kernel_shared::physicalMemory::PhysicalMemoryManager;
+use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
 
 use crate::assemblyHelpers::getCR2;
 use crate::loggerWriteLine;
@@ -172,9 +174,14 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
-    let idt: *mut Table = memoryManager.ReserveWhereverZeroed(size_of::<Table>(), align_of::<Table>());
+    // BUGBUG: Currrently ReserveWhereverZeroed is picking something that isn't mappened in
+    // use a known address for now
+    //let idt: *mut Table = memoryManager.ReserveWhereverZeroed(size_of::<Table>(), align_of::<Table>());
+    memoryManager.Reserve(IDT_START_ADDRESS, size_of::<Table>(), WhatDo::Normal);
+    let idt = IDT_START_ADDRESS as *mut Table;
 
-    zeroMemory2(idt);
+    loggerWriteLine!("IDT @ 0x{:X}", idt as usize);
+
     SetupStuff(idt);
     let limit: u16;
 

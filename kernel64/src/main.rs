@@ -120,14 +120,12 @@ pub extern "sysv64" fn DanMain(
         memoryMapLocation
     );
 
-    haltLoop();
-
     let memoryMap: MemoryMap;
     unsafe {
         memoryMap = *(memoryMapLocation as *const MemoryMap);
     }
 
-    memoryMap.dump();
+    memoryMap.dumpEx(true);
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
@@ -160,6 +158,7 @@ pub extern "sysv64" fn DanMain(
     loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
     loggerWriteLine!("We handled the breakpoint!");
+    haltLoop();
 
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
     let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWhereverZeroed(DUMB_HEAP_SIZE, 1);

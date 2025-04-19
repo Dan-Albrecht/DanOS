@@ -1,8 +1,9 @@
 use core::mem::size_of;
 
-use crate::{assemblyStuff::halt::haltLoop, vgaWriteLine};
+use crate::{assemblyStuff::halt::haltLoop, loggerWriteLine, vgaWriteLine};
 
 pub unsafe fn zeroMemory(address: usize, ammount: usize) { unsafe {
+    loggerWriteLine!("zeroMemory: 0x{:X} ammount: 0x{:X}", address, ammount);
     assert!(ammount <= isize::MAX as usize);
     let pointer = address as *mut u8;
     for index in 0..ammount as isize {

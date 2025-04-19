@@ -1,6 +1,7 @@
 use core::mem::size_of;
 use core::u8;
 
+use crate::logging::logger;
 use crate::magicConstants::SIZE_OF_PAGE;
 use crate::memory::map::MemoryMap;
 use crate::memory::mapEntry::MemoryMapEntryType;
@@ -34,7 +35,8 @@ pub struct PageBook {
 
 pub struct CreationResult {
     pub Book: PageBook,
-    pub LowestPhysicalAddressUsed: usize,
+    pub PageStructuresStart: usize,
+    pub PageStructuresEnd: usize,
 }
 
 impl PageBook {
@@ -129,6 +131,14 @@ impl PageBook {
                 );
             }
 
+            let first = (*pt.unsafePtr()).getAddressForEntry(0);
+            let last = (*pt.unsafePtr()).getAddressForEntry((*pt.unsafePtr()).getNumberOfEntries() - 1);
+            vgaWriteLine!(
+                "Identity mapped: 0x{:X}..0x{:X}",
+                first.address,
+                last.address + size_of::<PhysicalPage>(),
+            );
+
             (*pdt.unsafePtr()).setEntry(
                 0,
                 &pt,
@@ -171,7 +181,8 @@ impl PageBook {
 
             return CreationResult {
                 Book: pb,
-                LowestPhysicalAddressUsed: pml4 as usize,
+                PageStructuresStart: pml4 as usize,
+                PageStructuresEnd: maxAddress,
             };
         }
     }

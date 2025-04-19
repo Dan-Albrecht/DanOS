@@ -75,4 +75,15 @@ impl MemoryMapEntry {
             );
         }
     }
+    
+    pub fn fits(&self, lowest_available_address: usize, size_in_bytes: usize) -> bool {
+        let base_address = self.BaseAddress as usize;
+        let end_address = (self.BaseAddress + self.Length) as usize;
+
+        if base_address <= lowest_available_address && (lowest_available_address + size_in_bytes) <= end_address {
+            return true;
+        }
+
+        false
+    }
 }

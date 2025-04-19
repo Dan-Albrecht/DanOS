@@ -1,22 +1,22 @@
 use core::arch::asm;
 
 use kernel_shared::{
-    loggerWriteLine, memory::map::MemoryMap, pageTable::pageBook::PageBook
+    loggerWriteLine, memory::map::MemoryMap, pageTable::pageBook::{CreationResult, PageBook}
 };
 
 
-pub fn enablePaging(memoryMap: &MemoryMap) -> usize {
+pub fn enablePaging(memoryMap: &MemoryMap) -> CreationResult {
     unsafe {
         loggerWriteLine!("Enabling PAE");
         enablePae();
         loggerWriteLine!("Setting page data");
-        let cantUseAbove = setPageData(memoryMap);
+        let pageTableData = setPageData(memoryMap);
         loggerWriteLine!("Enabling long mode");
         enableLongMode();
         loggerWriteLine!("Enabling paging");
         reallyEnablePaging();
 
-        return cantUseAbove;
+        return pageTableData;
     }
 }
 
@@ -46,8 +46,8 @@ unsafe fn enableLongMode() { unsafe {
     );
 }}
 
-unsafe fn setPageData(memoryMap: &MemoryMap) -> usize { unsafe {
-    loggerWriteLine!("Getting book");
+unsafe fn setPageData(memoryMap: &MemoryMap) -> CreationResult { unsafe {
+    loggerWriteLine!("Creating book");
     let result = PageBook::fromScratch(memoryMap);
     let cr3 = result.Book.getCR3Value();
 
@@ -57,7 +57,7 @@ unsafe fn setPageData(memoryMap: &MemoryMap) -> usize { unsafe {
         in("eax") cr3 as u32,
     );
 
-    return result.LowestPhysicalAddressUsed;
+    return result;
 }}
 
 unsafe fn reallyEnablePaging() { unsafe {

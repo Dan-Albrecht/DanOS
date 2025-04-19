@@ -2,11 +2,13 @@ use core::any::type_name;
 
 use crate::{
     assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage,
-    memory::{map::MemoryMap, mapEntry::MemoryMapEntryType},
+    haltLoopWithMessage, loggerWrite, loggerWriteLine,
+    memory::{
+        map::MemoryMap,
+        mapEntry::{MemoryMapEntry, MemoryMapEntryType},
+    },
     memoryHelpers::{alignUp, zeroMemory2},
     memoryTypes::PhysicalAddressPlain,
-    vgaWriteLine,
 };
 
 pub struct PhysicalMemoryManager {
@@ -23,7 +25,7 @@ pub struct MemoryBlob {
 pub enum WhatDo {
     Normal,
     UseReserved,
-    YoLo, // Allocate even if it isn't in the map. Seeing this for hardware IO.
+    YoLo, // Allocate even if it isn't in the map. Using this for hardware IO.
 }
 
 impl Default for MemoryBlob {
@@ -85,7 +87,7 @@ impl PhysicalMemoryManager {
             }
 
             let end = requestLocation + requestAmmount;
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "0x{:X}..0x{:X} for 0x{:X} not in memory range (of any type)",
                 requestLocation,
                 end,
@@ -137,7 +139,7 @@ impl PhysicalMemoryManager {
         };
         self.Blobs[firstFreeIndex].Length = requestAmmount;
 
-        vgaWriteLine!(
+        loggerWriteLine!(
             "Reserved 0x{:X} bytes @ 0x{:X} index {}",
             requestAmmount,
             requestLocation,
@@ -163,7 +165,7 @@ impl PhysicalMemoryManager {
             let memoryMapLength = memoryMapLength.unwrap();
             let memoryEnd = memoryMapBase + memoryMapLength;
 
-            vgaWriteLine!(
+            loggerWriteLine!(
                 "0x{:X}..0x{:X} is {:?}",
                 memoryMapBase,
                 memoryEnd,
@@ -172,88 +174,94 @@ impl PhysicalMemoryManager {
         }
     }
 
+    pub fn FindEntryForAddress(&self, address: usize) -> MemoryMapEntry {
+        for index in 0..(self.MemoryMap.EntryCount as usize) {
+            let memoryMapBase = self.MemoryMap.Entries[index].BaseAddress;
+            let memoryMapBase: Result<usize, _> = memoryMapBase.try_into();
+
+            let memoryMapLength = self.MemoryMap.Entries[index].Length;
+            let memoryMapLength: Result<usize, _> = memoryMapLength.try_into();
+
+            if matches!(memoryMapBase, Err(_)) || matches!(memoryMapLength, Err(_)) {
+                continue;
+            }
+
+            let memoryMapBase = memoryMapBase.unwrap();
+            let memoryMapLength = memoryMapLength.unwrap();
+            let memoryEnd = memoryMapBase + memoryMapLength;
+
+            if address >= memoryMapBase && address < memoryEnd {
+                return self.MemoryMap.Entries[index];
+            }
+        }
+
+        haltLoopWithMessage!("0x{:X} not in any entry", address);
+    }
+
     pub fn ReserveWhereverZeroed<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
         let nextBlob = self.nextFreeBlob();
         if None == nextBlob {
             haltLoopWithMessage!("No more blobs to store data in");
         }
 
-        let firstFreeIndex = nextBlob.unwrap();
-        let mut lowestAvailableAddress = None;
+        let nextBlob = nextBlob.unwrap();
 
-        for x in 0..firstFreeIndex {
+        // This is a very dumb 'next available' algorithm as if previous allocations left gaps
+        // this request would fit in, we'd end up skipping over them
+        let mut nextAvailableAddress = None;
+
+        for x in 0..nextBlob {
             let endAddress = self.Blobs[x].PhysicalAddress.address + self.Blobs[x].Length;
-            if let Some(currentLowestAddress) = lowestAvailableAddress {
+            if let Some(currentLowestAddress) = nextAvailableAddress {
                 if endAddress > currentLowestAddress {
-                    lowestAvailableAddress = Some(endAddress);
+                    nextAvailableAddress = Some(endAddress);
                 }
             } else {
-                lowestAvailableAddress = Some(endAddress);
+                nextAvailableAddress = Some(endAddress);
             }
         }
 
-        if lowestAvailableAddress == None {
-            lowestAvailableAddress = Some(0);
+        if nextAvailableAddress == None {
+            // Not sure why we used to do this:
+            //nextAvailableAddress = Some(0);
+
+            // Going to halt for now
+            haltLoopWithMessage!("No addresses available to allocate from");
         }
 
-        let mut lowestAvailableAddress = alignUp(lowestAvailableAddress.unwrap(), alignment) as u64;
-        let sizeInBytes = sizeInBytes as u64;
+        let lowestAvailableAddress = alignUp(nextAvailableAddress.unwrap(), alignment);
+        loggerWriteLine!(
+            "Using blob {} to hold address 0x{:X}",
+            nextBlob,
+            lowestAvailableAddress
+        );
 
-        // See where this will fit
-        // BUGBUG: We assume memory map is in ascending order, not sure if anything guarntees that
-        // BUGBUG: This number casting is out of control...
-        for x in 0..self.MemoryMap.EntryCount as usize {
-            let entry = self.MemoryMap.Entries[x];
-            if entry.getType() == MemoryMapEntryType::AddressRangeMemory {
-                if lowestAvailableAddress >= entry.BaseAddress
-                    && lowestAvailableAddress <= entry.BaseAddress + entry.Length
-                {
-                    // The start is within the range, but what about the end?
-                    let requestEnd = lowestAvailableAddress + sizeInBytes;
-                    if requestEnd >= entry.BaseAddress
-                        && requestEnd <= entry.BaseAddress + entry.Length
-                    {
-                        self.Reserve(
-                            lowestAvailableAddress as usize,
-                            sizeInBytes as usize,
-                            WhatDo::Normal,
-                        );
-                        let result = lowestAvailableAddress as *mut T;
-                        unsafe {
-                            zeroMemory2(result);
-                        }
-                        return result;
-                    } else {
-                        vgaWriteLine!("End goes past the end of this blob, trying next...");
-                        lowestAvailableAddress = alignUp(
-                            entry.BaseAddress as usize + entry.Length as usize + 1 as usize,
-                            alignment,
-                        ) as u64;
-                    }
-                } else if lowestAvailableAddress < entry.BaseAddress {
-                    let potentialStart = alignUp(entry.BaseAddress as usize, alignment);
-                    let potentialEnd = potentialStart + sizeInBytes as usize;
+        let entry = self.FindEntryForAddress(lowestAvailableAddress);
+        loggerWrite!("The address is in entry: ");
+        entry.dumpEx(true);
 
-                    if potentialStart < entry.BaseAddress as usize + entry.Length as usize
-                        && entry.BaseAddress < potentialEnd as u64
-                    {
-                        self.Reserve(
-                            potentialStart as usize,
-                            sizeInBytes as usize,
-                            WhatDo::Normal,
-                        );
-                        let result = potentialStart as *mut T;
-                        unsafe {
-                            zeroMemory2(result);
-                        }
-                        return result;
-                    }
-                }
-            }
+        let rt: bool = entry.fits(lowestAvailableAddress, sizeInBytes);
+
+        if !rt {
+            loggerWriteLine!(
+                "The address cannot fit in the entry; update this code to look elsewhere"
+            );
+            self.MemoryMap.dumpEx(true);
+            haltLoopWithMessage!("Couldn't find anywhere for 0x{:X} bytes", sizeInBytes);
         }
 
-        self.MemoryMap.dump();
-        haltLoopWithMessage!("Couldn't find anywhere for 0x{:X} bytes", sizeInBytes);
+        let result = lowestAvailableAddress as *mut T;
+        loggerWriteLine!("Zeroing 0x{:X} bytes at 0x{:X}", sizeInBytes, lowestAvailableAddress);
+        unsafe {
+            zeroMemory2(result);
+        }
+
+        self.Blobs[nextBlob].PhysicalAddress.address = lowestAvailableAddress;
+        self.Blobs[nextBlob].Length = sizeInBytes;
+
+        loggerWriteLine!("Allocation complete");
+
+        return result;
     }
 
     fn nextFreeBlob(&self) -> Option<usize> {

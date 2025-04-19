@@ -67,11 +67,12 @@ pub extern "fastcall" fn DanMain(
                 loggerWriteLine!("64-bit mode is available");
 
                 let entry = memoryMap.Entries[0];
-                let cantUseAbove = enablePaging(&memoryMap);
+                let pageTableData = enablePaging(&memoryMap);
 
                 loggerWriteLine!("64-bit paging mode enabled...");
                 loggerWriteLine!("...though we're in compatability (32-bit) mode currently.");
-                Setup64BitGDT(entry.BaseAddress, cantUseAbove);
+                loggerWriteLine!("Page table data is between 0x{:X} and 0x{:X}", pageTableData.PageStructuresStart, pageTableData.PageStructuresEnd);
+                Setup64BitGDT(entry.BaseAddress, pageTableData.PageStructuresStart);
 
                 loggerWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
