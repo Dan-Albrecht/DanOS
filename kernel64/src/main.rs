@@ -21,6 +21,7 @@ use core::arch::asm;
 use core::array::from_fn;
 use core::panic::PanicInfo;
 
+use acpi::bar;
 use interupts::InteruptDescriptorTable::{IDT, SetIDT};
 
 use kernel_shared::gdtStuff::{GDTR, Gdt, GetGdtr};
@@ -59,15 +60,15 @@ fn reloadCR3() {
     }
 }
 
-fn getSP() -> usize {
+fn getBP() -> usize {
     unsafe {
-        let sp;
+        let bp;
         asm!(
-            "mov {0}, rsp",
-            out(reg) sp,
+            "mov {0}, rbp",
+            out(reg) bp,
         );
 
-        sp
+        bp
     }
 }
 
@@ -143,14 +144,11 @@ pub extern "sysv64" fn DanMain(
     // Rust, annonginly, doesn't like accessing 0; so mark it reserved so we won't try and allocate it
     physicalMemoryManager.Reserve("Null address", 0, 1, WhatDo::YoLo);
 
-    // BUGBUG: Should probalby get the base pointer as this function has already subtracted stack space
-    let sp = getSP();
-    // BUGBUG: Really need BP,SP is way lower than we need to protect
-    let maybeStackStart = alignUp(sp, 0x5000);
-    // BUGBUG: Get a proper stack size
-    // BUGBUG: Reserve a proper ammount
-    // +/- 1 is so can we have the 0 reserved seperately
-    physicalMemoryManager.Reserve("The stack", 1, maybeStackStart - 1, WhatDo::YoLo);
+    let basePointer = getBP();
+    loggerWriteLine!("BP is 0x{:X}", basePointer);
+
+    // Start at 1 as we want the null reservation seperate; I don't know why, I just feel like it
+    physicalMemoryManager.Reserve("The stack", 1, basePointer, WhatDo::YoLo);
 
     // Reserve ourself
     physicalMemoryManager.Reserve("The kernel", kernelElfLocation, kernelElfSize, WhatDo::Normal);
@@ -193,8 +191,6 @@ pub extern "sysv64" fn DanMain(
     // We're going to relocate ourselves, grab some memory
     let kernelBytesPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWhereverZeroed("Relocated kernel", kernelElfSize, 0x1000) as *mut u8;
-
-    haltLoopWithMessage!("Temp parking");
 
     let kernelStackPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWhereverZeroed("Kernel virtual memory", VM_KERNEL64_DATA_LENGTH, 0x1000) as *mut u8;
@@ -288,7 +284,7 @@ extern "sysv64" fn newStackHome(
     kernelDataPhysical: usize,
 ) -> ! {
     loggerWriteLine!("We are using our new stack space");
-    haltLoopWithMessage!("Temp parking");
+    haltLoopWithMessage!("Temp parking2");
 
     // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use it again
     //let memoryMap = MemoryMap::Load(memoryMapLocation);
