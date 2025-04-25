@@ -93,6 +93,7 @@ try {
     Write-Host "$($stage2Path)"
     Write-Host "$($stage3Path)"
     Write-Host "$($stage4Path)"
+    Write-Host "`n`nKicking off DanOS...`n`n"
 }
 finally {
     $PSNativeCommandUseErrorActionPreference = $oldErrorState

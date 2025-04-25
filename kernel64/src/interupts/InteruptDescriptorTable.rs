@@ -4,7 +4,6 @@ use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
 use kernel_shared::logging::logger;
-use kernel_shared::magicConstants::IDT_START_ADDRESS;
 use kernel_shared::memoryHelpers::zeroMemory2;
 use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
 
@@ -174,11 +173,7 @@ pub fn InterruptHandlerWithCodeIntImpl(
 }
 
 pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
-    // BUGBUG: Currrently ReserveWhereverZeroed is picking something that isn't mappened in
-    // use a known address for now
-    //let idt: *mut Table = memoryManager.ReserveWhereverZeroed(size_of::<Table>(), align_of::<Table>());
-    memoryManager.Reserve(IDT_START_ADDRESS, size_of::<Table>(), WhatDo::Normal);
-    let idt = IDT_START_ADDRESS as *mut Table;
+    let idt: *mut Table = memoryManager.ReserveWhereverZeroed2();
 
     loggerWriteLine!("IDT @ 0x{:X}", idt as usize);
 

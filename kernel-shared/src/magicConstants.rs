@@ -8,8 +8,6 @@ pub const VGA_BUFFER_ADDRESS: u32 = 0xB8000;
 // Each character on the screen takes 2 bytes (color+character)
 pub const VGA_BYTES_PER_CHAR: u16 = 2;
 
-pub const IDT_START_ADDRESS: usize = 0x1000;
-
 // BUGBUG: These, especially the last two should be 'address range of' or something like that, the objects themselves are way smaller
 pub const SIZE_OF_PAGE: usize = 0x1000;
 pub const SIZE_OF_PAGE_TABLE: usize = 0x20_0000;

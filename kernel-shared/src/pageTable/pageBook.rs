@@ -1,6 +1,7 @@
 use core::mem::size_of;
 use core::u8;
 
+use crate::loggerWriteLine;
 use crate::logging::logger;
 use crate::magicConstants::SIZE_OF_PAGE;
 use crate::memory::map::MemoryMap;
@@ -65,7 +66,38 @@ impl PageBook {
         }
     }
 
+    fn createPageTable(address: usize, multiplier: usize) -> PhysicalAddress<PageTable> {
+        let pt = alignDown(address, SIZE_OF_PAGE);
+        haltOnMisaligned("PT", pt as usize, SIZE_OF_PAGE);
+        loggerWriteLine!("PT @ 0x{:X}", pt as usize);
+        let pt = PhysicalAddress::<PageTable>::new(pt);
+        unsafe {
+            zeroMemory2(pt.unsafePtr());
+        }
+
+        for index in 0..ENTRIES_PER_PAGE_TABLE {
+            let page = (index + (multiplier * ENTRIES_PER_PAGE_TABLE)) * size_of::<PhysicalPage>();
+            let page = PhysicalAddress::<PhysicalPage>::new(page);
+            // BUGUBG: We're setting these uncachable for now just to be extra safe, but shouldn't be needed anymore...
+            unsafe {
+                (*pt.unsafePtr()).setEntry(
+                    index,
+                    &page,
+                    Execute::Yes,
+                    Present::Yes,
+                    Writable::Yes,
+                    Cachable::No,
+                    UserSupervisor::Supervisor,
+                    WriteThrough::WriteTrough,
+                );
+            }
+        }
+
+        return pt;
+    }
+
     // This will create and initalize, uses memory from the first memory map entry
+    // BUGBUG: Need to at least double the identity mapping we're doing; can't relocate kernl64 otherwise
     pub fn fromScratch(memoryMap: &MemoryMap) -> CreationResult {
         unsafe {
             // We're being lazy, but safe. Want the first entry to be usable memory and big enough so we can at least allocate the page structure in it.
@@ -83,15 +115,16 @@ impl PageBook {
             let maxAddress = maxAddress as usize;
 
             // +1 as we're currently pointing at the last byte instead of one beyond like the rest of these will be
-            let pt = alignDown(maxAddress - size_of::<PageTable>() + 1, SIZE_OF_PAGE);
-            haltOnMisaligned("PT", pt as usize, SIZE_OF_PAGE);
-            vgaWriteLine!("PT @ 0x{:X}", pt as usize);
-            
-            let pt = PhysicalAddress::<PageTable>::new(pt);
-            zeroMemory2(pt.unsafePtr());
+            let pt = Self::createPageTable(maxAddress - size_of::<PageTable>() + 1, 0);
+            let pt2 = Self::createPageTable(pt.address - size_of::<PageTable>(), 1);
+            let pt3 = Self::createPageTable(pt2.address - size_of::<PageTable>(), 2);
+            let pt4 = Self::createPageTable(pt3.address - size_of::<PageTable>(), 3);
+            let pt5 = Self::createPageTable(pt4.address - size_of::<PageTable>(), 4);
+            let pt6 = Self::createPageTable(pt5.address - size_of::<PageTable>(), 5);
+            let lastPt = pt6;
 
-            let pdt = alignDown(pt.address - size_of::<PageDirectoryTable>(), SIZE_OF_PAGE);
-            vgaWriteLine!("PDT @ 0x{:X}", pdt as usize);
+            let pdt = alignDown(lastPt.address - size_of::<PageDirectoryTable>(), SIZE_OF_PAGE);
+            loggerWriteLine!("PDT @ 0x{:X}", pdt as usize);
             // BUGUBG: Zero the virtual
             //zeroMemory2(pdt);
             let pdt = PhysicalAddress::<PageDirectoryTable>::new(pdt);
@@ -101,42 +134,24 @@ impl PageBook {
                 SIZE_OF_PAGE,
             );
 
-            vgaWriteLine!("PDPT @ 0x{:X}", pdpt);
+            loggerWriteLine!("PDPT @ 0x{:X}", pdpt);
             let pdpt = PhysicalAddress::<PageDirectoryPointerTable>::new(pdpt);
-            
+
             // BUGBUG: How was this working before if this was a physical address that may not have been identity mapped...
             // zeroMemory2(pdpt);
 
-            let pml4 = alignDown(
-                pdpt.address - size_of::<PageMapLevel4Table>(),
-                SIZE_OF_PAGE,
-            );
+            let pml4 = alignDown(pdpt.address - size_of::<PageMapLevel4Table>(), SIZE_OF_PAGE);
             let pml4 = pml4 as *mut PageMapLevel4Table;
-            vgaWriteLine!("PML4 @ 0x{:X}", pml4 as usize);
+            loggerWriteLine!("PML4 @ 0x{:X}", pml4 as usize);
             zeroMemory2(pml4);
 
-            for index in 0..ENTRIES_PER_PAGE_TABLE {
-                let page = index * size_of::<PhysicalPage>();
-                let page = PhysicalAddress::<PhysicalPage>::new(page);
-                // BUGUBG: We're setting these uncachable for now just to be extra safe, but shouldn't be needed anymore...
-                (*pt.unsafePtr()).setEntry(
-                    index,
-                    &page,
-                    Execute::Yes,
-                    Present::Yes,
-                    Writable::Yes,
-                    Cachable::No,
-                    UserSupervisor::Supervisor,
-                    WriteThrough::WriteTrough,
-                );
-            }
-
-            let first = (*pt.unsafePtr()).getAddressForEntry(0);
-            let last = (*pt.unsafePtr()).getAddressForEntry((*pt.unsafePtr()).getNumberOfEntries() - 1);
-            vgaWriteLine!(
+            let startAddress = (*pt.unsafePtr()).getAddressForEntry(0);
+            let endAddress =
+                (*lastPt.unsafePtr()).getAddressForEntry((*lastPt.unsafePtr()).getNumberOfEntries() - 1);
+            loggerWriteLine!(
                 "Identity mapped: 0x{:X}..0x{:X}",
-                first.address,
-                last.address + size_of::<PhysicalPage>(),
+                startAddress.address,
+                endAddress.address + size_of::<PhysicalPage>(),
             );
 
             (*pdt.unsafePtr()).setEntry(
@@ -149,6 +164,57 @@ impl PageBook {
                 UserSupervisor::Supervisor,
                 WriteThrough::WriteTrough,
             );
+            (*pdt.unsafePtr()).setEntry(
+                1,
+                &pt2,
+                Execute::Yes,
+                Present::Yes,
+                Writable::Yes,
+                Cachable::No,
+                UserSupervisor::Supervisor,
+                WriteThrough::WriteTrough,
+            );
+            (*pdt.unsafePtr()).setEntry(
+                2,
+                &pt3,
+                Execute::Yes,
+                Present::Yes,
+                Writable::Yes,
+                Cachable::No,
+                UserSupervisor::Supervisor,
+                WriteThrough::WriteTrough,
+            );
+            (*pdt.unsafePtr()).setEntry(
+                3,
+                &pt4,
+                Execute::Yes,
+                Present::Yes,
+                Writable::Yes,
+                Cachable::No,
+                UserSupervisor::Supervisor,
+                WriteThrough::WriteTrough,
+            );
+            (*pdt.unsafePtr()).setEntry(
+                4,
+                &pt5,
+                Execute::Yes,
+                Present::Yes,
+                Writable::Yes,
+                Cachable::No,
+                UserSupervisor::Supervisor,
+                WriteThrough::WriteTrough,
+            );
+            (*pdt.unsafePtr()).setEntry(
+                5,
+                &lastPt,
+                Execute::Yes,
+                Present::Yes,
+                Writable::Yes,
+                Cachable::No,
+                UserSupervisor::Supervisor,
+                WriteThrough::WriteTrough,
+            );
+
             (*pdpt.unsafePtr()).setEntry(
                 0,
                 &pdt,

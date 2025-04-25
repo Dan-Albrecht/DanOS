@@ -72,7 +72,7 @@ pub extern "fastcall" fn DanMain(
                 loggerWriteLine!("64-bit paging mode enabled...");
                 loggerWriteLine!("...though we're in compatability (32-bit) mode currently.");
                 loggerWriteLine!("Page table data is between 0x{:X} and 0x{:X}", pageTableData.PageStructuresStart, pageTableData.PageStructuresEnd);
-                Setup64BitGDT(entry.BaseAddress, pageTableData.PageStructuresStart);
+                let gdtAddress = Setup64BitGDT(entry.BaseAddress, pageTableData.PageStructuresStart);
 
                 loggerWriteLine!(
                     "The new GDT is in place. Jumping to 64-bit 0x{:X}...",
@@ -91,6 +91,7 @@ pub extern "fastcall" fn DanMain(
                     in("eax") kernel64Address,
                     in("edx") kernel64Length,
                     in("ebx") jumpTarget,
+                    in("ecx") gdtAddress,
                 );
 
                 loggerWriteLine!("64-bit kernel returned!");

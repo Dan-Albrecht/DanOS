@@ -25,6 +25,7 @@ use interupts::InteruptDescriptorTable::{IDT, SetIDT};
 
 use kernel_shared::gdtStuff::{GDTR, Gdt, GetGdtr};
 use kernel_shared::memory::map::MemoryMap;
+use kernel_shared::memoryHelpers::alignUp;
 use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
@@ -112,12 +113,14 @@ pub extern "sysv64" fn DanMain(
     memoryMapLocation: usize,
     kernelElfLocation: usize,
     kernelElfSize: usize,
+    gdtAddress: usize,
 ) -> ! {
     loggerWriteLine!(
-        "Welcome to 64-bit Rust! We're 0x{:X} bytes long starting at 0x{:X}. Memory map is at 0x{:X}",
+        "Welcome to 64-bit Rust! We're 0x{:X} bytes long starting at 0x{:X}. Memory map is at 0x{:X}. GDT is at 0x{:X}",
         kernelElfSize,
         kernelElfLocation,
-        memoryMapLocation
+        memoryMapLocation,
+        gdtAddress
     );
 
     let memoryMap: MemoryMap;
@@ -132,19 +135,34 @@ pub extern "sysv64" fn DanMain(
         Blobs: from_fn(|_| MemoryBlob::default()),
     };
 
+    loggerWriteLine!(
+        "PMM is at 0x{:X}",
+        &physicalMemoryManager as *const _ as usize
+    );
+
+    // Rust, annonginly, doesn't like accessing 0; so mark it reserved so we won't try and allocate it
+    physicalMemoryManager.Reserve("Null address", 0, 1, WhatDo::YoLo);
+
     // BUGBUG: Should probalby get the base pointer as this function has already subtracted stack space
     let sp = getSP();
+    // BUGBUG: Really need BP,SP is way lower than we need to protect
+    let maybeStackStart = alignUp(sp, 0x5000);
     // BUGBUG: Get a proper stack size
-    loggerWriteLine!("Reserving stack 0x{:X}", sp);
-    physicalMemoryManager.Reserve(sp, 1, WhatDo::YoLo);
+    // BUGBUG: Reserve a proper ammount
+    // +/- 1 is so can we have the 0 reserved seperately
+    physicalMemoryManager.Reserve("The stack", 1, maybeStackStart - 1, WhatDo::YoLo);
 
     // Reserve ourself
-    loggerWriteLine!("Reserving self 0x{:X}", kernelElfLocation);
-    physicalMemoryManager.Reserve(kernelElfLocation, kernelElfSize, WhatDo::Normal);
+    physicalMemoryManager.Reserve("The kernel", kernelElfLocation, kernelElfSize, WhatDo::Normal);
+
+    // Reserve the GDT and paging structures
+    let gdtAndStuffLength =
+        (memoryMap.Entries[0].BaseAddress + memoryMap.Entries[0].Length) - gdtAddress as u64 - 1;
+    physicalMemoryManager.Reserve("GDT & paging structures", gdtAddress, gdtAndStuffLength as usize, WhatDo::Normal);
 
     // This is probably not in the memory map, but if it shows up, we want to mark it as used
-    loggerWriteLine!("Reserving VGA 0x{:X}", VGA_BUFFER_ADDRESS);
     physicalMemoryManager.Reserve(
+        "VGA buffer",
         VGA_BUFFER_ADDRESS.try_into().unwrap(),
         (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_CHAR).into(),
         WhatDo::YoLo,
@@ -158,10 +176,9 @@ pub extern "sysv64" fn DanMain(
     loggerWriteLine!("Sending a breakpoint...");
     Breakpoint();
     loggerWriteLine!("We handled the breakpoint!");
-    haltLoop();
 
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
-    let dumbHeapAddress: *mut u8 = physicalMemoryManager.ReserveWhereverZeroed(DUMB_HEAP_SIZE, 1);
+    let dumbHeapAddress = physicalMemoryManager.ReserveWhereverZeroed("Dumb heap", DUMB_HEAP_SIZE, 1);
     loggerWriteLine!(
         "Dumb heap @ 0x{:X} for 0x{:X}",
         dumbHeapAddress as usize,
@@ -171,13 +188,16 @@ pub extern "sysv64" fn DanMain(
     let pageBook = PageBook::fromExistingIdentityMapped();
     // This is using identity mapping, so nothing to adjust
     let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE, false, 0);
-    loggerWriteLine!("PageBook @ 0x{:X}", pageBook.getCR3Value() as usize);
+    loggerWriteLine!("Existing PageBook CR3 @ 0x{:X}", pageBook.getCR3Value() as usize);
 
     // We're going to relocate ourselves, grab some memory
     let kernelBytesPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWhereverZeroed(kernelElfSize, 0x1000);
+        physicalMemoryManager.ReserveWhereverZeroed("Relocated kernel", kernelElfSize, 0x1000) as *mut u8;
+
+    haltLoopWithMessage!("Temp parking");
+
     let kernelStackPhysicalAddress: *mut u8 =
-        physicalMemoryManager.ReserveWhereverZeroed(VM_KERNEL64_DATA_LENGTH, 0x1000);
+        physicalMemoryManager.ReserveWhereverZeroed("Kernel virtual memory", VM_KERNEL64_DATA_LENGTH, 0x1000) as *mut u8;
     loggerWriteLine!(
         "New kernel home @ (P) 0x{:X} for 0x{:X}",
         kernelBytesPhysicalAddress as usize,
@@ -285,8 +305,8 @@ extern "sysv64" fn newStackHome(
     };
 
     physicalMemoryManager.Dump();
-    physicalMemoryManager.Reserve(kernelCodePhysical, kernelCodeLength, WhatDo::Normal);
-    physicalMemoryManager.Reserve(kernelDataPhysical, VM_KERNEL64_DATA_LENGTH, WhatDo::Normal);
+    physicalMemoryManager.Reserve("Kernel code", kernelCodePhysical, kernelCodeLength, WhatDo::Normal);
+    physicalMemoryManager.Reserve("Kernel data", kernelDataPhysical, VM_KERNEL64_DATA_LENGTH, WhatDo::Normal);
 
     // BUGBUG: Magic constant
     const DUMB_HEAP_SIZE: usize = 0x5_0000;

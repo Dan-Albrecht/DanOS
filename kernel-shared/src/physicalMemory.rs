@@ -1,4 +1,4 @@
-use core::any::type_name;
+use core::{any::type_name, result};
 
 use crate::{
     assemblyStuff::halt::haltLoop,
@@ -7,13 +7,13 @@ use crate::{
         map::MemoryMap,
         mapEntry::{MemoryMapEntry, MemoryMapEntryType},
     },
-    memoryHelpers::{alignUp, zeroMemory2},
+    memoryHelpers::{alignUp, zeroMemory, zeroMemory2},
     memoryTypes::PhysicalAddressPlain,
 };
 
 pub struct PhysicalMemoryManager {
     pub MemoryMap: MemoryMap,
-    pub Blobs: [MemoryBlob; 0xF],
+    pub Blobs: [MemoryBlob; 0x10],
 }
 
 pub struct MemoryBlob {
@@ -22,6 +22,7 @@ pub struct MemoryBlob {
 }
 
 // BUGUBG: Come up with a better name
+#[derive(Debug)]
 pub enum WhatDo {
     Normal,
     UseReserved,
@@ -38,7 +39,15 @@ impl Default for MemoryBlob {
 }
 
 impl PhysicalMemoryManager {
-    pub fn Reserve(&mut self, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
+    pub fn Reserve(&mut self, forWhat: &str, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
+        loggerWriteLine!(
+            "Reserving 0x{:X} bytes @ 0x{:X} for {} via method {:?}",
+            requestAmmount,
+            requestLocation,
+            forWhat,
+            whatDo
+        );
+
         if let WhatDo::YoLo = whatDo {
             self.ReserveInternal(requestLocation, requestAmmount);
             return;
@@ -101,14 +110,8 @@ impl PhysicalMemoryManager {
 
     fn ReserveInternal(&mut self, requestLocation: usize, requestAmmount: usize) {
         // Figure out if we have room for this
-        let mut firstFreeIndex = None;
-        for blobIndex in 0..(self.Blobs.len()) {
-            if self.Blobs[blobIndex].Length == 0 {
-                firstFreeIndex = Some(blobIndex);
-                break;
-            }
-        }
-
+        let firstFreeIndex = self.nextFreeBlob();
+        
         if firstFreeIndex == None {
             haltLoopWithMessage!("No more room in {}", type_name::<PhysicalMemoryManager>());
         }
@@ -198,75 +201,118 @@ impl PhysicalMemoryManager {
         haltLoopWithMessage!("0x{:X} not in any entry", address);
     }
 
-    pub fn ReserveWhereverZeroed<T>(&mut self, sizeInBytes: usize, alignment: usize) -> *mut T {
+    pub fn ReserveWhereverZeroed2<T>(&mut self) -> *mut T {
+        let sizeInBytes = core::mem::size_of::<T>();
+        let alignment = core::mem::align_of::<T>();
+        let result = self.ReserveWhereverZeroed(type_name::<T>(), sizeInBytes, alignment);
+        let result = result as *mut T;
+
+        return result;
+    }
+
+    pub fn ReserveWhereverZeroed(&mut self, forWhat: &str, sizeInBytes: usize, alignment: usize) -> usize {
+
+        loggerWriteLine!(
+            "Reserving and zeroing 0x{:X} bytes for {} with alignment 0x{:X}",
+            sizeInBytes,
+            forWhat,
+            alignment
+        );
+
         let nextBlob = self.nextFreeBlob();
         if None == nextBlob {
             haltLoopWithMessage!("No more blobs to store data in");
         }
 
         let nextBlob = nextBlob.unwrap();
+        let mut candidateAddress: usize;
 
-        // This is a very dumb 'next available' algorithm as if previous allocations left gaps
-        // this request would fit in, we'd end up skipping over them
-        let mut nextAvailableAddress = None;
+        for x in 0..self.MemoryMap.EntryCount {
+            // Entry isn't useful if isn't a memory range
+            if self.MemoryMap.Entries[x as usize].getType()
+                != MemoryMapEntryType::AddressRangeMemory
+            {
+                continue;
+            }
 
-        for x in 0..nextBlob {
-            let endAddress = self.Blobs[x].PhysicalAddress.address + self.Blobs[x].Length;
-            if let Some(currentLowestAddress) = nextAvailableAddress {
-                if endAddress > currentLowestAddress {
-                    nextAvailableAddress = Some(endAddress);
+            candidateAddress = alignUp(
+                self.MemoryMap.Entries[x as usize].BaseAddress as usize,
+                alignment,
+            );
+
+            loop {
+                loggerWriteLine!("Checking 0x{:X} for 0x{:X}", candidateAddress, sizeInBytes);
+
+                // Dumb check to see if it'll fit at all (nermind if might already be used)
+                if !self.MemoryMap.Entries[x as usize].fits(candidateAddress as usize, sizeInBytes)
+                {
+                    break;
                 }
-            } else {
-                nextAvailableAddress = Some(endAddress);
+
+                if let Some(blobUsing) = self.findBlobUsing(candidateAddress as usize, sizeInBytes)
+                {
+                    candidateAddress = self.Blobs[blobUsing].PhysicalAddress.address
+                        + self.Blobs[blobUsing].Length;
+                    candidateAddress = alignUp(candidateAddress, alignment);
+                    continue;
+                }
+
+                self.Blobs[nextBlob].PhysicalAddress.address = candidateAddress as usize;
+                self.Blobs[nextBlob].Length = sizeInBytes;
+
+                unsafe {
+                    loggerWriteLine!(
+                        "Zeroing 0x{:X} for 0x{:X}",
+                        candidateAddress,
+                        sizeInBytes
+                    );
+                    zeroMemory(candidateAddress, sizeInBytes);
+                    loggerWriteLine!("Zeroing complete");
+                }
+
+                return candidateAddress;
             }
         }
 
-        if nextAvailableAddress == None {
-            // Not sure why we used to do this:
-            //nextAvailableAddress = Some(0);
-
-            // Going to halt for now
-            haltLoopWithMessage!("No addresses available to allocate from");
-        }
-
-        let lowestAvailableAddress = alignUp(nextAvailableAddress.unwrap(), alignment);
-        loggerWriteLine!(
-            "Using blob {} to hold address 0x{:X}",
-            nextBlob,
-            lowestAvailableAddress
-        );
-
-        let entry = self.FindEntryForAddress(lowestAvailableAddress);
-        loggerWrite!("The address is in entry: ");
-        entry.dumpEx(true);
-
-        let rt: bool = entry.fits(lowestAvailableAddress, sizeInBytes);
-
-        if !rt {
-            loggerWriteLine!(
-                "The address cannot fit in the entry; update this code to look elsewhere"
-            );
-            self.MemoryMap.dumpEx(true);
-            haltLoopWithMessage!("Couldn't find anywhere for 0x{:X} bytes", sizeInBytes);
-        }
-
-        let result = lowestAvailableAddress as *mut T;
-        loggerWriteLine!("Zeroing 0x{:X} bytes at 0x{:X}", sizeInBytes, lowestAvailableAddress);
-        unsafe {
-            zeroMemory2(result);
-        }
-
-        self.Blobs[nextBlob].PhysicalAddress.address = lowestAvailableAddress;
-        self.Blobs[nextBlob].Length = sizeInBytes;
-
-        loggerWriteLine!("Allocation complete");
-
-        return result;
+        haltLoopWithMessage!("Can't find a free blob");
     }
 
     fn nextFreeBlob(&self) -> Option<usize> {
         for index in 0..self.Blobs.len() {
             if self.Blobs[index].Length == 0 {
+                loggerWriteLine!("Next free blob is {}", index);
+                return Some(index);
+            }
+
+            loggerWriteLine!(
+                "Blob {} is using address 0x{:X}",
+                index,
+                self.Blobs[index].PhysicalAddress.address
+            );
+        }
+
+        None
+    }
+
+    fn findBlobUsing(&self, address: usize, size: usize) -> Option<usize> {
+        for index in 0..self.Blobs.len() {
+            let blobAddress = self.Blobs[index].PhysicalAddress.address;
+            let blobSize = self.Blobs[index].Length;
+
+            // Once we hit an unused blob, nothing else used will follow so we know we're not overlapping anywhere
+            if blobSize == 0 {
+                loggerWriteLine!("No blobs are using address 0x{:X}", address);
+                return None;
+            }
+
+            if address >= blobAddress && address < (blobAddress + blobSize) {
+                loggerWriteLine!("Blob {} is using address 0x{:X}", index, address);
+                return Some(index);
+            }
+
+            let endAddress = address + size - 1;
+            if endAddress >= blobAddress && endAddress < (blobAddress + blobSize) {
+                loggerWriteLine!("Blob {} is using address 0x{:X}", index, endAddress);
                 return Some(index);
             }
         }

@@ -3,7 +3,7 @@
 use core::arch::asm;
 
 use crate::memoryHelpers::{alignDown, zeroMemory2};
-use crate::{haltLoopWithMessage, vgaWriteLine};
+use crate::{haltLoopWithMessage, loggerWriteLine, vgaWriteLine};
 use crate::assemblyStuff::halt::haltLoop;
 
 const GDT_ALIGNMENT : usize = 0x10;
@@ -163,7 +163,8 @@ pub struct GDTR {
     Base: u64,
 }
 
-pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) { unsafe {
+// Will use the highest address possible, returns the address of the GDT
+pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) -> usize { unsafe {
 
     let gdtAddress = alignDown(cantUseAbove - 1 - size_of::<OurGdt>(), GDT_ALIGNMENT);
     let baseAddress = baseAddress as usize;
@@ -171,7 +172,7 @@ pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) { unsafe {
     if gdtAddress < baseAddress {
         haltLoopWithMessage!("Can't put GDT @ 0x{:X}", gdtAddress);
     } else {
-        vgaWriteLine!("Putting GDT @ 0x{:X}", gdtAddress);
+        loggerWriteLine!("Putting GDT @ 0x{:X}", gdtAddress);
     }
 
     let ourGdt = gdtAddress as *mut OurGdt;
@@ -203,6 +204,8 @@ pub unsafe fn Setup64BitGDT(baseAddress: u64, cantUseAbove: usize) { unsafe {
         "lgdt [eax]",
         in("eax") ourGdt
     );
+
+    return gdtAddress;
 }}
 
 impl Gdt {
