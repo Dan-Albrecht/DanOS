@@ -39,7 +39,13 @@ impl Default for MemoryBlob {
 }
 
 impl PhysicalMemoryManager {
-    pub fn Reserve(&mut self, forWhat: &str, requestLocation: usize, requestAmmount: usize, whatDo: WhatDo) {
+    pub fn Reserve(
+        &mut self,
+        forWhat: &str,
+        requestLocation: usize,
+        requestAmmount: usize,
+        whatDo: WhatDo,
+    ) {
         loggerWriteLine!(
             "Reserving 0x{:X} bytes @ 0x{:X} for {} via method {:?}",
             requestAmmount,
@@ -111,7 +117,7 @@ impl PhysicalMemoryManager {
     fn ReserveInternal(&mut self, requestLocation: usize, requestAmmount: usize) {
         // Figure out if we have room for this
         let firstFreeIndex = self.nextFreeBlob();
-        
+
         if firstFreeIndex == None {
             haltLoopWithMessage!("No more room in {}", type_name::<PhysicalMemoryManager>());
         }
@@ -210,8 +216,12 @@ impl PhysicalMemoryManager {
         return result;
     }
 
-    pub fn ReserveWhereverZeroed(&mut self, forWhat: &str, sizeInBytes: usize, alignment: usize) -> usize {
-
+    pub fn ReserveWhereverZeroed(
+        &mut self,
+        forWhat: &str,
+        sizeInBytes: usize,
+        alignment: usize,
+    ) -> usize {
         loggerWriteLine!(
             "Reserving and zeroing 0x{:X} bytes for {} with alignment 0x{:X}",
             sizeInBytes,
@@ -261,11 +271,7 @@ impl PhysicalMemoryManager {
                 self.Blobs[nextBlob].Length = sizeInBytes;
 
                 unsafe {
-                    loggerWriteLine!(
-                        "Zeroing 0x{:X} for 0x{:X}",
-                        candidateAddress,
-                        sizeInBytes
-                    );
+                    loggerWriteLine!("Zeroing 0x{:X} for 0x{:X}", candidateAddress, sizeInBytes);
                     zeroMemory(candidateAddress, sizeInBytes);
                     loggerWriteLine!("Zeroing complete");
                 }
@@ -296,7 +302,6 @@ impl PhysicalMemoryManager {
 
     fn findBlobUsing(&self, address: usize, size: usize) -> Option<usize> {
         for index in 0..self.Blobs.len() {
-            let blobAddress = self.Blobs[index].PhysicalAddress.address;
             let blobSize = self.Blobs[index].Length;
 
             // Once we hit an unused blob, nothing else used will follow so we know we're not overlapping anywhere
@@ -305,14 +310,19 @@ impl PhysicalMemoryManager {
                 return None;
             }
 
-            if address >= blobAddress && address < (blobAddress + blobSize) {
-                loggerWriteLine!("Blob {} is using address 0x{:X}", index, address);
-                return Some(index);
-            }
+            let blobStart = self.Blobs[index].PhysicalAddress.address;
+            let blobEnd = blobStart + blobSize - 1;
 
-            let endAddress = address + size - 1;
-            if endAddress >= blobAddress && endAddress < (blobAddress + blobSize) {
-                loggerWriteLine!("Blob {} is using address 0x{:X}", index, endAddress);
+            let addressEnd = address + size - 1;
+
+            // Check for any overlap between ranges using standard range overlap formula
+            if address <= blobEnd && blobStart <= addressEnd {
+                loggerWriteLine!(
+                    "Blob {} overlaps with address range 0x{:X}-0x{:X}",
+                    index,
+                    address,
+                    addressEnd
+                );
                 return Some(index);
             }
         }

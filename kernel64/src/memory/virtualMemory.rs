@@ -1,7 +1,7 @@
-use core::{array::from_fn, fmt::Write};
+use core::{array::from_fn, fmt::Write, num};
 use kernel_shared::{
     assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage,
+    haltLoopWithMessage, loggerWrite,
     magicConstants::{PAGES_PER_TABLE, SIZE_OF_PAGE},
     memoryHelpers::{alignUp, haltOnMisaligned, zeroMemory2},
     memoryTypes::{PhysicalAddress, SomeSortOfIndex, VirtualAddress},
@@ -92,8 +92,8 @@ impl VirtualMemoryManager {
 
     pub fn map(
         &mut self,
-        physicalAddress: usize,
-        virtualAddress: usize,
+        mut physicalAddress: usize,
+        mut virtualAddress: usize,
         length: usize,
         executable: Execute,
         present: Present,
@@ -102,22 +102,86 @@ impl VirtualMemoryManager {
         us: UserSupervisor,
         wt: WriteThrough,
     ) {
-        // BUGBUG: Need to handle the case when a data structure already exists with conflicting enum bits
-        haltOnMisaligned("Map - Physical", physicalAddress, SIZE_OF_PAGE);
-        haltOnMisaligned("Map - Virtual", virtualAddress, SIZE_OF_PAGE);
-
         let adjustedLength = alignUp(length, SIZE_OF_PAGE);
         if adjustedLength != length {
             loggerWriteLine!("Wasted 0x{:X} in mapping", adjustedLength - length);
         }
 
         let length = adjustedLength;
+        let mut numberOfPages = length / SIZE_OF_PAGE;
+        loggerWriteLine!(
+            "Mapping 0x{:X} to 0x{:X} for 0x{:X}",
+            physicalAddress,
+            virtualAddress,
+            length
+        );
+
+        while numberOfPages != 0 {
+            let pagesMapped = self.mapInternal(
+                physicalAddress,
+                virtualAddress,
+                numberOfPages,
+                executable,
+                present,
+                writable,
+                cachable,
+                us,
+                wt,
+            );
+
+            if numberOfPages == pagesMapped {
+                break;
+            }
+
+            if pagesMapped > numberOfPages {
+                haltLoopWithMessage!(
+                    "Mapped {} pages, but requested {}",
+                    pagesMapped,
+                    numberOfPages
+                );
+            }
+
+            numberOfPages -= pagesMapped;
+            physicalAddress += pagesMapped * SIZE_OF_PAGE;
+            virtualAddress += pagesMapped * SIZE_OF_PAGE;
+        }
+
+        loggerWriteLine!("Mapping complete");
+    }
+
+    // Requests to map the inputs
+    // This function may end up mapping less, in which case you'll need to call it again adjusted for what it has already mapped
+    // This function will return the number of pages mapped, so on reinvocation the address should be offset by the number of pages mapped
+    fn mapInternal(
+        &mut self,
+        physicalAddress: usize,
+        virtualAddress: usize,
+        mut numberOfPages: usize,
+        executable: Execute,
+        present: Present,
+        writable: Writable,
+        cachable: Cachable,
+        us: UserSupervisor,
+        wt: WriteThrough,
+    ) -> usize {
+        // BUGBUG: Need to handle the case when a data structure already exists with conflicting enum bits
+        haltOnMisaligned("Map - Physical", physicalAddress, SIZE_OF_PAGE);
+        haltOnMisaligned("Map - Virtual", virtualAddress, SIZE_OF_PAGE);
+
         let vmi = Self::getVmi(virtualAddress);
-        let numberOfPages = length / SIZE_OF_PAGE;
 
         if vmi.PT + numberOfPages > PAGES_PER_TABLE {
-            // BUGUBG: Handle it
-            haltLoopWithMessage!("Request crosses page directoris and we cannot handle that yet");
+            loggerWrite!("Mapping {} pages, but only ", numberOfPages);
+
+            let nn = PAGES_PER_TABLE - vmi.PT;
+            let remainingPages = numberOfPages - nn;
+            numberOfPages = nn;
+
+            loggerWriteLine!(
+                "{} available, {} will need to be tried again",
+                numberOfPages,
+                remainingPages
+            );
         }
 
         loggerWriteLine!(
@@ -140,7 +204,7 @@ impl VirtualMemoryManager {
             }
 
             let mut physicalPdpt = (*virtualPml4.ptr()).getAddressForEntry(vmi.PML4);
-            let virtualPdpt : VirtualAddress<PageDirectoryPointerTable>;
+            let virtualPdpt: VirtualAddress<PageDirectoryPointerTable>;
 
             if physicalPdpt.is_null() {
                 virtualPdpt = self
@@ -158,7 +222,15 @@ impl VirtualMemoryManager {
                 );
 
                 (*virtualPml4.ptr()).setEntry(
-                    vmi.PML4, &physicalPdpt, executable, present, writable, cachable, us, wt, SomeSortOfIndex { value: u8::MAX },
+                    vmi.PML4,
+                    &physicalPdpt,
+                    executable,
+                    present,
+                    writable,
+                    cachable,
+                    us,
+                    wt,
+                    SomeSortOfIndex { value: u8::MAX },
                 );
             } else {
                 virtualPdpt = self.bdh.pToV(&physicalPdpt);
@@ -177,16 +249,25 @@ impl VirtualMemoryManager {
             }
 
             let mut physicalPdt = (*virtualPdpt.ptr()).getAddressForEntry(vmi.PDPT);
-            let virtualPdt : VirtualAddress<PageDirectoryTable>;
+            let virtualPdt: VirtualAddress<PageDirectoryTable>;
 
             if physicalPdt.is_null() {
-                virtualPdt = self.bdh.allocate::<PageDirectoryTable>(size_of::<PageDirectoryTable>(), 0x1000);
+                virtualPdt = self
+                    .bdh
+                    .allocate::<PageDirectoryTable>(size_of::<PageDirectoryTable>(), 0x1000);
                 zeroMemory2(virtualPdt.ptr());
 
                 physicalPdt = self.bdh.vToP(&virtualPdt);
 
                 (*virtualPdpt.ptr()).setEntry(
-                    vmi.PDPT, &physicalPdt, executable, present, writable, cachable, us, wt,
+                    vmi.PDPT,
+                    &physicalPdt,
+                    executable,
+                    present,
+                    writable,
+                    cachable,
+                    us,
+                    wt,
                 );
 
                 loggerWriteLine!(
@@ -205,16 +286,25 @@ impl VirtualMemoryManager {
             }
 
             let mut physicalPageTable = (*virtualPdt.ptr()).getAddressForEntry(vmi.PD);
-            let virtualPageTable : VirtualAddress<PageTable>;
+            let virtualPageTable: VirtualAddress<PageTable>;
 
             if physicalPageTable.is_null() {
-                virtualPageTable = self.bdh.allocate::<PageTable>(size_of::<PageTable>(), 0x1000);
+                virtualPageTable = self
+                    .bdh
+                    .allocate::<PageTable>(size_of::<PageTable>(), 0x1000);
                 zeroMemory2(virtualPageTable.ptr());
 
                 physicalPageTable = self.bdh.vToP(&virtualPageTable);
-                
+
                 (*virtualPdt.ptr()).setEntry(
-                    vmi.PD, &physicalPageTable, executable, present, writable, cachable, us, wt,
+                    vmi.PD,
+                    &physicalPageTable,
+                    executable,
+                    present,
+                    writable,
+                    cachable,
+                    us,
+                    wt,
                 );
 
                 loggerWriteLine!(
@@ -224,7 +314,7 @@ impl VirtualMemoryManager {
                 );
             } else {
                 virtualPageTable = self.bdh.pToV(&physicalPageTable);
-                
+
                 loggerWriteLine!(
                     "PT exists @ 0x{:X} / 0x{:X} (P/V)",
                     physicalPageTable.address,
@@ -246,6 +336,8 @@ impl VirtualMemoryManager {
                     wt,
                 );
             }
+
+            numberOfPages
         }
     }
 
@@ -303,7 +395,7 @@ impl VirtualMemoryManager {
         let index = xxx.value;
         if index >= self.nextVirtualAddressIndex {
             loggerWriteLine!("VMM dump:");
-            for x in 0..10  {
+            for x in 0..10 {
                 loggerWriteLine!("{} = 0x{:X}", x, self.virtualAddresses[x]);
             }
             self.bdh.debugDump();
