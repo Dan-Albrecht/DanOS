@@ -259,9 +259,11 @@ pub extern "sysv64" fn DanMain(
         );
 
         newKernelLocation = relocateKernel64(kernelBytesPhysicalAddress as usize, kernelElfSize);
+        haltLoopWithMessage!("You relocated to the physical address, you need to do virtual since we'll remove the identity mapping after the jump");
     }
 
-    loggerWriteLine!("Relocated kernel to 0x{:X}", newKernelLocation);
+    let textOffsetFromStart = newKernelLocation - kernelBytesPhysicalAddress as usize;
+    loggerWriteLine!("Relocated kernel to 0x{:X} text offset from ELF header is 0x{:X}", newKernelLocation, textOffsetFromStart);
     
     let dumbHeapAddress =
         physicalMemoryManager.ReserveWhereverZeroed("Dumb heap", DUMB_HEAP_SIZE, 1);
@@ -302,8 +304,7 @@ pub extern "sysv64" fn DanMain(
         newKernelLocationCanonical
     );
 
-    // BUGBUG: Don't hardcode; could also canonicalize for good measure
-    let offsetToNewKernel = VM_KERNEL64_CODE - kernelElfLocation - 0x1000;
+    let offsetToNewKernel = VirtualMemoryManager::canonicalize(VM_KERNEL64_CODE - kernelElfLocation - textOffsetFromStart);
 
     // Move to our new kernel space
     unsafe {
