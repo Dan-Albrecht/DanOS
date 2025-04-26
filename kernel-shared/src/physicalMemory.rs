@@ -19,6 +19,7 @@ pub struct PhysicalMemoryManager {
 pub struct MemoryBlob {
     PhysicalAddress: PhysicalAddressPlain,
     Length: usize,
+    What: [u8; 0x40], // Short description of what this is used for
 }
 
 // BUGUBG: Come up with a better name
@@ -34,6 +35,7 @@ impl Default for MemoryBlob {
         MemoryBlob {
             PhysicalAddress: PhysicalAddressPlain { address: 0 },
             Length: 0,
+            What: [0; 0x40],
         }
     }
 }
@@ -55,7 +57,7 @@ impl PhysicalMemoryManager {
         );
 
         if let WhatDo::YoLo = whatDo {
-            self.ReserveInternal(requestLocation, requestAmmount);
+            self.ReserveInternal(requestLocation, requestAmmount, forWhat);
             return;
         } else {
             for index in 0..(self.MemoryMap.EntryCount as usize) {
@@ -80,13 +82,13 @@ impl PhysicalMemoryManager {
                 {
                     match memoryType {
                         MemoryMapEntryType::AddressRangeMemory => {
-                            self.ReserveInternal(requestLocation, requestAmmount);
+                            self.ReserveInternal(requestLocation, requestAmmount, forWhat);
                             return;
                         }
                         MemoryMapEntryType::AddressRangeReserved
                             if let WhatDo::UseReserved = whatDo =>
                         {
-                            self.ReserveInternal(requestLocation, requestAmmount);
+                            self.ReserveInternal(requestLocation, requestAmmount, forWhat);
                             return;
                         }
                         _ => {
@@ -114,7 +116,7 @@ impl PhysicalMemoryManager {
         }
     }
 
-    fn ReserveInternal(&mut self, requestLocation: usize, requestAmmount: usize) {
+    fn ReserveInternal(&mut self, requestLocation: usize, requestAmmount: usize, forWhat: &str,) {
         // Figure out if we have room for this
         let firstFreeIndex = self.nextFreeBlob();
 
@@ -148,11 +150,16 @@ impl PhysicalMemoryManager {
         };
         self.Blobs[firstFreeIndex].Length = requestAmmount;
 
+        let bytes = forWhat.as_bytes();
+        let copy_len = core::cmp::min(bytes.len(), self.Blobs[firstFreeIndex].What.len());
+        self.Blobs[firstFreeIndex].What[..copy_len].copy_from_slice(&bytes[..copy_len]);
+
         loggerWriteLine!(
-            "Reserved 0x{:X} bytes @ 0x{:X} index {}",
+            "Reserved 0x{:X} bytes @ 0x{:X} index {} for {}",
             requestAmmount,
             requestLocation,
             firstFreeIndex,
+            forWhat
         );
     }
 
@@ -179,6 +186,22 @@ impl PhysicalMemoryManager {
                 memoryMapBase,
                 memoryEnd,
                 memoryType
+            );
+        }
+    }
+
+    pub fn DumpBlobs(&self) {
+        for index in 0..self.Blobs.len() {
+            if self.Blobs[index].Length == 0 {
+                break;
+            }
+
+            loggerWriteLine!(
+                "Blob {}: 0x{:X} for 0x{:X} for {}",
+                index,
+                self.Blobs[index].PhysicalAddress.address,
+                self.Blobs[index].Length,
+                core::str::from_utf8(&self.Blobs[index].What).unwrap_or(""),
             );
         }
     }
@@ -269,6 +292,10 @@ impl PhysicalMemoryManager {
 
                 self.Blobs[nextBlob].PhysicalAddress.address = candidateAddress as usize;
                 self.Blobs[nextBlob].Length = sizeInBytes;
+
+                let bytes = forWhat.as_bytes();
+                let copy_len = core::cmp::min(bytes.len(), self.Blobs[nextBlob].What.len());
+                self.Blobs[nextBlob].What[..copy_len].copy_from_slice(&bytes[..copy_len]);
 
                 unsafe {
                     loggerWriteLine!("Zeroing 0x{:X} for 0x{:X}", candidateAddress, sizeInBytes);

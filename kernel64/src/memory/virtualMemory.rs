@@ -59,6 +59,10 @@ impl VirtualMemoryManager {
         }
     }
 
+    pub fn dumpPhysical(&self) {
+        self.physical.DumpBlobs();
+    }
+
     fn is_canonical_address(virtual_address: usize) -> bool {
         let upper_bits = virtual_address >> 48;
         upper_bits == 0 || upper_bits == 0xFFFF

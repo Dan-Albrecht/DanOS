@@ -36,7 +36,7 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{haltLoopWithMessage, loggerWriteLine, magicConstants::*};
+use kernel_shared::{haltLoopWithMessage, loggerWrite, loggerWriteLine, magicConstants::*};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
@@ -323,6 +323,9 @@ pub extern "sysv64" fn DanMain(
     let stackTarget =
         VirtualMemoryManager::canonicalize(VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH);
 
+    loggerWriteLine!("Memory usage before switch:");
+    virtualMemoryManager.dumpPhysical();
+
     unsafe {
         asm!(
             "mov rsp, rax",
@@ -340,8 +343,8 @@ pub extern "sysv64" fn DanMain(
     unreachable!("Retunred from new stack!");
 }
 
-// This currently ends up at 0x2130d0
-// VM_KERNEL64_CODE (0x20_0000) + (.text offset) 0x1000 + (function offset) 0x120d0
+// Arguments 1-6 are passed via registers RDI, RSI, RDX, RCX, R8, R9 respectively;
+// Arguments 7 and above are pushed on to the stack.
 extern "sysv64" fn newStackHome(
     memoryMapLocation: usize,
     kernelCodePhysical: usize,
@@ -349,16 +352,16 @@ extern "sysv64" fn newStackHome(
     kernelDataPhysical: usize,
 ) -> ! {
     loggerWriteLine!("In final relaction: 0x{:X} / 0x{:X} / 0x{:X} (RBP/RSP/RIP)", getBP(), getSP(), getIP());
-    haltLoopWithMessage!("Temp parking2");
 
-    // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use it again
-    //let memoryMap = MemoryMap::Load(memoryMapLocation);
-    // BUGBUG: Reload this
-    //let memoryMap = MemoryMap::Load(memoryMapLocation.try_into().unwrap());
+    // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use the old location again
     let memoryMap: MemoryMap;
     unsafe {
         memoryMap = *(memoryMapLocation as *const MemoryMap);
     }
+
+    memoryMap.dumpEx(true);
+    loggerWriteLine!("New MemoryMap is at 0x{:X}", &memoryMap as *const _ as usize);
+    haltLoopWithMessage!("Temp parking");
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
