@@ -195,19 +195,20 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
         );
     }
 
-    let idtr = IDTR {
-        Base: idt as usize,
-        Limit: limit,
-    };
+    let idtr : *mut IDTR = memoryManager.ReserveWhereverZeroed2();
+    unsafe {
+        (*idtr).Base = idt as usize;
+        (*idtr).Limit = limit;
+    }
 
-    // BUGUBUG: This address is going to get whacked at some point, protect it
+    loggerWriteLine!("IDTR @ 0x{:X}", idtr as usize);
     unsafe {
         asm!(
             "lidt [{0}]",
             //"ljmp $2f", // BUGBUG? OS Dev says do a long jump after loading the table
             "2:",
             "sti",
-            in(reg) addr_of!(idtr),
+            in(reg) idtr,
         );
     }
 
