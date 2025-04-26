@@ -32,6 +32,18 @@ struct VirtualMemoryIndex {
     pub PT: usize,
 }
 
+impl VirtualMemoryIndex {
+    pub fn dump(&self) {
+        loggerWriteLine!(
+            "PML4: {}, PDPT: {}, PD: {}, PT: {}",
+            self.PML4,
+            self.PDPT,
+            self.PD,
+            self.PT
+        );
+    }
+}
+
 impl VirtualMemoryManager {
     pub fn new(
         physical: PhysicalMemoryManager,
@@ -66,12 +78,16 @@ impl VirtualMemoryManager {
             haltLoopWithMessage!("0x{:X} is not canonical", address);
         }
 
-        VirtualMemoryIndex {
+        let result = VirtualMemoryIndex {
             PML4: (address >> 39) & 0x1FF,
             PDPT: (address >> 30) & 0x1FF,
             PD: (address >> 21) & 0x1FF,
             PT: (address >> 12) & 0x1FF,
-        }
+        };
+
+        result.dump();
+
+        result
     }
 
     pub fn map(

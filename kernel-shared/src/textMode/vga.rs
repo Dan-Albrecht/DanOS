@@ -100,7 +100,10 @@ pub fn writeString(msg: &[u8]) {
                     cursorPosition.y += 1;
                 }
             } else {
-                if cursorPosition.x == (VGA_WIDTH as u8) {
+                // BUGBUG: This is another thing that doesn't make sense. The -1 isn't needed. But the side effect of it
+                // is we're booting farther than we would otherwise. So take this hack now while we try to figure out the
+                // real problem.
+                if cursorPosition.x == (VGA_WIDTH as u8 - 1) {
                     if cursorPosition.y == 24 {
                         scrollUp();
                     } else {
@@ -115,7 +118,8 @@ pub fn writeString(msg: &[u8]) {
                 // On real hardware, the VGA mode we're in only allows 3 bits for the background, 4bit is blinking :|
                 // BUGUBG: Figure out how to switch modes so we can use the 4th bit for more background colors
                 // https://old.reddit.com/r/osdev/comments/70fcig/blinking_text/
-                *vgaBuffer.offset(currentOffset + 1) = getColorByte(ForegroundColor::Green, BackgroundColor::Black);
+                *vgaBuffer.offset(currentOffset + 1) =
+                    getColorByte(ForegroundColor::Green, BackgroundColor::Black);
 
                 cursorPosition.x += 1;
             }
