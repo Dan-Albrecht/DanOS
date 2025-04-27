@@ -117,7 +117,7 @@ impl IDT {
 
 #[inline(never)]
 #[unsafe(no_mangle)]
-pub unsafe fn InterruptHandlerIntImpl(vector: u8, stackFrame: ExceptionStackFrame) {
+pub fn InterruptHandlerIntImpl(vector: u8, stackFrame: ExceptionStackFrame) {
     let cs = stackFrame.CodeSegment;
     let ip = stackFrame.InstructionPointer;
     let flags = stackFrame.CpuFlags;

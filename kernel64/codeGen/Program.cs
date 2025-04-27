@@ -10,9 +10,7 @@ const string noCodeStub = """
 #[inline(never)]
 #[unsafe(no_mangle)]
 pub extern "x86-interrupt" fn Interrupt__SUFFIX__(stackFrame: ExceptionStackFrame) {
-    unsafe {
-        InterruptHandlerIntImpl(__SUFFIX__, stackFrame);
-    }
+    InterruptHandlerIntImpl(__SUFFIX__, stackFrame);
 }
 """;
 
@@ -20,9 +18,7 @@ const string codeStub = """
 #[inline(never)]
 #[unsafe(no_mangle)]
 pub extern "x86-interrupt" fn Interrupt__SUFFIX__(stackFrame: ExceptionStackFrame, errorCode: u64) {
-    unsafe {
-        InterruptHandlerWithCodeIntImpl(__SUFFIX__, stackFrame, errorCode);
-    }
+    InterruptHandlerWithCodeIntImpl(__SUFFIX__, stackFrame, errorCode);
 }
 
 """;
