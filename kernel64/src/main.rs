@@ -31,7 +31,7 @@ use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
-use kernel_shared::relocation::relocateKernel64;
+use kernel_shared::relocation::{relocateKernel64, relocateKernel64Ex};
 use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
@@ -106,7 +106,7 @@ fn mapKernelCode(
 ) {
     virtualMemoryManager.map(
         kernelBytesPhysicalAddress,
-        VM_KERNEL64_CODE,
+        VM_KERNEL64_ELF,
         kernelSize,
         Execute::Yes,
         Present::Yes,
@@ -217,7 +217,7 @@ pub extern "sysv64" fn DanMain(
     loggerWriteLine!("We handled the breakpoint!");
 
     // We're going to relocate ourselves, grab some memory
-    let kernelBytesPhysicalAddress: *mut u8 =
+    let kernelElfBytesPhysicalAddress: *mut u8 =
         physicalMemoryManager.ReserveWhereverZeroed("Relocated kernel code", kernelElfSize, 0x1000)
             as *mut u8;
 
@@ -229,7 +229,7 @@ pub extern "sysv64" fn DanMain(
 
     loggerWriteLine!(
         "New kernel home @ (P) 0x{:X} for 0x{:X}",
-        kernelBytesPhysicalAddress as usize,
+        kernelElfBytesPhysicalAddress as usize,
         kernelElfSize
     );
 
@@ -241,29 +241,28 @@ pub extern "sysv64" fn DanMain(
 
     // Virtual memory address of the entry point into the kernel
     // We load the whole elf file in memory right now so there's stuff before this address
-    let newKernelLocation;
+    let newKernelTextLocation;
 
     unsafe {
         loggerWriteLine!(
             "Copying kernel code from 0x{:X} to 0x{:X} for 0x{:X}",
             kernelElfLocation,
-            kernelBytesPhysicalAddress as usize,
+            kernelElfBytesPhysicalAddress as usize,
             kernelElfSize
         );
 
         // Physical address are currently identity mapped
         core::ptr::copy_nonoverlapping(
             kernelElfLocation as *const u8,
-            kernelBytesPhysicalAddress,
+            kernelElfBytesPhysicalAddress,
             kernelElfSize,
         );
 
-        newKernelLocation = relocateKernel64(kernelBytesPhysicalAddress as usize, kernelElfSize);
-        haltLoopWithMessage!("You relocated to the physical address, you need to do virtual since we'll remove the identity mapping after the jump");
+        newKernelTextLocation = relocateKernel64Ex(kernelElfBytesPhysicalAddress as usize, kernelElfSize, VM_KERNEL64_ELF);
     }
 
-    let textOffsetFromStart = newKernelLocation - kernelBytesPhysicalAddress as usize;
-    loggerWriteLine!("Relocated kernel to 0x{:X} text offset from ELF header is 0x{:X}", newKernelLocation, textOffsetFromStart);
+    let textOffsetFromStart = newKernelTextLocation - VM_KERNEL64_ELF as usize;
+    loggerWriteLine!("Relocated kernel to 0x{:X} text offset from ELF header is 0x{:X}", newKernelTextLocation, textOffsetFromStart);
     
     let dumbHeapAddress =
         physicalMemoryManager.ReserveWhereverZeroed("Dumb heap", DUMB_HEAP_SIZE, 1);
@@ -285,11 +284,10 @@ pub extern "sysv64" fn DanMain(
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
     loggerWriteLine!("VMM created");
 
-
     mapKernelCode(
         &mut virtualMemoryManager,
-        newKernelLocation,
-        kernelElfSize - 0, // BUGUBG: The 0 should be the size of the ELF header as we're not propgating that anymnore. This just means we're mapping a bit of junk bytes at the end.
+        kernelElfBytesPhysicalAddress as usize,
+        kernelElfSize,
     );
 
     mapKernelData(
@@ -297,14 +295,16 @@ pub extern "sysv64" fn DanMain(
         kernelStackPhysicalAddress as usize,
     );
 
-    let newKernelLocationCanonical = VirtualMemoryManager::canonicalize(newKernelLocation);
+    let newKernelLocationCanonical = VirtualMemoryManager::canonicalize(newKernelTextLocation);
     loggerWriteLine!(
-        "New kernel is @ 0x{:X} / 0x{:X} (P/C)",
-        newKernelLocation,
+        "New kernel is @ 0x{:X} / 0x{:X} / 0x{:X} (P/V/C)",
+        kernelElfBytesPhysicalAddress as usize,
+        newKernelTextLocation,
         newKernelLocationCanonical
     );
 
-    let offsetToNewKernel = VirtualMemoryManager::canonicalize(VM_KERNEL64_CODE - kernelElfLocation - textOffsetFromStart);
+    let offsetToNewKernel = VirtualMemoryManager::canonicalize(VM_KERNEL64_ELF - kernelElfLocation);
+    loggerWriteLine!("New kernel jump offset is 0x{:X}", offsetToNewKernel);
 
     // Move to our new kernel space
     unsafe {
@@ -335,7 +335,7 @@ pub extern "sysv64" fn DanMain(
             in("rax") stackTarget,
             in("r9") newStackHome as usize,
             in("rdi") memoryMapLocation,
-            in("rsi") kernelBytesPhysicalAddress,
+            in("rsi") kernelElfBytesPhysicalAddress,
             in("rdx") kernelElfSize,
             in("rcx") kernelStackPhysicalAddress,
         );

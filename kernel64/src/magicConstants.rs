@@ -1,6 +1,6 @@
 // Virtual address of the final location of the kernel
-// This starts at the kernel entry point and does not include the ELF header like a lot of other stuff does
-pub const VM_KERNEL64_CODE: usize = 0x2000_0000;
+// This include the ELF header, the text section immediately follows
+pub const VM_KERNEL64_ELF: usize = 0x2000_0000;
 
 // Virtual address of the final location of the kernel's data space
 pub const VM_KERNEL64_DATA: usize = 0x4000_0000;
