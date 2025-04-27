@@ -396,23 +396,19 @@ extern "sysv64" fn newStackHome(
 
     physicalMemoryManager.Dump();
     physicalMemoryManager.Reserve(
-        "Kernel code",
+        "The kernel",
         kernelCodePhysical,
         kernelCodeLength,
         WhatDo::Normal,
     );
     physicalMemoryManager.Reserve(
-        "Kernel data",
+        "Kernel stack + heap",
         kernelDataPhysical,
         VM_KERNEL64_DATA_LENGTH,
         WhatDo::Normal,
     );
 
     physicalMemoryManager.DumpBlobs();
-    haltLoopWithMessage!("Temp parking");
-
-    // BUGBUG: Magic constant
-    const DUMB_HEAP_SIZE: usize = 0x5_0000;
 
     // We're in the course of setting up a new virtual memory manager. We're currently executing in non-identity mapped space
     // so we cannot just ask the physical manager for unused space. We know nothing has used the kernel data space yet aside
