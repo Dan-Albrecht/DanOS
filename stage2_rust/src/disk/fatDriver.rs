@@ -1,7 +1,7 @@
 use super::{diskDriver::DiskDriver, mbs::Mbr};
 use core::{slice, str};
 use enumflags2::{BitFlag, bitflags};
-use kernel_shared::{haltLoopWithMessage, vgaWrite, vgaWriteLine};
+use kernel_shared::{vgaWrite, vgaWriteLine};
 
 // Sector - Unit of access for the media. We'll be using 512 bytes.
 // Cluster - Multiple of Sector. Instrinct allocation unit for the file system.
@@ -283,13 +283,13 @@ impl Fat16 {
                         .name
                         .iter()
                         .rposition(|&char| char != 0x20)
-                        .unwrap_or(entry.name.len()-1);
+                        .unwrap_or(entry.name.len() - 1);
 
                     let extEnd = entry
                         .ext
                         .iter()
                         .rposition(|&char| char != 0x20)
-                        .unwrap_or(entry.ext.len()-1);
+                        .unwrap_or(entry.ext.len() - 1);
 
                     let name =
                         core::str::from_utf8(&entry.name[0..=nameEnd]).unwrap_or("Invalid Name");
@@ -322,6 +322,25 @@ impl Fat16 {
         memory_target: &mut [u8],
     ) -> Result<(), &'static str> {
 
+        let nameEnd = kernel_info
+            .name
+            .iter()
+            .rposition(|&char| char != 0x20)
+            .unwrap_or(kernel_info.name.len() - 1);
+
+        let extEnd = kernel_info
+            .ext
+            .iter()
+            .rposition(|&char| char != 0x20)
+            .unwrap_or(kernel_info.ext.len() - 1);
+
+        vgaWriteLine!(
+            "Loading file {}.{} of size {} bytes",
+            core::str::from_utf8(&kernel_info.name[0..=nameEnd]).unwrap_or("Invalid Name"),
+            core::str::from_utf8(&kernel_info.ext[0..=extEnd]).unwrap_or("Invalid Ext"),
+            kernel_info.file_size
+        );
+
         // BUGBUG: Need to handle arbitrary number of entries
         const FAT_ENTRIES: usize = 8192;
         let mut fat_buffer = [0 as u8; FAT_ENTRIES * 2];
@@ -336,7 +355,7 @@ impl Fat16 {
         let fatTable: &[u16] =
             unsafe { slice::from_raw_parts(&fat_buffer as *const _ as *const u16, FAT_ENTRIES) };
 
-            let root_dir_sectors = ((self.bpb.root_entries * 32) + (self.bpb.bytes_per_sector - 1))
+        let root_dir_sectors = ((self.bpb.root_entries * 32) + (self.bpb.bytes_per_sector - 1))
             / self.bpb.bytes_per_sector;
 
         let first_data_sector = self.bpb.reserved_sectors
@@ -349,7 +368,7 @@ impl Fat16 {
         let mut cluster_to_read = kernel_info.first_cluster_low as usize;
         let mut bytes_to_read = kernel_info.file_size as usize;
         let mut buffer_index_start = 0;
-        
+
         let mut disk_buffer = [0 as u8; 1024];
 
         loop {
@@ -471,11 +490,11 @@ impl FatDriver {
             return Err("No FAT16 driver found");
         }
 
-        let de =
-            self.f16
-                .as_ref()
-                .unwrap()
-                .findFile(&self.disk, false, Some(filename))?;
+        let de = self
+            .f16
+            .as_ref()
+            .unwrap()
+            .findFile(&self.disk, false, Some(filename))?;
         if de.is_none() {
             return Err("File not found");
         }

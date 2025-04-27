@@ -9,10 +9,10 @@ mod disk;
 use core::{arch::asm, panic::PanicInfo};
 use disk::{
     diskDriver::DiskDriver,
-    fatDriver::{FatDriver, FileInfo},
+    fatDriver::FatDriver,
 };
 use kernel_shared::{
-    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, magicConstants::KERNEL32_JUMP_ADDRESS, memory::{self, map::MemoryMap, mapEntry::MemoryMapEntryType}, textMode::teletype, vgaWriteLine
+    assemblyStuff::{halt::haltLoop, misc::disablePic}, gdtStuff::Gdt, haltLoopWithMessage, magicConstants::KERNEL32_JUMP_ADDRESS, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, textMode::teletype, vgaWriteLine
 };
 
 #[panic_handler]

@@ -46,13 +46,6 @@ impl Mbr {
         })
     }
 
-    pub fn dumpPartitions(&self) {
-        self.partition1.dumpPartition(1);
-        self.partition2.dumpPartition(2);
-        self.partition3.dumpPartition(3);
-        self.partition4.dumpPartition(4);
-    }
-
     pub fn getActivePartition(&self) -> Result<Option<(&PartitionEntry, u8)>, &'static str> {
         let mut result: Option<(&PartitionEntry, u8)> = None;
 
