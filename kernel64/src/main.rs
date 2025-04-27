@@ -181,6 +181,13 @@ pub extern "sysv64" fn DanMain(
     // Start at 1 as we want the null reservation seperate; I don't know why, I just feel like it
     physicalMemoryManager.Reserve("The stack", 1, basePointer, WhatDo::YoLo);
 
+    physicalMemoryManager.Reserve(
+        "MemoryMap",
+        memoryMapLocation,
+        size_of::<MemoryMap>(),
+        WhatDo::YoLo,
+    );
+
     // Reserve ourself
     physicalMemoryManager.Reserve(
         "The kernel",
@@ -258,12 +265,20 @@ pub extern "sysv64" fn DanMain(
             kernelElfSize,
         );
 
-        newKernelTextLocation = relocateKernel64Ex(kernelElfBytesPhysicalAddress as usize, kernelElfSize, VM_KERNEL64_ELF);
+        newKernelTextLocation = relocateKernel64Ex(
+            kernelElfBytesPhysicalAddress as usize,
+            kernelElfSize,
+            VM_KERNEL64_ELF,
+        );
     }
 
     let textOffsetFromStart = newKernelTextLocation - VM_KERNEL64_ELF as usize;
-    loggerWriteLine!("Relocated kernel to 0x{:X} text offset from ELF header is 0x{:X}", newKernelTextLocation, textOffsetFromStart);
-    
+    loggerWriteLine!(
+        "Relocated kernel to 0x{:X} text offset from ELF header is 0x{:X}",
+        newKernelTextLocation,
+        textOffsetFromStart
+    );
+
     let dumbHeapAddress =
         physicalMemoryManager.ReserveWhereverZeroed("Dumb heap", DUMB_HEAP_SIZE, 1);
     loggerWriteLine!(
@@ -271,7 +286,7 @@ pub extern "sysv64" fn DanMain(
         dumbHeapAddress as usize,
         DUMB_HEAP_SIZE
     );
-    
+
     // This is using identity mapping, so nothing to adjust
     let bdh = BootstrapDumbHeap::new(dumbHeapAddress as usize, DUMB_HEAP_SIZE, false, 0);
 
@@ -318,7 +333,10 @@ pub extern "sysv64" fn DanMain(
         );
     }
 
-    loggerWriteLine!("Kernel code execution has been relocated to 0x{:X}, now to stack...", getIP());
+    loggerWriteLine!(
+        "Kernel code execution has been relocated to 0x{:X}, now to stack...",
+        getIP()
+    );
 
     // Stack grows down, so put it at the end of the space
     let stackTarget =
@@ -352,7 +370,12 @@ extern "sysv64" fn newStackHome(
     kernelCodeLength: usize,
     kernelDataPhysical: usize,
 ) -> ! {
-    loggerWriteLine!("In final relaction: 0x{:X} / 0x{:X} / 0x{:X} (RBP/RSP/RIP)", getBP(), getSP(), getIP());
+    loggerWriteLine!(
+        "In final relaction: 0x{:X} / 0x{:X} / 0x{:X} (RBP/RSP/RIP)",
+        getBP(),
+        getSP(),
+        getIP()
+    );
 
     // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use the old location again
     let memoryMap: MemoryMap;
@@ -361,8 +384,10 @@ extern "sysv64" fn newStackHome(
     }
 
     memoryMap.dumpEx(true);
-    loggerWriteLine!("New MemoryMap is at 0x{:X}", &memoryMap as *const _ as usize);
-    haltLoopWithMessage!("Temp parking");
+    loggerWriteLine!(
+        "New MemoryMap is at 0x{:X}",
+        &memoryMap as *const _ as usize
+    );
 
     let mut physicalMemoryManager = PhysicalMemoryManager {
         MemoryMap: memoryMap,
@@ -382,6 +407,9 @@ extern "sysv64" fn newStackHome(
         VM_KERNEL64_DATA_LENGTH,
         WhatDo::Normal,
     );
+
+    physicalMemoryManager.DumpBlobs();
+    haltLoopWithMessage!("Temp parking");
 
     // BUGBUG: Magic constant
     const DUMB_HEAP_SIZE: usize = 0x5_0000;
