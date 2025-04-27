@@ -1,4 +1,4 @@
-use core::{fmt::Write, str::from_utf8};
+use core::str::from_utf8;
 
 use kernel_shared::{assemblyStuff::halt::haltLoop, memoryHelpers::alignDown, pageTable::enums::*};
 

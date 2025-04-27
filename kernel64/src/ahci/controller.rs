@@ -3,10 +3,7 @@ use kernel_shared::assemblyStuff::halt::haltLoop;
 use crate::{
     acpi::pciGeneralDevice::PciGeneralDevice, loggerWriteLine
 };
-use core::{
-    fmt::Write,
-    ptr::{addr_of, read_volatile},
-};
+use core::ptr::{addr_of, read_volatile};
 
 use super::{abar::{ABar, PortRegister}, sataDrive::SataDrive};
 

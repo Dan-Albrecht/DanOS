@@ -1,5 +1,3 @@
-use core::fmt::Write;
-
 use crate::{
     acpi::{
         pciCommonHeader::{PciCommonHeader, PciHeaderType},

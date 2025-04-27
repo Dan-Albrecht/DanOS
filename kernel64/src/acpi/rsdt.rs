@@ -3,7 +3,7 @@ use kernel_shared::{assemblyStuff::halt::haltLoop, loggerWrite, loggerWriteLine}
 use crate::{
     acpi::{descriptionTable::DescriptionTable, fadt::FADT, mcfg::MCFG}
 };
-use core::{fmt::Write, mem::size_of, ptr::{addr_of, read_unaligned}};
+use core::{mem::size_of, ptr::{addr_of, read_unaligned}};
 
 use super::pciGeneralDevice::PciGeneralDevice;
 

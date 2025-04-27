@@ -1,4 +1,4 @@
-use core::{array::from_fn, fmt::Write};
+use core::array::from_fn;
 use kernel_shared::{
     assemblyStuff::halt::haltLoop,
     haltLoopWithMessage, loggerWrite,

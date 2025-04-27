@@ -1,8 +1,5 @@
 use crate::loggerWriteLine;
-use core::{
-    fmt::Write,
-    ptr::{read_volatile, write_volatile},
-};
+use core::ptr::{read_volatile, write_volatile};
 
 pub struct Bar {
     pub BarTarget: u32, // Where the BAR points to with metadata bits masked off

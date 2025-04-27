@@ -1,7 +1,10 @@
+#[cfg(target_pointer_width = "32")]
 use core::arch::asm;
 
-use crate::{loggerWrite, vgaWrite, vgaWriteLine};
+#[cfg(target_pointer_width = "32")]
+use crate::vgaWriteLine;
 
+use crate::{loggerWrite, vgaWrite};
 use super::mapEntry::{MemoryMapEntry, MemoryMapEntryType};
 
 #[derive(Copy, Clone)]
@@ -71,6 +74,7 @@ impl MemoryMap {
         }
     }
 
+    #[cfg(target_pointer_width = "32")]
     fn new() -> Self {
         MemoryMap {
             Entries: [MemoryMapEntry {

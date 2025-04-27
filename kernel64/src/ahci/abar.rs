@@ -3,7 +3,6 @@ use kernel_shared::assemblyStuff::halt::haltLoop;
 use crate::{
     acpi::{bar::Bar, pciGeneralDevice::PciGeneralDevice}, loggerWriteLine
 };
-use core::fmt::Write;
 
 // AHCI Base Address Register
 pub struct ABar {

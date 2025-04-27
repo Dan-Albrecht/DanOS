@@ -11,7 +11,6 @@ use crate::loggerWriteLine;
 use crate::memory::memoryStuff::MemoryStuff;
 
 use super::setup::SetupStuff;
-use core::fmt::Write;
 
 // See Intel Volume 3A, Chapter 6: Interrupt and Exception Handling
 #[repr(C, packed)]

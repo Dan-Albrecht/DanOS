@@ -4,7 +4,6 @@ use crate::loggerWriteLine;
 
 use super::controller::Controller;
 use core::{
-    fmt::Write,
     mem::size_of,
     ptr::{addr_of, read_volatile},
 };

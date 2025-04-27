@@ -1,5 +1,3 @@
-use core::fmt::Write;
-
 use kernel_shared::assemblyStuff::halt::haltLoop;
 
 use crate::{acpi::rsdp::getRsdp, ahci::controller::Controller, loggerWriteLine, memory::virtualMemory::VirtualMemoryManager};

@@ -3,7 +3,7 @@ use kernel_shared::{
 };
 
 use crate::loggerWriteLine;
-use core::{array::from_fn, fmt::Write, mem::size_of, ptr::null_mut};
+use core::{array::from_fn, mem::{size_of, align_of}, ptr::null_mut};
 
 use super::memoryStuff::MemoryStuff;
 

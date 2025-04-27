@@ -1,4 +1,4 @@
-use core::{fmt::Write, mem::size_of, ptr::addr_of};
+use core::{mem::size_of, ptr::addr_of};
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
 

@@ -3,7 +3,6 @@ use kernel_shared::assemblyStuff::halt::haltLoop;
 use crate::loggerWriteLine;
 
 use super::mcfgEntry::McfgEntry;
-use core::fmt::Write;
 
 #[derive(Debug)]
 #[derive(PartialEq)]

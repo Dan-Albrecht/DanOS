@@ -1,5 +1,4 @@
 use core::str::from_utf8;
-use core::fmt::Write;
 use crate::loggerWriteLine;
 
 // https://uefi.org/specs/ACPI/6.5/05_ACPI_Software_Programming_Model.html#system-description-table-header

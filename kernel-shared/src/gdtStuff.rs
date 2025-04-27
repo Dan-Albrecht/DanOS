@@ -3,8 +3,11 @@
 use core::arch::asm;
 
 use crate::memoryHelpers::{alignDown, zeroMemory2};
-use crate::{haltLoopWithMessage, loggerWriteLine, vgaWriteLine};
+use crate::{haltLoopWithMessage, loggerWriteLine};
 use crate::assemblyStuff::halt::haltLoop;
+
+#[cfg(target_pointer_width = "32")]
+use crate::vgaWriteLine;
 
 const GDT_ALIGNMENT : usize = 0x10;
 
