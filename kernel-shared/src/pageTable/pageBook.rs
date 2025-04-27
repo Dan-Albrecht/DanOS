@@ -2,7 +2,6 @@ use core::mem::size_of;
 use core::u8;
 
 use crate::loggerWriteLine;
-use crate::logging::logger;
 use crate::magicConstants::SIZE_OF_PAGE;
 use crate::memory::map::MemoryMap;
 use crate::memory::mapEntry::MemoryMapEntryType;
@@ -13,7 +12,6 @@ use crate::pageTable::pageTable::ENTRIES_PER_PAGE_TABLE;
 use crate::{
     haltLoopWithMessage,
     memoryHelpers::{haltOnMisaligned, zeroMemory2},
-    vgaWriteLine,
 };
 
 use crate::assemblyStuff::halt::haltLoop;

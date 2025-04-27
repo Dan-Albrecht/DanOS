@@ -100,7 +100,7 @@ pub fn writeString(msg: &[u8]) {
                     cursorPosition.y += 1;
                 }
             } else if byte == 0 {
-                break;;
+                break;
             } else {
                 // BUGBUG: This is another thing that doesn't make sense. The -1 isn't needed. But the side effect of it
                 // is we're booting farther than we would otherwise. So take this hack now while we try to figure out the

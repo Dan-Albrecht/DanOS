@@ -1,6 +1,6 @@
 use core::mem::size_of;
 
-use crate::{assemblyStuff::halt::haltLoop, haltLoopWithMessage, loggerWrite, loggerWriteLine, vgaWriteLine};
+use crate::{assemblyStuff::halt::haltLoop, loggerWriteLine, vgaWriteLine};
 
 pub unsafe fn zeroMemory(address: usize, ammount: usize) {
     unsafe {

@@ -1,13 +1,13 @@
-use core::{any::type_name, result};
+use core::any::type_name;
 
 use crate::{
     assemblyStuff::halt::haltLoop,
-    haltLoopWithMessage, loggerWrite, loggerWriteLine,
+    haltLoopWithMessage, loggerWriteLine,
     memory::{
         map::MemoryMap,
         mapEntry::{MemoryMapEntry, MemoryMapEntryType},
     },
-    memoryHelpers::{alignUp, zeroMemory, zeroMemory2},
+    memoryHelpers::{alignUp, zeroMemory},
     memoryTypes::PhysicalAddressPlain,
 };
 
