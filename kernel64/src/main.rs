@@ -21,22 +21,20 @@ use core::arch::asm;
 use core::array::from_fn;
 use core::panic::PanicInfo;
 
-use acpi::bar;
 use interupts::InteruptDescriptorTable::{IDT, SetIDT};
 
-use kernel_shared::gdtStuff::{GDTR, Gdt, GetGdtr};
+use kernel_shared::gdtStuff::{GDTR, Gdt};
 use kernel_shared::memory::map::MemoryMap;
-use kernel_shared::memoryHelpers::alignUp;
 use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
-use kernel_shared::relocation::{relocateKernel64, relocateKernel64Ex};
+use kernel_shared::relocation::relocateKernel64Ex;
 use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{haltLoopWithMessage, loggerWrite, loggerWriteLine, magicConstants::*};
+use kernel_shared::{loggerWriteLine, magicConstants::*};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;

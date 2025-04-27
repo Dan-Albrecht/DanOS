@@ -90,7 +90,7 @@ impl McfgEntry {
         device: u8,
         function: u8,
         progIF: u8,
-    ) -> Option<*const PciGeneralDevice> {
+    ) -> Option<*const PciGeneralDevice> { unsafe {
         let cc = (*header).ClassCode;
         let sc = (*header).Subclass;
 
@@ -121,5 +121,5 @@ impl McfgEntry {
         }
 
         return None;
-    }
+    }}
 }

@@ -1,11 +1,9 @@
 use core::arch::asm;
 use core::mem::size_of;
-use core::ptr::addr_of;
 
 use kernel_shared::assemblyStuff::halt::haltLoop;
-use kernel_shared::logging::logger;
 use kernel_shared::memoryHelpers::zeroMemory2;
-use kernel_shared::physicalMemory::{PhysicalMemoryManager, WhatDo};
+use kernel_shared::physicalMemory::PhysicalMemoryManager;
 
 use crate::assemblyHelpers::getCR2;
 use crate::loggerWriteLine;

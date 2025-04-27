@@ -98,7 +98,7 @@ impl Controller {
         }
     }
 
-    unsafe fn isSATA(&self, index: u8) -> Option<bool> {
+    unsafe fn isSATA(&self, index: u8) -> Option<bool> { unsafe {
         let port = self.getPort(index);
 
         // 3.3.10 Offset 28h: PxSSTS – Port x Serial ATA Status (SCR0: SStatus)
@@ -150,7 +150,7 @@ impl Controller {
         }
 
         return Some(false);
-    }
+    }}
 
     fn parseIPM(ipm: u32) -> IPM {
         match ipm {
