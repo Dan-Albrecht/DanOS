@@ -8,7 +8,6 @@
 #![feature(concat_idents)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
-#![feature(core_intrinsics)]
 
 mod acpi;
 mod ahci;
