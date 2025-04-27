@@ -92,7 +92,6 @@ fn checkSignature(ptr: *const RSDP, vmm: &mut VirtualMemoryManager) -> Result<Op
             let diff = rsdt - aligned;
 
             let length: usize = 0x1_0000;
-            let virtualAddress: usize = 0x1000_0000;
             let virtualAddress = vmm.mapPhysicalAnywhere(
                 aligned,
                 length,

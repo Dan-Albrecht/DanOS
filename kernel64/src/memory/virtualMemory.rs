@@ -7,7 +7,7 @@ use kernel_shared::{
     memoryTypes::{PhysicalAddress, SomeSortOfIndex, VirtualAddress},
     pageTable::{
         enums::*, pageBook::PageBook, pageDirectoryPointerTable::PageDirectoryPointerTable,
-        pageDirectoryTable::PageDirectoryTable, pageMapLevel4Table::PageMapLevel4Table,
+        pageDirectoryTable::PageDirectoryTable,
         pageTable::PageTable, physicalPage::PhysicalPage,
     },
     physicalMemory::PhysicalMemoryManager,
@@ -372,27 +372,16 @@ impl VirtualMemoryManager {
 
     pub(crate) fn mapPhysicalAnywhere(
         &self,
-        physicalAddress: usize,
-        length: usize,
-        execute: Execute,
-        present: Present,
-        writable: Writable,
-        cachable: Cachable,
-        supervisor: UserSupervisor,
-        writeTrough: WriteThrough,
+        _physicalAddress: usize,
+        _length: usize,
+        _execute: Execute,
+        _present: Present,
+        _writable: Writable,
+        _cachable: Cachable,
+        _supervisor: UserSupervisor,
+        _writeTrough: WriteThrough,
     ) -> usize {
-        haltOnMisaligned("mapPhysicalAnywhere", physicalAddress, SIZE_OF_PAGE);
-        let allocationSize = alignUp(length, SIZE_OF_PAGE);
-
-        if length != allocationSize {
-            loggerWriteLine!("Request was {} short", allocationSize - length);
-        }
-
-        //let vmi = Self::getVmi(virtualAddress);
-        let numberOfPages = length / SIZE_OF_PAGE;
-        let virtualAddress = self.getFreeVirtualAddress(numberOfPages);
-
-        0
+        todo!()
     }
 
     fn getVirtualAddress<T>(&self, xxx: SomeSortOfIndex) -> VirtualAddress<T> {
@@ -417,61 +406,7 @@ impl VirtualMemoryManager {
         result
     }
 
-    pub fn getFreeVirtualAddress(&self, numberOfPages: usize) -> usize {
-        loggerWriteLine!("Doing get");
-        unsafe {
-            let pml4 = self.pageBook.getPhysical();
-
-            if pml4.is_null() {
-                haltLoopWithMessage!("PML4 is unmapped");
-            }
-
-            // BUGBUG: This is wrong, might not always be 0 for xxx value
-            let xxx = (*pml4.unsafePtr()).getSomeSortOfIndex(0);
-            let pml4 = self.getVirtualAddress::<PageMapLevel4Table>(xxx).ptr();
-            let pml4Entries = (*pml4).getNumberOfEntries();
-            for pml4Index in 0..pml4Entries {
-                let pdpt = (*pml4).getAddressForEntry(pml4Index);
-                if !pdpt.is_null() {
-                    loggerWriteLine!("Looking {}", pml4Index);
-                    // BUGBUG: Should be virtual
-                    let pdptEntries = (*pdpt.unsafePtr()).getNumberOfEntries();
-                    for pdptIndex in 0..pdptEntries {
-                        // BUGBUG: Should be virtual
-                        let pdt = (*pdpt.unsafePtr()).getAddressForEntry(pdptIndex);
-                        if !pdt.is_null() {
-                            loggerWriteLine!("Looking {},{}", pml4Index, pdptIndex);
-                            let pdtEntries = (*pdt.unsafePtr()).getNumberOfEntries();
-                            for ptIndex in 0..pdtEntries {
-                                let pt = (*pdt.unsafePtr()).getAddressForEntry(ptIndex);
-                                if !pt.is_null() {
-                                    loggerWriteLine!(
-                                        "Looking {},{},{}",
-                                        pml4Index,
-                                        pdptIndex,
-                                        ptIndex
-                                    );
-                                    let ptEntries = (*pt.unsafePtr()).getNumberOfEntries();
-                                    for ppIndex in 0..ptEntries {
-                                        let pp = (*pt.unsafePtr()).getAddressForEntry(ppIndex);
-                                        if pp.is_null() {
-                                            loggerWriteLine!(
-                                                "Free {},{},{},{}",
-                                                pml4Index,
-                                                pdptIndex,
-                                                ptIndex,
-                                                ppIndex
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        0
+    pub fn getFreeVirtualAddress(&self, _numberOfPages: usize) -> usize {
+        todo!()
     }
 }

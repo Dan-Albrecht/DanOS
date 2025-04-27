@@ -39,7 +39,7 @@ impl MemoryStuff for BootstrapDumbHeap {
         return address as *mut T;
     }
 
-    fn free(&mut self, address: usize) {
+    fn free(&mut self, _address: usize) {
         todo!()
     }
 }
