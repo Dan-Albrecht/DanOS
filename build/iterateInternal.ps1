@@ -23,8 +23,9 @@ try {
         $targetType = "release"
     }
 
-    TimeCommand { ../stage2_rust/build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $debug } -message 'Stage 2'
-    $stage2Path = "../stage2_rust/target/i386-unknown-none/$targetType/stage2_rust.bin"
+    # Forcing to release for now to try and get smaller size which seem to be the source of break after 1.88 upgrade
+    TimeCommand { ../stage2_rust/build.ps1 -loadTarget $STAGE_2_LOAD_TARGET -debug $false } -message 'Stage 2'
+    $stage2Path = "../stage2_rust/target/i386-unknown-none/release/stage2_rust.bin"
 
     $stage2Bytes = Get-Content $stage2Path -Raw -AsByteStream
     $stage2Item = Get-ChildItem $stage2Path
