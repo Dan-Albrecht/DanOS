@@ -8,6 +8,7 @@ True to build debug, false to build release
 
 param (
     [bool]$debug = $true
+    , [string]$loadTarget = "0x100000"
 )   
 
 $ErrorActionPreference = 'Stop'
@@ -17,6 +18,7 @@ $oldErrorState = $PSNativeCommandUseErrorActionPreference
 
 try {
     $PSNativeCommandUseErrorActionPreference = $true
+    $env:KERNEL32_LOAD_TARGET = $loadTarget
 
     if ($debug) {
         $buildType = "debug"

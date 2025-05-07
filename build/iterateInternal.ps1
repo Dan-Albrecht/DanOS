@@ -11,8 +11,9 @@ try {
     $debug = $true
 
     # Magic constants    
-    $STAGE_2_LOAD_TARGET = 0x7E00 # Slap this right after boot sector for now, we're just going to assume it'll stay small and fit...
-    $BOOTLOADER_MAX_SIZE = 1MB # Total ammount of space we have before the bootloaders before they'd start overwriting the first partition of our image
+    $STAGE_2_LOAD_TARGET = "0x7E00"    # Slap this right after boot sector for now, we're just going to assume it'll stay small and fit...
+    $KERNEL32_LOAD_TARGET = "0x100000" # Nice round number; nothing significant
+    $BOOTLOADER_MAX_SIZE = 1MB         # Total ammount of space we have before the bootloaders before they'd start overwriting the first partition of our image
     $OUTPUT_FILE = "DanOS.img"
 
     if ($debug) {
@@ -33,7 +34,7 @@ try {
     TimeCommand { ../stage1/build.ps1 -sectorsToLoad $stage2Sectors -addressToLoadTo $STAGE_2_LOAD_TARGET } -message 'Stage 1'
     $stage1Path = "../stage1/bootloaderStage1.bin"
     
-    TimeCommand { ../kernel/buildKernel.ps1 -debug $debug } -message 'Kernel32'
+    TimeCommand { ../kernel/buildKernel.ps1 -debug $debug -loadTarget $KERNEL32_LOAD_TARGET } -message 'Kernel32'
     $stage3Path = "../kernel/target/i686-unknown-none/$targetType/kernel.bin"
     
     TimeCommand { ../kernel64/buildKernel.ps1 -debug $debug } -message 'Kernel64'

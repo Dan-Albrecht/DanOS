@@ -8,7 +8,7 @@ True to build debug, false to build release
 
 param (
     [bool]$debug = $true
-    , [string]$loadTarget = "0x7E00"
+    , [string]$loadTarget = "0x7E01"
 )   
 
 $ErrorActionPreference = 'Stop'

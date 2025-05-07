@@ -16,8 +16,6 @@ fn main() {
         "cargo:rustc-link-arg-bins=--defsym=STAGE2_RUST_LOAD_TARGET={}",
         stage2_load);
 
-        //println!("cargo:rustc-link-arg-bins=--print-map-discarded");
-
     println!(
         "cargo:rustc-link-arg-bins=--script={}",
         local_path.join("link.ld").display()
