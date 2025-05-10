@@ -15,6 +15,7 @@ mod diskStuff;
 mod interupts;
 mod magicConstants;
 mod memory;
+mod shell;
 
 use core::arch::asm;
 use core::array::from_fn;
@@ -525,5 +526,8 @@ extern "sysv64" fn newStackHome(
 
     //virtualMemoryManager.getFreeVirtualAddress(1);
     //readBytes(&mut virtualMemoryManager);
+    let shell = shell::kernelShell::KernelShell::new(&mut virtualMemoryManager);
+    shell.run();
+
     haltLoop();
 }
