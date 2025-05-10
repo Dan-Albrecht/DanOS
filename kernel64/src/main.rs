@@ -2,7 +2,6 @@
 #![no_main]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-#![feature(naked_functions)]
 #![feature(abi_x86_interrupt)]
 #![feature(used_with_arg)]
 #![feature(concat_idents)]
