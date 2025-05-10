@@ -24,7 +24,9 @@ use interupts::InteruptDescriptorTable::{IDT, SetIDT};
 
 use kernel_shared::gdtStuff::{GDTR, Gdt};
 use kernel_shared::memory::map::MemoryMap;
-use kernel_shared::memoryTypes::{PhysicalAddress, VirtualAddress};
+use kernel_shared::memoryTypes::{
+    MemoryAddress, PhysicalAddress, PhysicalAddressPlain, VirtualAddress, VirtualAddressPlain,
+};
 use kernel_shared::pageTable::enums::*;
 use kernel_shared::pageTable::pageMapLevel4Table::PageMapLevel4Table;
 use kernel_shared::physicalMemory::{MemoryBlob, PhysicalMemoryManager, WhatDo};
@@ -98,11 +100,11 @@ fn getIP() -> usize {
 
 fn mapKernelCode(
     virtualMemoryManager: &mut VirtualMemoryManager,
-    kernelBytesPhysicalAddress: usize,
+    kernelBytesPhysicalAddress: PhysicalAddressPlain,
     kernelSize: usize,
 ) {
     virtualMemoryManager.map(
-        kernelBytesPhysicalAddress,
+        kernelBytesPhysicalAddress.address,
         VM_KERNEL64_ELF,
         kernelSize,
         Execute::Yes,
@@ -118,10 +120,10 @@ fn mapKernelCode(
 
 fn mapKernelData(
     virtualMemoryManager: &mut VirtualMemoryManager,
-    kernelStackPhysicalAddress: usize,
+    kernelStackPhysicalAddress: PhysicalAddressPlain,
 ) {
     virtualMemoryManager.map(
-        kernelStackPhysicalAddress,
+        kernelStackPhysicalAddress.address,
         VM_KERNEL64_DATA,
         VM_KERNEL64_DATA_LENGTH,
         Execute::Yes, // BUGBUG: Something is really screwed up, we're page faulint if this isn't executable...but its stack space...
@@ -298,13 +300,17 @@ pub extern "sysv64" fn DanMain(
 
     mapKernelCode(
         &mut virtualMemoryManager,
-        kernelElfBytesPhysicalAddress as usize,
+        PhysicalAddressPlain {
+            address: kernelElfBytesPhysicalAddress as usize,
+        },
         kernelElfSize,
     );
 
     mapKernelData(
         &mut virtualMemoryManager,
-        kernelStackPhysicalAddress as usize,
+        PhysicalAddressPlain {
+            address: kernelStackPhysicalAddress as usize,
+        },
     );
 
     let newKernelLocationCanonical = VirtualMemoryManager::canonicalize(newKernelTextLocation);
@@ -363,9 +369,9 @@ pub extern "sysv64" fn DanMain(
 // Arguments 7 and above are pushed on to the stack.
 extern "sysv64" fn newStackHome(
     memoryMapLocation: usize,
-    kernelCodePhysical: usize,
+    kernelElfBytesPhysicalAddress: usize,
     kernelCodeLength: usize,
-    kernelDataPhysical: usize,
+    kernelStackPhysicalAddress: usize,
 ) -> ! {
     loggerWriteLine!(
         "In final relaction: 0x{:X} / 0x{:X} / 0x{:X} (RBP/RSP/RIP)",
@@ -374,15 +380,45 @@ extern "sysv64" fn newStackHome(
         getIP()
     );
 
+    // Starting at the ELF header
+    let kernelImageAddress = MemoryAddress {
+        r#virtual: VirtualAddressPlain {
+            address: VM_KERNEL64_ELF,
+        },
+        physical: PhysicalAddressPlain {
+            address: kernelElfBytesPhysicalAddress,
+        },
+    };
+
+    // Shadwowing this and others below to prevent further use as we want these from a single place
+    #[allow(unused_variables)]
+    let kernelElfBytesPhysicalAddress = ();
+
+    // Pointer is the end of the stack, then immeidately after that is the kernel data
+    let kernelDataAddress = MemoryAddress {
+        r#virtual: VirtualAddressPlain {
+            address: VM_KERNEL64_DATA,
+        },
+        physical: PhysicalAddressPlain {
+            address: kernelStackPhysicalAddress,
+        },
+    };
+
+    #[allow(unused_variables)]
+    let kernelStackPhysicalAddress = ();
+
     // The memoryMapLocation is in a location we're about to unmap and/or repurpose, so copy its data and never use the old location again
     let memoryMap: MemoryMap;
     unsafe {
         memoryMap = *(memoryMapLocation as *const MemoryMap);
     }
 
+    #[allow(unused_variables)]
+    let memoryMapLocation = ();
+
     memoryMap.dumpEx(true);
     loggerWriteLine!(
-        "New MemoryMap is at 0x{:X}",
+        "New MemoryMap is at 0x{:X} (V)",
         &memoryMap as *const _ as usize
     );
 
@@ -391,27 +427,27 @@ extern "sysv64" fn newStackHome(
         Blobs: from_fn(|_| MemoryBlob::default()),
     };
 
-    physicalMemoryManager.Dump();
+    physicalMemoryManager.DumpMemoryMap();
     physicalMemoryManager.Reserve(
         "The kernel",
-        kernelCodePhysical,
+        kernelImageAddress.physical.address,
         kernelCodeLength,
         WhatDo::Normal,
     );
     physicalMemoryManager.Reserve(
         "Kernel stack + heap",
-        kernelDataPhysical,
+        kernelDataAddress.physical.address,
         VM_KERNEL64_DATA_LENGTH,
         WhatDo::Normal,
     );
 
-    physicalMemoryManager.DumpBlobs();
+    physicalMemoryManager.DumpReservedBlobs();
 
     // We're in the course of setting up a new virtual memory manager. We're currently executing in non-identity mapped space
     // so we cannot just ask the physical manager for unused space. We know nothing has used the kernel data space yet aside
     // from the stack, so just take space next to it and then we'll tell the virtual manager about it after it is up.
     let bdhAddress = VM_KERNEL64_DATA + VM_KERNEL64_STACK_LENGTH;
-    let adjustment = VM_KERNEL64_DATA - kernelDataPhysical;
+    let adjustment = VM_KERNEL64_DATA - kernelDataAddress.physical.address;
     let mut bdh = BootstrapDumbHeap::new(bdhAddress, DUMB_HEAP_SIZE, true, adjustment);
 
     // BUGBUG: BDH alocates from data space. Potential one of the reason we had to mark that executable...
@@ -449,15 +485,15 @@ extern "sysv64" fn newStackHome(
     let cr3P = pageBook.getPhysical();
     let cr3V = pageBook.getVirtual();
 
-    // Create new VM map. This will get rid of the identity map we previously had.
+    // Create new VM map. This will get rid of the identity map we previously had when we install the new page book below.
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
     mapKernelCode(
         &mut virtualMemoryManager,
-        kernelCodePhysical,
+        kernelImageAddress.physical,
         kernelCodeLength,
     );
 
-    mapKernelData(&mut virtualMemoryManager, kernelDataPhysical as usize);
+    mapKernelData(&mut virtualMemoryManager, kernelDataAddress.physical);
 
     virtualMemoryManager.identityMap(
         VGA_BUFFER_ADDRESS.try_into().unwrap(),
@@ -484,7 +520,8 @@ extern "sysv64" fn newStackHome(
         );
     }
 
-    loggerWriteLine!("We're fully remapped");
+    loggerWriteLine!("We're fully remapped!");
+    virtualMemoryManager.dumpPhysical();
 
     //virtualMemoryManager.getFreeVirtualAddress(1);
     //readBytes(&mut virtualMemoryManager);

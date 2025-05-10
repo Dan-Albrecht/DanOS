@@ -92,7 +92,7 @@ impl PhysicalMemoryManager {
                             return;
                         }
                         _ => {
-                            self.Dump();
+                            self.DumpMemoryMap();
                             haltLoopWithMessage!(
                                 "0x{:X} is in a {:?} region. Cannot use.",
                                 requestLocation,
@@ -111,7 +111,7 @@ impl PhysicalMemoryManager {
                 requestAmmount
             );
 
-            self.Dump();
+            self.DumpMemoryMap();
             haltLoop();
         }
     }
@@ -163,7 +163,7 @@ impl PhysicalMemoryManager {
         );
     }
 
-    pub fn Dump(&self) {
+    pub fn DumpMemoryMap(&self) {
         for index in 0..(self.MemoryMap.EntryCount as usize) {
             let memoryType = self.MemoryMap.Entries[index].getType();
 
@@ -190,7 +190,7 @@ impl PhysicalMemoryManager {
         }
     }
 
-    pub fn DumpBlobs(&self) {
+    pub fn DumpReservedBlobs(&self) {
         for index in 0..self.Blobs.len() {
             if self.Blobs[index].Length == 0 {
                 break;

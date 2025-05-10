@@ -110,7 +110,7 @@ impl IDT {
             );
         }
 
-        return IDT { idtr: idtr };
+        return IDT { idtr };
     }
 }
 

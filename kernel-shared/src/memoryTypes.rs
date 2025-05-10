@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 
 pub struct VirtualAddressPlain {
-    address: usize,
+    pub address: usize,
 }
 
 pub struct VirtualAddress<T> {
@@ -16,6 +16,11 @@ pub struct PhysicalAddressPlain {
 pub struct PhysicalAddress<T> {
     pub address: usize,
     _x: PhantomData<T>,
+}
+
+pub struct MemoryAddress {
+    pub r#virtual: VirtualAddressPlain,
+    pub physical: PhysicalAddressPlain,
 }
 
 pub struct SomeSortOfIndex {

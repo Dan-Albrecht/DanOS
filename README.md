@@ -59,3 +59,10 @@ losetup -D
 sudo losetup --find --show --partscan ./build/empty.img
 sudo mount /dev/loop0p1 /mnt/danOS -o rw,uid=$(id -u),gid=$(id -g)
 ```
+
+### Check it
+
+```bash
+mount -l | grep loop
+losetup --list
+```

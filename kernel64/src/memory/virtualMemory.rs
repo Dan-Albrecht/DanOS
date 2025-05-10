@@ -60,7 +60,7 @@ impl VirtualMemoryManager {
     }
 
     pub fn dumpPhysical(&self) {
-        self.physical.DumpBlobs();
+        self.physical.DumpReservedBlobs();
     }
 
     fn is_canonical_address(virtual_address: usize) -> bool {
