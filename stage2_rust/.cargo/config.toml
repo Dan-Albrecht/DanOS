@@ -7,3 +7,4 @@ rustflags = ["-Zmacro-backtrace"]
 
 [unstable]
 build-std = ["core"]
+json-target-spec = true
