@@ -3,3 +3,4 @@ target = "./x86_64-unknown-none.json"
 
 [unstable]
 build-std = ["core"]
+json-target-spec = true

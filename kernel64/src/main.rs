@@ -3,10 +3,6 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![feature(abi_x86_interrupt)]
-#![feature(used_with_arg)]
-#![feature(concat_idents)]
-#![feature(const_trait_impl)]
-#![feature(if_let_guard)]
 
 mod acpi;
 mod ahci;

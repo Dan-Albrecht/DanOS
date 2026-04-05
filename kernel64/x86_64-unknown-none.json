@@ -15,7 +15,7 @@
     "stack-probes": {
         "kind": "call"
     },
-    "target-pointer-width": "64",
+    "target-pointer-width": 64,
     "relocation-model": "pie",
     "position-independent-executables": true,
     "os": "none"
