@@ -47,7 +47,7 @@ try {
     
     if ($stage1Bytes.Length -ne 440) {
         # 440, not 512 since that's just the code space
-        # The partition info is already in the empty.img
+        # We'll pre-create an empty image that'll have parition info present
         Write-Error "Stage 1 must be exactly 440 bytes"
     }
 
@@ -55,24 +55,32 @@ try {
         Write-Error "Bootloaders are too big"
     }
 
-    
-    # BUGBUG: This name is confusing
-    if (![System.IO.File]::Exists("empty.img")) {
-        Write-Error "empty.img doesn't exist. You'll need to create it by hand. Follow the README.md."
-    }
-
-    # BUGUBG: Probably a better way to check this (that the img is mounted), but we're always hand backing this file into the image, so good enough for now
-    if (![System.IO.File]::Exists("/mnt/danOS/hi.txt")) {
-        Write-Error "It appears empty.img isn't mounted. You'll need to mount it to /mnt/danOS."
+    if ([System.IO.File]::Exists($OUTPUT_FILE)) {
+        Remove-Item -Path $OUTPUT_FILE -Force
     }
 
     TimeCommand {
-        cp $stage3Path /mnt/danOS/kernel.bin
-        cp $stage4Path /mnt/danOS/kernel64.elf
-        sync
-    } -message 'Copy kernels'
+        # Create small OS image
+        dd if=/dev/zero of=$OUTPUT_FILE bs=6M count=1
 
-    Copy-Item -Path 'empty.img' -Destination $OUTPUT_FILE -Force
+        # 1 Meg gap at front it for early stage bootloaders, kernel(s) will appear on the filesystem
+        /usr/sbin/parted --script $OUTPUT_FILE mklabel msdos mkpart primary fat16 1MiB 100% set 1 boot on
+
+        # Shenanagins to force a small FAT16 partition:
+        #   - Above created a 6MB total image
+        #   - It reserves 1MB for bootloaders
+        #   - So we have 5MB left for the actual data
+        #   - Force a very small cluster size so total cluster count is high enough for FAT16; default would have ended up with FAT12
+        mformat -c 2 -i $OUTPUT_FILE@@1M ::
+
+        "Built at $([DateTime]::Now)" | mcopy -i $OUTPUT_FILE@@1M - ::HI.TXT
+
+    } -message 'Create empty image'
+
+    TimeCommand {
+        mcopy -i $OUTPUT_FILE@@1M $stage3Path ::
+        mcopy -i $OUTPUT_FILE@@1M $stage4Path ::KERNEL64.ELF
+    } -message 'Copy kernels'
 
     TimeCommand {
         $fs = [System.IO.File]::Open($OUTPUT_FILE, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite)
@@ -80,7 +88,7 @@ try {
         
         $fs.Write($stage1Bytes)
 
-        # Need to leave the parition info intact either from Stage1 itself, or the prebuild empty.img
+        # Move to next sector so we don't overwrite the parition info
         $fs.Position = 512
         $fs.Write($stage2Bytes)
 
@@ -95,6 +103,8 @@ try {
     Write-Host "$($stage2Path)"
     Write-Host "$($stage3Path)"
     Write-Host "$($stage4Path)"
+    Write-Host "Disk image contents:"
+    mdir -i $OUTPUT_FILE@@1M ::
     Write-Host "`n`nKicking off DanOS...`n`n"
 }
 finally {

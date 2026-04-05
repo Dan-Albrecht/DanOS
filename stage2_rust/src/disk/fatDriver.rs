@@ -101,6 +101,7 @@ impl Fat16 {
 
         let de = self.findFile(disk, false, Some((name, ext)))?;
         if de.is_none() {
+            vgaWriteLine!("Not found. Name <<{:?}>>, Ext <<{:?}>>", name, ext);
             return Err("File not found");
         }
 
@@ -496,6 +497,7 @@ impl FatDriver {
             .unwrap()
             .findFile(&self.disk, false, Some(filename))?;
         if de.is_none() {
+            vgaWriteLine!("Not found. Name <<{:?}>>, Ext <<{:?}>>", filename.0, filename.1);
             return Err("File not found");
         }
 
