@@ -85,7 +85,7 @@ impl IDT {
             let length = (*idt).Table.Entries.len();
 
             // The last byte of the table
-            limit = (entrySize * length - 1) as u16;
+            limit = (entrySize * length - 1).try_into().unwrap();
             loggerWriteLine!(
                 "IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.",
                 idt as usize,
@@ -182,7 +182,7 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
         let length = (*idt).Table.Entries.len();
 
         // The last byte of the table
-        limit = (size * length - 1) as u16;
+        limit = (size * length - 1).try_into().unwrap();
         loggerWriteLine!(
             "IDT @ 0x{:X}. Entry Size: 0x{:X} Length: 0x{:X}. Limit: 0x{:X}.",
             idt as usize,

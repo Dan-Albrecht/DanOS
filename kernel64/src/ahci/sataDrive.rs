@@ -1,4 +1,11 @@
-use kernel_shared::{assemblyStuff::halt::haltLoop, magicConstants::{SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS, SATA_DRIVE_BASE_FIS_BASE_ADDRESS}, memoryHelpers::zeroMemory2};
+use kernel_shared::{
+    assemblyStuff::halt::haltLoop,
+    magicConstants::{
+        SATA_DRIVE_BASE_CMD_BASE_ADDRESS, SATA_DRIVE_BASE_COMMAND_TABLE_BASE_ADDRESS,
+        SATA_DRIVE_BASE_FIS_BASE_ADDRESS,
+    },
+    memoryHelpers::zeroMemory2,
+};
 
 use crate::loggerWriteLine;
 
@@ -69,14 +76,12 @@ impl SataDrive {
     pub fn remapStuff(&self) {
         let port = self.Controller.getPort(self.Port);
         unsafe {
-
             (*port).setClb(SATA_DRIVE_BASE_CMD_BASE_ADDRESS);
-            
 
             let bytePointer = (*port).CLB as *mut u8;
 
             for offset in 0..size_of::<CommandList>() {
-                *(bytePointer.offset(offset as isize)) = 0;
+                *(bytePointer.add(offset)) = 0;
             }
 
             let cl = (*port).CLB as *mut CommandList;
@@ -181,7 +186,7 @@ impl CommandHeader {
         }
 
         // Command Table Descriptor Base Address (CTBA)
-        self.DW2 = address as u32;
+        self.DW2 = address.try_into().unwrap();
 
         // We're only doing 32 bit addresses for now
         // Command Table Descriptor Base Address Upper 32-bits (CTBAU)

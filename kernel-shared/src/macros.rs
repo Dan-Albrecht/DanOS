@@ -10,3 +10,11 @@ macro_rules! guaranteed_size_of_u32 {
         SIZE
     }};
 }
+
+#[macro_export]
+macro_rules! u64_to_usize {
+    ($val:expr) => {{
+        const _: () = assert!(u64::MAX as u128 <= usize::MAX as u128);
+        $val as usize
+    }};
+}

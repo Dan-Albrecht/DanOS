@@ -3,14 +3,13 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![feature(abi_x86_interrupt)]
-
 // Try and make our casting a bit safer
 // Still unhappy...
 #![deny(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
+    clippy::cast_precision_loss
 )]
 #![warn(clippy::cast_lossless)]
 
@@ -42,7 +41,7 @@ use kernel_shared::{
     assemblyStuff::{halt::haltLoop, misc::Breakpoint},
     pageTable::pageBook::PageBook,
 };
-use kernel_shared::{loggerWriteLine, magicConstants::*};
+use kernel_shared::{loggerWriteLine, magicConstants::*, u64_to_usize};
 use magicConstants::*;
 use memory::dumbHeap::BootstrapDumbHeap;
 use memory::virtualMemory::VirtualMemoryManager;
@@ -208,7 +207,7 @@ pub extern "sysv64" fn DanMain(
     physicalMemoryManager.Reserve(
         "GDT & paging structures",
         gdtAddress,
-        gdtAndStuffLength as usize,
+        u64_to_usize!(gdtAndStuffLength),
         WhatDo::Normal,
     );
 
@@ -299,7 +298,7 @@ pub extern "sysv64" fn DanMain(
     let pageBook = PageBook::fromExistingIdentityMapped();
     loggerWriteLine!(
         "Existing PageBook CR3 @ 0x{:X}",
-        pageBook.getCR3Value() as usize
+        u64_to_usize!(pageBook.getCR3Value())
     );
 
     let mut virtualMemoryManager = VirtualMemoryManager::new(physicalMemoryManager, pageBook, bdh);
@@ -485,7 +484,7 @@ extern "sysv64" fn newStackHome(
     );
     loggerWriteLine!(
         "PageBook @ 0x{:X}, BDH @ 0x{:X}",
-        pageBook.getCR3Value() as usize,
+         u64_to_usize!(pageBook.getCR3Value()),
         bdhAddress
     );
     let cr3 = pageBook.getCR3Value();

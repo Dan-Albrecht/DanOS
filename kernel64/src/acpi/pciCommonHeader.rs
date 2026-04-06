@@ -1,4 +1,4 @@
-use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::{assemblyStuff::halt::haltLoop, u64_to_usize};
 
 use crate::loggerWriteLine;
 
@@ -73,12 +73,6 @@ impl PciCommonHeader {
         }
 
         let base = entry.BaseAddress;
-
-        if base > usize::MAX as u64 {
-            loggerWriteLine!("    Base is too big for this platform");
-            haltLoop();
-        }
-
         let bigStart = entry.StartBus as u64;
         let bigBus = bus as u64;
         let bigDevice = device as u64;
@@ -90,11 +84,6 @@ impl PciCommonHeader {
         let d = a | b | c;
         let e = base + d;
 
-        if e > usize::MAX as u64 {
-            loggerWriteLine!("    Calculated is too big for this platform");
-            haltLoop();
-        }
-
-        return e as usize;
+        u64_to_usize!(e)
     }
 }

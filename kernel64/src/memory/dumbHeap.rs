@@ -1,5 +1,5 @@
 use kernel_shared::{
-    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::{PhysicalAddress, VirtualAddress}
+    assemblyStuff::halt::haltLoop, haltLoopWithMessage, memory::{map::MemoryMap, mapEntry::MemoryMapEntryType}, memoryHelpers::alignUp, memoryTypes::{PhysicalAddress, VirtualAddress}, u64_to_usize
 };
 
 use crate::loggerWriteLine;
@@ -179,8 +179,8 @@ impl DumbHeap {
     pub fn new(memoryMap: MemoryMap) -> Self {
         for index in 0..(memoryMap.EntryCount as usize) {
             if let MemoryMapEntryType::AddressRangeMemory = memoryMap.Entries[index].getType() {
-                let stupidAddress = memoryMap.Entries[index].BaseAddress as usize;
-                let stupidSize = memoryMap.Entries[index].Length as usize;
+                let stupidAddress = u64_to_usize!(memoryMap.Entries[index].BaseAddress);
+                let stupidSize = u64_to_usize!(memoryMap.Entries[index].Length);
                 if stupidSize < (1 * 1024 * 1024) {
                     loggerWriteLine!(
                         "0x{:X} is too small at 0x{:X} bytes",
