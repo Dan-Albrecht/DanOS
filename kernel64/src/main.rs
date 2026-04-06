@@ -4,6 +4,16 @@
 #![allow(dead_code)]
 #![feature(abi_x86_interrupt)]
 
+// Try and make our casting a bit safer
+// Still unhappy...
+#![deny(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+)]
+#![warn(clippy::cast_lossless)]
+
 mod acpi;
 mod ahci;
 mod assemblyHelpers;

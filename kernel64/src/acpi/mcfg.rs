@@ -1,6 +1,6 @@
 use core::{mem::size_of, ptr::addr_of};
 
-use kernel_shared::assemblyStuff::halt::haltLoop;
+use kernel_shared::{assemblyStuff::halt::haltLoop, guaranteed_size_of_u32};
 
 use crate::{acpi::mcfgEntry::McfgEntry, loggerWriteLine};
 
@@ -28,8 +28,8 @@ pub struct MCFG {
 impl MCFG {
     pub fn printSomeInfo(&self) -> Option<*const PciGeneralDevice>{
         let length = self.Length;
-        let lengthForEntries = length - size_of::<MCFG>() as u32 + 1; // +1 as FirstConfigEntryis the first byte of the first entry, so shouldn't count as the base size of this table
-        let size = size_of::<McfgEntry>() as u32;
+        let lengthForEntries = length - guaranteed_size_of_u32!(MCFG) + 1; // +1 as FirstConfigEntryis the first byte of the first entry, so shouldn't count as the base size of this table
+        let size = guaranteed_size_of_u32!(McfgEntry);
         let numOfEntries = lengthForEntries / size;
 
         if lengthForEntries % size != 0 {
@@ -51,8 +51,8 @@ impl MCFG {
         let base = addr_of!(self.FirstConfigEntry) as *const McfgEntry;
         let mut result = None;
         unsafe {
-            for index in 0..numOfEntries as isize {
-                let entry = base.offset(index);
+            for index in 0..usize::try_from(numOfEntries).unwrap() {
+                let entry = base.add(index);
                 let maybeResult = (*entry).printSomeInfo();
                 if result == None && maybeResult != None{
                     result = maybeResult;

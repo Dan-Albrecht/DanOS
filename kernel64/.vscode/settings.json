@@ -1,4 +1,5 @@
 {
+    "rust-analyzer.check.command": "clippy",
     // Don't want the test target running because that thinks it gets to define the panic handler
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.showUnlinkedFileNotification": false,
@@ -6,10 +7,14 @@
     "rust-analyzer.cargo.extraEnv": {
         "CARGO_UNSTABLE_JSON_TARGET_SPEC": "true"
     },
+    "rust-analyzer.check.extraEnv": {
+        "CARGO_UNSTABLE_JSON_TARGET_SPEC": "true"
+    },
     "files.exclude": {
         "target": true,
     },
     "search.exclude": {
         "target": true,
-    }
+    },
+    "editor.inlayHints.enabled": "offUnlessPressed"
 }
