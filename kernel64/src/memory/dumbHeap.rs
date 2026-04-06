@@ -36,7 +36,7 @@ impl MemoryStuff for BootstrapDumbHeap {
         let address : VirtualAddress<T> = BootstrapDumbHeap::allocate(self, size, align);
         let address = address.address;
 
-        return address as *mut T;
+        address as *mut T
     }
 
     fn free(&mut self, _address: usize) {
@@ -245,7 +245,7 @@ impl DumbHeap {
                             (*self.First).Next = writePointer;
                             (*self.First).Free = false;
 
-                            return (*self.First).Address;
+                            (*self.First).Address
                         } else {
                             loggerWriteLine!("Allocation wouldn't leave room for next pointer");
                             haltLoop();

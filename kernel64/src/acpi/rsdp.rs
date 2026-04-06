@@ -112,5 +112,5 @@ fn checkSignature(ptr: *const RSDP, vmm: &mut VirtualMemoryManager) -> Result<Op
         }
     }
 
-    return Err(2);
+    Err(2)
 }

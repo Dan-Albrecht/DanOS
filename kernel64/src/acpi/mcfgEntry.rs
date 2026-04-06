@@ -78,7 +78,7 @@ impl McfgEntry {
             }
         }
 
-        return ahciController;
+        ahciController
     }
 
     unsafe fn printDetails(
@@ -118,6 +118,6 @@ impl McfgEntry {
             }
         }
 
-        return None;
+        None
     }}
 }

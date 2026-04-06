@@ -118,6 +118,6 @@ impl ABar {
             });
         }
 
-        return None;
+        None
     }
 }

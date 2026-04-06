@@ -114,7 +114,7 @@ impl SataDrive {
 impl CommandTable {
     pub fn getFullLength() -> usize {
         // -1 as the table defintion already alocates the first entry
-        return size_of::<CommandTable>() + size_of::<PRDT>() * ((COUNT_OF_PRDT - 1) as usize);
+        size_of::<CommandTable>() + size_of::<PRDT>() * ((COUNT_OF_PRDT - 1) as usize)
     }
 }
 
@@ -160,7 +160,7 @@ impl CommandList {
         };
 
         // BUGBUG: Casting mutable again...
-        return header as *const _ as *mut CommandHeader;
+        header as *const _ as *mut CommandHeader
     }
 }
 

@@ -60,6 +60,6 @@ impl MCFG {
             }
         }
 
-        return result;
+        result
     }
 }

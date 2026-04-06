@@ -76,6 +76,6 @@ impl FADT {
         // BUGBUG: Figure this thing out, below code is from ChatGPT and I haven't verified
         // https://uefi.org/specs/ACPI/6.5/04_ACPI_Hardware_Specification.html#pm1-event-grouping
         let address = u32::from_le_bytes(self.PM1a_EVT_BLK[0..4].try_into().unwrap());
-        return  address as u64;
+        address as u64
     }
 }

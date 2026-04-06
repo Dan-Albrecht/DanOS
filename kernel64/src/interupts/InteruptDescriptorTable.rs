@@ -110,7 +110,7 @@ impl IDT {
             );
         }
 
-        return IDT { idtr };
+        IDT { idtr }
     }
 }
 
@@ -209,5 +209,5 @@ pub unsafe fn SetIDT(memoryManager: &mut PhysicalMemoryManager) -> usize {
         );
     }
 
-    return idt as usize;
+    idt as usize
 }

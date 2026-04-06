@@ -44,9 +44,9 @@ impl PciCommonHeader {
             // You have to read it
             let data = *(targetAddress as *const u32);
             if data == 0xFFFFFFFF {
-                return None;
+                None
             } else {
-                return Some(targetAddress as *const PciCommonHeader);
+                Some(targetAddress as *const PciCommonHeader)
             }
         }
     }

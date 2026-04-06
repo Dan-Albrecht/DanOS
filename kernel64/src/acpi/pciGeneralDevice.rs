@@ -35,9 +35,9 @@ impl PciGeneralDevice {
         let headerType = commonHeader.getType();
         match headerType {
             PciHeaderType::General | PciHeaderType::MultiFunctionGeneral => {
-                return Some(commonHeader as *const _ as *const PciGeneralDevice)
+                Some(commonHeader as *const _ as *const PciGeneralDevice)
             }
-            _ => return None,
+            _ => None,
         }
     }
 
@@ -88,7 +88,7 @@ impl PciGeneralDevice {
             let address = barValue & 0xFFFFFFF0;
             let result = Bar::new(address, barValue, barAddress);
 
-            return Some(result);
+            Some(result)
         }
     }
 

@@ -20,11 +20,11 @@ impl Bar {
 
             loggerWriteLine!("Readback was 0x{:X} size is 0x{:X}", readBack, size);
 
-            return Bar {
+            Bar {
                 BarTarget: address,
                 _AddressSpace: size,
                 _Value: barValue,
-            };
+            }
         }
     }
 }

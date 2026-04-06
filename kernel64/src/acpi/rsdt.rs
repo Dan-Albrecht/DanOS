@@ -70,6 +70,6 @@ impl RSDT {
             }
         }
 
-        return  result;
+        result
     }
 }

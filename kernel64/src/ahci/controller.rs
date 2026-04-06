@@ -19,14 +19,14 @@ impl Controller {
                 if let Some(port) = controller.enumeratePorts() {
                     let drive = SataDrive::new(controller, port);
 
-                    return Some(drive);
+                    Some(drive)
                 } else {
                     loggerWriteLine!("Didn't find a SATA port");
-                    return None;
+                    None
                 }
             } else {
                 loggerWriteLine!("ABar returned None");
-                return None;
+                None
             }
         }
     }
@@ -46,7 +46,7 @@ impl Controller {
             }
         }
 
-        return None;
+        None
     }
 
     pub fn getPort(&self, index: u8) -> *mut PortRegister {
@@ -91,7 +91,7 @@ impl Controller {
             };
 
             // BUGBUG: We're making imutable, mutable here, is this allowed?
-            return port as *const _ as *mut PortRegister;
+            port as *const _ as *mut PortRegister
         }
     }
 
@@ -146,7 +146,7 @@ impl Controller {
             }
         }
 
-        return Some(false);
+        Some(false)
     }}
 
     fn parseIPM(ipm: u32) -> IPM {
