@@ -351,7 +351,7 @@ pub extern "sysv64" fn DanMain(
             "mov rbp, rax",
             "jmp r9",
             in("rax") stackTarget,
-            in("r9") newStackHome as usize,
+            in("r9") newStackHome as *const () as usize,
             in("rdi") memoryMapLocation,
             in("rsi") kernelElfBytesPhysicalAddress,
             in("rdx") kernelElfSize,
