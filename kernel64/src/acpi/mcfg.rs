@@ -1,4 +1,4 @@
-use core::{mem::size_of, ptr::addr_of};
+use core::ptr::addr_of;
 
 use kernel_shared::{assemblyStuff::halt::haltLoop, guaranteed_size_of_u32};
 
